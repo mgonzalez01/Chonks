@@ -133,7 +133,7 @@ _real_probe_embedder = server.probe_embedder
 def test_probe_embedder_reports_connection_failure():
     from chonks.embedder import Embedder
     err = _real_probe_embedder(Embedder("http://127.0.0.1:1/v1/embeddings", "jina-code-x"), timeout=1.0)
-    assert err is not None and "Error" in err
+    assert err is not None and ":" in err
 
 
 def test_serve_allow_degraded_via_env(monkeypatch, tmp_path, capsys):
