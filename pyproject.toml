@@ -1,0 +1,60 @@
+[project]
+name = "chonks"
+version = "0.1.0"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "sqlite-vec==0.1.9",
+    "tree-sitter==0.25.2",
+    "tree-sitter-language-pack==1.4.1",
+    "httpx==0.28.1",
+    "fastapi==0.135.3",
+    "uvicorn==0.42.0",
+    "tqdm==4.67.3",
+    "networkx==3.6.1",
+    "numpy>=2.2.0",
+    "scipy>=1.15.0",
+]
+
+[project.optional-dependencies]
+# CHONKS_KNN_BACKEND=cuda backend for the bulk/incremental k-NN matmul on an
+# NVIDIA GPU — the Windows/CUDA counterpart to the Apple-silicon
+# MLX path (which has no pip package; it's a system-level opt-in assumption,
+# not declared here). cupy-cuda12x mirrors numpy's array API closely enough
+# that _Corpus uses it as a near-drop-in — but the wheel does NOT bundle the
+# CUDA libraries: cupy resolves cuBLAS/NVRTC/cudart at runtime via
+# cuda.pathfinder, from either a system CUDA_PATH toolkit or the NVIDIA pip
+# wheels below (verified on Windows: matmul dies on missing
+# cublasLt*.dll without them). Driver is the only system prerequisite once
+# the wheels are present. Install with `uv sync --extra cuda`.
+cuda = [
+    "cupy-cuda12x",
+    "nvidia-cublas-cu12",
+    "nvidia-cuda-runtime-cu12",
+    "nvidia-cuda-nvrtc-cu12",
+]
+
+[project.scripts]
+chonks = "chonks.cli:main"
+
+[project.urls]
+Repository = "https://github.com/mgonzalez01/Chonks"
+Documentation = "https://github.com/mgonzalez01/Chonks/blob/main/DOCS.md"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["chonks", "chonks.repomap"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+# This section's presence anchors pytest's rootdir/configfile discovery
+# here instead of climbing to a parent directory's pyproject.toml.
+testpaths = ["tests"]

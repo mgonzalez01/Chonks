@@ -1,0 +1,13 @@
+{
+  "_comment": "Team-shared MCP config (manual mode: no CHONKS_SERVER_PY, so the proxy never tries to spawn a local backend). Commit this as .mcp.json at your repository root next to chonks-subsystems.json. ${VAR} references expand from each user's environment: CHONKS_MCP_DIR = where they unpacked the built mcp-server/. The backend has no authentication, so it must only be reachable on a trusted network.",
+  "mcpServers": {
+    "chonks": {
+      "command": "node",
+      "args": ["${CHONKS_MCP_DIR}/dist/index.js"],
+      "env": {
+        "CHONKS_URL": "http://chonks-host:11438",
+        "CHONKS_CONFIG": "chonks-subsystems.json"
+      }
+    }
+  }
+}

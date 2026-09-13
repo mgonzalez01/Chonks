@@ -1,0 +1,40 @@
+__pycache__/
+*.pyc
+*.pyo
+chonks.egg-info/
+*.db
+*.db-shm
+*.db-wal
+
+# Personal config — check in config.example.json instead
+config.json
+
+# Claude Code per-user state
+.claude/*
+
+# Node / MCP server build artifacts
+mcp-server/node_modules/
+mcp-server/dist/
+
+# direnv / Nix
+.direnv/
+.envrc.local
+result
+result-*
+.venv/
+
+# local testing corpora (only fixture data dropped inside tests/ is
+# gitignored, not the directory itself)
+tests/fixtures_local/
+eval_data/
+
+# deploy artefacts
+.env
+/data/
+
+.DS_Store
+**/.DS_Store
+node_modules/
+dist/
+.pytest_cache/
+INDEX_REPORT.md

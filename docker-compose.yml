@@ -1,0 +1,113 @@
+# Chonks as a shared service. Copy .env.example -> .env, put your DB at
+# ${CHONKS_DATA}/chonks.db (default ./data), then:
+#
+#   docker compose up -d                 # serve an existing index
+#   docker compose --profile index run --rm index    # (re)build the index from ${CHONKS_SOURCE}
+#   docker compose --profile embedder up -d          # optional CPU llama-server for the embedder
+#
+# Other machines: claude mcp add --transport http chonks http://<host>:${CHONKS_MCP_PORT}/mcp
+#
+# The backend is NOT published; only the MCP proxy is, and only on 127.0.0.1
+# unless CHONKS_MCP_BIND=0.0.0.0. There is no authentication on the proxy:
+# publishing it to a network is a trusted-network decision.
+services:
+  # serve probes the embedder at boot and REFUSES TO START if it does not answer.
+  # Inside a container the built-in default (localhost:11437) never
+  # resolves, so ${CHONKS_DATA}/config.json must set embed_url to one of:
+  #   http://host.docker.internal:11437/v1/embeddings   (llama-server on the host)
+  #   http://embedder:11437/v1/embeddings               (--profile embedder below)
+  # A failing probe shows as "dependency backend failed to start" at `up` time and
+  # a restart loop in `docker compose ps`; `docker compose logs backend` prints the
+  # URL it tried. CHONKS_ALLOW_DEGRADED=1 in .env serves keyword-only instead.
+  backend:
+    build: { context: ., target: backend }
+    image: chonks-backend
+    restart: unless-stopped
+    environment:
+      CHONKS_ALLOW_DEGRADED: ${CHONKS_ALLOW_DEGRADED:-}
+    volumes:
+      - ${CHONKS_DATA:-./data}:/data
+    expose: ["11438"]
+    # lets a container reach an embedder running on the host (Windows/macOS Docker Desktop
+    # resolve this natively; the mapping below makes it work on Linux too)
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  mcp:
+    build: { context: ., target: mcp }
+    image: chonks-mcp
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_healthy }
+    environment:
+      CHONKS_URL: http://backend:11438
+      CHONKS_CONFIG: /data/config.json
+      # Host-header allowlist for the adapter (DNS-rebinding protection). Loopback
+      # names are always accepted; a LAN deployment must list the hostname or IP
+      # clients will use, e.g. CHONKS_MCP_ALLOWED_HOSTS=192.168.x.x,chonks-host
+      CHONKS_MCP_ALLOWED_HOSTS: ${CHONKS_MCP_ALLOWED_HOSTS:-}
+    volumes:
+      - ${CHONKS_DATA:-./data}:/data:ro
+    ports:
+      - "${CHONKS_MCP_BIND:-127.0.0.1}:${CHONKS_MCP_PORT:-11439}:11439"
+
+  # One-shot indexer. Needs an embedder reachable from inside the container:
+  # set embed_url in ${CHONKS_DATA}/config.json to http://host.docker.internal:11437/v1/embeddings
+  # (native llama-server on the host) or http://embedder:11437/v1/embeddings (profile below).
+  # The indexer does not wait for the embedder: it aborts after 5 consecutive
+  # connection failures. With the embedder profile, start it first and wait:
+  #   docker compose --profile embedder up -d --wait embedder
+  #   docker compose --profile embedder --profile index run --rm index
+  # (CHONKS_SOURCE default is a harmless placeholder so plain `docker compose up`
+  # parses; set it in .env before running this profile.)
+  index:
+    profiles: ["index"]
+    image: chonks-backend
+    build: { context: ., target: backend }
+    volumes:
+      - ${CHONKS_SOURCE:-./chonks}:/src:ro
+      - ${CHONKS_DATA:-./data}:/data
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    # A 128-chunk batch takes about two minutes on the CPU embedder, which is
+    # the client's per-request timeout, so batches time out and get bisected.
+    # CHONKS_EMBED_BATCH=32 in .env keeps each request well inside it.
+    command: ["index", "/src", "--db", "/data/chonks.db", "--config", "/data/config.json",
+              "--embed-batch", "${CHONKS_EMBED_BATCH:-128}"]
+
+  # Embedder (llama-server). Needed at serve time for semantic/hybrid queries and
+  # at index time. Default image is CPU: fine for queries, about 1 chunk/s for
+  # indexing (measured on arm64 Docker Desktop), so a 50k-chunk corpus
+  # is a day. Index natively on a GPU box and copy the DB instead.
+  # ctx-size / parallel is the per-slot token budget and must stay at or above
+  # the largest chunk. CHUNK_MAX is 6000 bytes, and dense code tokenizes at
+  # 2-3 bytes per token, so budget 4096 per slot: 32768 / 8, the same ratio
+  # as the README's native launch line. Measured during indexing: 1024 tokens
+  # per slot made llama-server return 400 on 4 of 5 batches (bisection repaired them,
+  # at the cost of truncated embeddings); 2048/slot cleared the 400s.
+  # NVIDIA host: switch to the cuda image and uncomment the gpus block
+  # (needs the NVIDIA Container Toolkit on the host).
+  embedder:
+    profiles: ["embedder"]
+    image: ${CHONKS_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server}
+    # gpus: all
+    restart: unless-stopped
+    command: >
+      --hf-repo ${CHONKS_EMBED_HF_REPO:-jinaai/jina-code-embeddings-0.5b-GGUF}
+      --embedding --pooling last --port 11437 --host 0.0.0.0
+      --parallel ${CHONKS_EMBED_PARALLEL:-8} --ctx-size ${CHONKS_EMBED_CTX:-32768} ${CHONKS_LLAMA_EXTRA:-}
+    volumes:
+      - llama-cache:/root/.cache/llama.cpp
+    expose: ["11437"]
+    # The upstream image's own HEALTHCHECK polls port 8080; we run on 11437, so
+    # without this override the service reports unhealthy forever. The first
+    # start downloads the GGUF (about 1 GB) into llama-cache, hence the long
+    # start_period. Wait for it before indexing:
+    #   docker compose --profile embedder up -d --wait embedder
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11437/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 300s
+      retries: 5
+
+volumes:
+  llama-cache:

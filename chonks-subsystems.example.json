@@ -1,0 +1,9 @@
+{
+  "_comment": "Team-shared subsystem map for the chonks MCP proxy. Commit a copy of this file (e.g. as chonks-subsystems.json) to your repository root next to your project's .mcp.json, and point the proxy's CHONKS_CONFIG env var at it. Subsystems let searches be scoped with @name prefixes (`@rendering RenderingServer`); the proxy expands them client-side into path_prefix searches, so anyone on the team can add slices that matter to them via a normal reviewed change.",
+  "subsystems": {
+    "core":      ["core/"],
+    "rendering": ["servers/rendering/", "drivers/"],
+    "editor":    ["editor/"],
+    "scripting": ["modules/gdscript/"]
+  }
+}

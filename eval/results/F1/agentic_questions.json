@@ -1,0 +1,821 @@
+[
+  {
+    "id": "rel-4b9c9042a0",
+    "question": "How does ObjectGDExtension work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/object/object.h",
+        "name": "ObjectGDExtension",
+        "chunk_type": "struct_specifier",
+        "content_hash": "7e5f55b47bf51136"
+      },
+      {
+        "path": "core/object/script_language_extension.h",
+        "name": "is_abstract",
+        "chunk_type": "function_definition",
+        "content_hash": "8ae99fff3790d1a5"
+      },
+      {
+        "path": "core/object/script_language_extension.h",
+        "name": "validate_property",
+        "chunk_type": "function_definition",
+        "content_hash": "ec3bf07ee2f39cdc"
+      },
+      {
+        "path": "core/object/script_language_extension.h",
+        "name": "property_can_revert",
+        "chunk_type": "function_definition",
+        "content_hash": "e40004605157a727"
+      },
+      {
+        "path": "core/object/gdtype.h",
+        "name": "GDType",
+        "chunk_type": "class_specifier",
+        "content_hash": "27aa1dd2930c0f00"
+      },
+      {
+        "path": "core/os/os.h",
+        "name": "execute_with_pipe",
+        "chunk_type": "function_definition",
+        "content_hash": "48afafb9175740de"
+      },
+      {
+        "path": "core/object/script_language_extension.h",
+        "name": "to_string",
+        "chunk_type": "function_definition",
+        "content_hash": "06bebc8f5a8f6899"
+      },
+      {
+        "path": "core/templates/cowdata.h",
+        "name": "refcount",
+        "chunk_type": "function_definition",
+        "content_hash": "9872493233ef0214"
+      }
+    ],
+    "gold_names": [
+      "ObjectGDExtension",
+      "is_abstract",
+      "validate_property",
+      "property_can_revert",
+      "GDType",
+      "execute_with_pipe",
+      "to_string",
+      "refcount"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-31bb0dca2f",
+    "question": "How does ZipArchive::try_open_pack work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/io/file_access_zip.cpp",
+        "name": "ZipArchive::try_open_pack",
+        "chunk_type": "function_definition",
+        "content_hash": "9ea072e6ee245f73"
+      },
+      {
+        "path": "core/io/file_access_zip.cpp",
+        "name": "godot_read",
+        "chunk_type": "function_definition",
+        "content_hash": "c56a3877307530e9"
+      },
+      {
+        "path": "core/io/file_access_zip.cpp",
+        "name": "godot_close",
+        "chunk_type": "function_definition",
+        "content_hash": "058632b5272272ee"
+      },
+      {
+        "path": "core/io/file_access_zip.cpp",
+        "name": "godot_seek",
+        "chunk_type": "function_definition",
+        "content_hash": "e373663596faf79b"
+      }
+    ],
+    "gold_names": [
+      "ZipArchive::try_open_pack",
+      "godot_read",
+      "godot_close",
+      "godot_seek"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-d97481c022",
+    "question": "How does ConvexHullInternal::shift_face work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "ConvexHullInternal::shift_face",
+        "chunk_type": "function_definition",
+        "content_hash": "44e8faf69401b1f8"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "Face",
+        "chunk_type": "class_specifier",
+        "content_hash": "a9631b05cf52fc52"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "Rational128",
+        "chunk_type": "class_specifier",
+        "content_hash": "188415484570cd94"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "PointR128",
+        "chunk_type": "class_specifier",
+        "content_hash": "7099e7009eedf093"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "Rational64",
+        "chunk_type": "class_specifier",
+        "content_hash": "27ef62ec0c52a429"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "Int128",
+        "chunk_type": "class_specifier",
+        "content_hash": "acbbc2cf177494fc"
+      },
+      {
+        "path": "core/math/convex_hull.cpp",
+        "name": "remove_edge_pair",
+        "chunk_type": "function_definition",
+        "content_hash": "5cf57b87ec6f928e"
+      }
+    ],
+    "gold_names": [
+      "ConvexHullInternal::shift_face",
+      "Face",
+      "Rational128",
+      "PointR128",
+      "Rational64",
+      "Int128",
+      "remove_edge_pair"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-065e0ea994",
+    "question": "How does Array::bsearch work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/variant/array.cpp",
+        "name": "Array::bsearch",
+        "chunk_type": "function_definition",
+        "content_hash": "053e1c1a93590ae9"
+      },
+      {
+        "path": "core/variant/container_type_validate.h",
+        "name": "ContainerTypeValidate",
+        "chunk_type": "struct_specifier",
+        "content_hash": "8af38f5cbc302180"
+      },
+      {
+        "path": "core/object/script_language_extension.h",
+        "name": "validate",
+        "chunk_type": "function_definition",
+        "content_hash": "162c11330cd7da64"
+      },
+      {
+        "path": "core/templates/vector.h",
+        "name": "bsearch",
+        "chunk_type": "function_definition",
+        "content_hash": "481152fb1edfa3f8"
+      }
+    ],
+    "gold_names": [
+      "Array::bsearch",
+      "ContainerTypeValidate",
+      "validate",
+      "bsearch"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-af26bbed52",
+    "question": "How does Variant::get_ptr_builtin_method_with_compatibility work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/variant/variant_call.cpp",
+        "name": "Variant::get_ptr_builtin_method_with_compatibility",
+        "chunk_type": "function_definition",
+        "content_hash": "4c7380d6363d5c38"
+      },
+      {
+        "path": "core/extension/gdextension.cpp",
+        "name": "ptrcall",
+        "chunk_type": "function_definition",
+        "content_hash": "bea4789db1ef8f11"
+      },
+      {
+        "path": "core/object/method_bind_common.h",
+        "name": "MethodBindTRS",
+        "chunk_type": "template_declaration",
+        "content_hash": "1180eab88455f79e"
+      },
+      {
+        "path": "core/object/script_language.h",
+        "name": "Warning",
+        "chunk_type": "struct_specifier",
+        "content_hash": "68a5dff68ea4b13d"
+      },
+      {
+        "path": "core/object/method_bind_common.h",
+        "name": "MethodBindTS",
+        "chunk_type": "template_declaration",
+        "content_hash": "cd9fd5e2d45b4f11"
+      },
+      {
+        "path": "core/variant/variant_call.cpp",
+        "name": "VariantBuiltInMethodInfo",
+        "chunk_type": "struct_specifier",
+        "content_hash": "4cbb589f4c8f0058"
+      }
+    ],
+    "gold_names": [
+      "Variant::get_ptr_builtin_method_with_compatibility",
+      "ptrcall",
+      "MethodBindTRS",
+      "Warning",
+      "MethodBindTS",
+      "VariantBuiltInMethodInfo"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-5757afc209",
+    "question": "How does ResourceSaver::add_custom_savers work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/io/resource_saver.cpp",
+        "name": "ResourceSaver::add_custom_savers",
+        "chunk_type": "function_definition",
+        "content_hash": "3260ef013a915a6d"
+      },
+      {
+        "path": "core/io/resource_saver.h",
+        "name": "ResourceFormatSaver",
+        "chunk_type": "class_specifier",
+        "content_hash": "d7276420886ffd08"
+      },
+      {
+        "path": "core/object/script_language.h",
+        "name": "ScriptServer",
+        "chunk_type": "class_specifier",
+        "content_hash": "87a74c82441ea0f3"
+      },
+      {
+        "path": "core/core_bind.h",
+        "name": "ResourceSaver",
+        "chunk_type": "class_specifier",
+        "content_hash": "62300d70e3f2239e"
+      }
+    ],
+    "gold_names": [
+      "ResourceSaver::add_custom_savers",
+      "ResourceFormatSaver",
+      "ScriptServer",
+      "ResourceSaver"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-735581a2aa",
+    "question": "How does PList::load_file work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/io/plist.cpp",
+        "name": "PList::load_file",
+        "chunk_type": "function_definition",
+        "content_hash": "9ce8d428f34fddeb"
+      },
+      {
+        "path": "core/typedefs.h",
+        "name": "BSWAP16",
+        "chunk_type": "function_definition",
+        "content_hash": "740c8a77f7abf004"
+      },
+      {
+        "path": "core/io/plist.h",
+        "name": "PListNode",
+        "chunk_type": "class_specifier",
+        "content_hash": "3a859ebd6a5a6da0"
+      },
+      {
+        "path": "core/io/plist.h",
+        "name": "PList",
+        "chunk_type": "class_specifier",
+        "content_hash": "fb36ccf1da777a99"
+      }
+    ],
+    "gold_names": [
+      "PList::load_file",
+      "BSWAP16",
+      "PListNode",
+      "PList"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-a45f77199b",
+    "question": "How does Crypto::hmac_digest work and what does it depend on?",
+    "gold": [
+      {
+        "path": "core/crypto/crypto.cpp",
+        "name": "Crypto::hmac_digest",
+        "chunk_type": "function_definition",
+        "content_hash": "4b63e473c67604db"
+      },
+      {
+        "path": "core/crypto/crypto.h",
+        "name": "Crypto",
+        "chunk_type": "class_specifier",
+        "content_hash": "f247bbd74006020a"
+      },
+      {
+        "path": "core/crypto/hashing_context.h",
+        "name": "HashingContext",
+        "chunk_type": "class_specifier",
+        "content_hash": "fe1405f80b28b047"
+      },
+      {
+        "path": "core/crypto/crypto.h",
+        "name": "HMACContext",
+        "chunk_type": "class_specifier",
+        "content_hash": "447415851eb48b0e"
+      }
+    ],
+    "gold_names": [
+      "Crypto::hmac_digest",
+      "Crypto",
+      "HashingContext",
+      "HMACContext"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-d99a7b9e45",
+    "question": "How does AreaLight3D::set_area_texture work and what does it depend on?",
+    "gold": [
+      {
+        "path": "scene/3d/light_3d.cpp",
+        "name": "AreaLight3D::set_area_texture",
+        "chunk_type": "function_definition",
+        "content_hash": "7a00463bcf984bcc"
+      },
+      {
+        "path": "scene/resources/texture_rd.h",
+        "name": "Texture2DRD",
+        "chunk_type": "class_specifier",
+        "content_hash": "3436442a0748e856"
+      },
+      {
+        "path": "scene/3d/light_3d.h",
+        "name": "AreaLight3D",
+        "chunk_type": "class_specifier",
+        "content_hash": "2e383a5faf86eae2"
+      },
+      {
+        "path": "scene/resources/mesh_texture.h",
+        "name": "MeshTexture",
+        "chunk_type": "class_specifier",
+        "content_hash": "a35b55c99e43554e"
+      },
+      {
+        "path": "scene/main/viewport.h",
+        "name": "ViewportTexture",
+        "chunk_type": "class_specifier",
+        "content_hash": "abc8e00f52112656"
+      },
+      {
+        "path": "scene/resources/atlas_texture.h",
+        "name": "AtlasTexture",
+        "chunk_type": "class_specifier",
+        "content_hash": "df149f8254ebcc91"
+      },
+      {
+        "path": "servers/rendering/dummy/storage/light_storage.h",
+        "name": "light_area_get_normalize_energy",
+        "chunk_type": "function_definition",
+        "content_hash": "7fbbb5b82cb55ab7"
+      },
+      {
+        "path": "servers/rendering/renderer_rd/storage_rd/texture_storage.h",
+        "name": "CanvasTexture",
+        "chunk_type": "class_specifier",
+        "content_hash": "76ee7c6640fa8d8c"
+      },
+      {
+        "path": "scene/resources/camera_texture.h",
+        "name": "CameraTexture",
+        "chunk_type": "class_specifier",
+        "content_hash": "a334453155455817"
+      }
+    ],
+    "gold_names": [
+      "AreaLight3D::set_area_texture",
+      "Texture2DRD",
+      "AreaLight3D",
+      "MeshTexture",
+      "ViewportTexture",
+      "AtlasTexture",
+      "light_area_get_normalize_energy",
+      "CanvasTexture",
+      "CameraTexture"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-e0d87e93a1",
+    "question": "How does GPUParticlesCollisionBox3D::set_size work and what does it depend on?",
+    "gold": [
+      {
+        "path": "scene/3d/gpu_particles_collision_3d.cpp",
+        "name": "GPUParticlesCollisionBox3D::set_size",
+        "chunk_type": "function_definition",
+        "content_hash": "f6bafe05586161db"
+      },
+      {
+        "path": "scene/3d/gpu_particles_collision_3d.h",
+        "name": "GPUParticlesCollisionBox3D",
+        "chunk_type": "class_specifier",
+        "content_hash": "76c4d7a422769228"
+      },
+      {
+        "path": "servers/rendering/dummy/storage/particles_storage.h",
+        "name": "particles_collision_set_box_extents",
+        "chunk_type": "function_definition",
+        "content_hash": "c00693122c256b3d"
+      },
+      {
+        "path": "scene/3d/gpu_particles_collision_3d.h",
+        "name": "GPUParticlesCollision3D",
+        "chunk_type": "class_specifier",
+        "content_hash": "dd91f78ffe652e7e"
+      },
+      {
+        "path": "scene/3d/gpu_particles_collision_3d.h",
+        "name": "GPUParticlesAttractor3D",
+        "chunk_type": "class_specifier",
+        "content_hash": "41c27329a24b08a9"
+      }
+    ],
+    "gold_names": [
+      "GPUParticlesCollisionBox3D::set_size",
+      "GPUParticlesCollisionBox3D",
+      "particles_collision_set_box_extents",
+      "GPUParticlesCollision3D",
+      "GPUParticlesAttractor3D"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-d087def33f",
+    "question": "How does AnimationPlayer::_process_playback_data work and what does it depend on?",
+    "gold": [
+      {
+        "path": "scene/animation/animation_player.cpp",
+        "name": "AnimationPlayer::_process_playback_data",
+        "chunk_type": "function_definition",
+        "content_hash": "696615bf5f25f9e4"
+      },
+      {
+        "path": "core/math/math_funcs.h",
+        "name": "pingpong",
+        "chunk_type": "function_definition",
+        "content_hash": "fada4ac33309ca8a"
+      },
+      {
+        "path": "scene/animation/animation_player.h",
+        "name": "Blend",
+        "chunk_type": "struct_specifier",
+        "content_hash": "1c4077346c34a890"
+      },
+      {
+        "path": "scene/resources/animation.h",
+        "name": "get_loop_mode",
+        "chunk_type": "function_definition",
+        "content_hash": "cfdb6483832e4d34"
+      },
+      {
+        "path": "core/math/math_funcs.h",
+        "name": "fract",
+        "chunk_type": "function_definition",
+        "content_hash": "c343a81c51451e4f"
+      },
+      {
+        "path": "scene/resources/animation.h",
+        "name": "editor_is_folding_dirty",
+        "chunk_type": "function_definition",
+        "content_hash": "a810472ba6abd728"
+      },
+      {
+        "path": "scene/animation/animation_player.h",
+        "name": "PlaybackData",
+        "chunk_type": "struct_specifier",
+        "content_hash": "d760c765956fcada"
+      },
+      {
+        "path": "scene/animation/animation_mixer.h",
+        "name": "AnimationLibraryData",
+        "chunk_type": "struct_specifier",
+        "content_hash": "ee7efa7d98d859a2"
+      },
+      {
+        "path": "scene/resources/animation.h",
+        "name": "is_greater_or_equal_approx",
+        "chunk_type": "function_definition",
+        "content_hash": "62b81331f43a9453"
+      }
+    ],
+    "gold_names": [
+      "AnimationPlayer::_process_playback_data",
+      "pingpong",
+      "Blend",
+      "get_loop_mode",
+      "fract",
+      "editor_is_folding_dirty",
+      "PlaybackData",
+      "AnimationLibraryData",
+      "is_greater_or_equal_approx"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "rel-f9c6a734c3",
+    "question": "How does PinJoint2D::set_motor_target_velocity work and what does it depend on?",
+    "gold": [
+      {
+        "path": "scene/2d/physics/joints/pin_joint_2d.cpp",
+        "name": "PinJoint2D::set_motor_target_velocity",
+        "chunk_type": "function_definition",
+        "content_hash": "9fb805a579c5284a"
+      },
+      {
+        "path": "servers/physics_2d/physics_server_2d_dummy.h",
+        "name": "pin_joint_set_param",
+        "chunk_type": "function_definition",
+        "content_hash": "ba347b4d4b721479"
+      },
+      {
+        "path": "scene/2d/physics/joints/joint_2d.h",
+        "name": "Joint2D",
+        "chunk_type": "class_specifier",
+        "content_hash": "323a25d3963db1ad"
+      },
+      {
+        "path": "scene/3d/physics/joints/joint_3d.h",
+        "name": "Joint3D",
+        "chunk_type": "class_specifier",
+        "content_hash": "a903e2603d9038c4"
+      },
+      {
+        "path": "scene/2d/physics/joints/pin_joint_2d.h",
+        "name": "PinJoint2D",
+        "chunk_type": "class_specifier",
+        "content_hash": "6ed507dbb8588d72"
+      }
+    ],
+    "gold_names": [
+      "PinJoint2D::set_motor_target_velocity",
+      "pin_joint_set_param",
+      "Joint2D",
+      "Joint3D",
+      "PinJoint2D"
+    ],
+    "kind": "relational"
+  },
+  {
+    "id": "look-8a2c342cba",
+    "question": "where does the engine recompute the effective time scale by multiplying user and game speed multipliers, and adjust physics tick limits accordingly?",
+    "gold": [
+      {
+        "path": "core/config/engine.cpp",
+        "name": "Engine::_update_time_scale",
+        "chunk_type": "function_definition",
+        "content_hash": "5ba7babfc57dac73"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-9f3c20a7a3",
+    "question": "code that stores a value under a section and key pair in an ini-style config file, erasing the entry when the value is null",
+    "gold": [
+      {
+        "path": "core/io/config_file.cpp",
+        "name": "ConfigFile::set_value",
+        "chunk_type": "function_definition",
+        "content_hash": "79aa26c9f48affe4"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-e3602a83b1",
+    "question": "function returning the filesystem path to the cached resource-id lookup file stored in the project's data directory",
+    "gold": [
+      {
+        "path": "core/io/resource_uid.cpp",
+        "name": "ResourceUID::get_cache_file",
+        "chunk_type": "function_definition",
+        "content_hash": "a19c6c53580f46e2"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-59578cec0f",
+    "question": "geometry check for whether a 3D point sits on the positive side of a plane, computed via the dot product against the plane normal",
+    "gold": [
+      {
+        "path": "core/math/plane.h",
+        "name": "Plane::is_point_over",
+        "chunk_type": "function_definition",
+        "content_hash": "716495e94bbf186f"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-e106879764",
+    "question": "thread-safe lazy singleton initializer using double-checked locking to construct and cache a runtime type descriptor for the base object class",
+    "gold": [
+      {
+        "path": "core/object/object.h",
+        "name": "get_gdtype_static_mutable()",
+        "chunk_type": "function_definition",
+        "content_hash": "de83a72f739accf5"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-431190aa94",
+    "question": "custom constexpr string length helpers that walk a null-terminated wide-character buffer counting characters, for both UTF-16 and UTF-32 pointers",
+    "gold": [
+      {
+        "path": "core/string/ustring.h",
+        "name": "strlen",
+        "chunk_type": "function_definition",
+        "content_hash": "e0fa956571e452c7"
+      },
+      {
+        "path": "core/string/ustring.h",
+        "name": "strlen",
+        "chunk_type": "function_definition",
+        "content_hash": "38ae3be5d6c5180b"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-21311533f6",
+    "question": "data structure used to register a named global singleton object, tracking whether it was created by the user or is editor-only",
+    "gold": [
+      {
+        "path": "core/config/engine.h",
+        "name": "Singleton",
+        "chunk_type": "struct_specifier",
+        "content_hash": "6185010e6c1dd01e"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-c98d5ce993",
+    "question": "image resource class defining supported pixel formats including block-compressed formats like BC and ETC and ASTC, plus maximum width, height, and pixel count limits",
+    "gold": [
+      {
+        "path": "core/io/image.h",
+        "name": "Image",
+        "chunk_type": "class_specifier",
+        "content_hash": "b585503b0210c5a2"
+      },
+      {
+        "path": "core/io/image.h",
+        "name": "Image",
+        "chunk_type": "class_specifier",
+        "content_hash": "6a84219522f781aa"
+      },
+      {
+        "path": "scene/3d/voxelizer.h",
+        "name": "Image",
+        "chunk_type": "class_specifier",
+        "content_hash": "b585503b0210c5a2"
+      },
+      {
+        "path": "scene/3d/lightmapper.h",
+        "name": "Image",
+        "chunk_type": "class_specifier",
+        "content_hash": "b3c9424fd823828a"
+      },
+      {
+        "path": "servers/rendering/dummy/rasterizer_scene_dummy.h",
+        "name": "Image",
+        "chunk_type": "class_specifier",
+        "content_hash": "98975fa8594e2ea8"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-f748f81d00",
+    "question": "wrapper class exposing seeding, saving and restoring generator state, and various random number methods (uniform, ranged, gaussian, weighted) built on a PCG generator",
+    "gold": [
+      {
+        "path": "core/math/random_number_generator.h",
+        "name": "RandomNumberGenerator",
+        "chunk_type": "class_specifier",
+        "content_hash": "c4cc8ed22a43af57"
+      },
+      {
+        "path": "scene/2d/cpu_particles_2d.h",
+        "name": "RandomNumberGenerator",
+        "chunk_type": "class_specifier",
+        "content_hash": "df27d53a6bde2390"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-06736732eb",
+    "question": "internal hash table used to intern interned string identifiers, with a fixed bucket count, a mutex, and a paged memory allocator",
+    "gold": [
+      {
+        "path": "core/string/string_name.cpp",
+        "name": "StringName::Table",
+        "chunk_type": "struct_specifier",
+        "content_hash": "6f898655de09cc37"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-c1c595c6c0",
+    "question": "editor-only methods that serialize and restore a 2D sprite's pixel offset into a dictionary so the scene editor can save/restore its state",
+    "gold": [
+      {
+        "path": "scene/2d/animated_sprite_2d.cpp",
+        "name": "AnimatedSprite2D::_edit_get_state",
+        "chunk_type": "function_definition",
+        "content_hash": "4dd61adf81951266"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  },
+  {
+    "id": "look-bf42dcec87",
+    "question": "legacy property setter that parses dotted path strings like settings/N/... to route old serialized values to the correct IK chain configuration field",
+    "gold": [
+      {
+        "path": "scene/3d/chain_ik_3d.cpp",
+        "name": "ChainIK3D::_set",
+        "chunk_type": "function_definition",
+        "content_hash": "493c4f9a2cebd151"
+      }
+    ],
+    "gold_names": [
+      ""
+    ],
+    "kind": "lookup"
+  }
+]

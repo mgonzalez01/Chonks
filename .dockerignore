@@ -1,0 +1,16 @@
+.git
+.venv
+.db
+*.db
+*.db-shm
+*.db-wal
+data
+mcp-server/node_modules
+mcp-server/dist
+eval
+eval_data
+tests
+*.md
+!README.md
+.env
+config.json

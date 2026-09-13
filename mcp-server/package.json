@@ -1,0 +1,25 @@
+{
+  "name": "chonks-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Chonks local code retrieval backend",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "chonks-mcp": "dist/index.js"
+  },
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,218 @@
+[
+ {
+  "sha": "fab89847ada0969e7ed0f71346faf730f2e218e3",
+  "query": "Make templates be compilable when `disable_physics_3d` is enabled\n\nCo-authored-by: Mounir Tohami <email redacted>",
+  "gold_files": [
+   "modules/csg/csg_shape.cpp",
+   "modules/csg/csg_shape.h",
+   "modules/gridmap/grid_map.cpp",
+   "modules/openxr/extensions/spatial_entities/openxr_spatial_plane_tracking.cpp",
+   "modules/openxr/extensions/spatial_entities/openxr_spatial_plane_tracking.h",
+   "scene/2d/tile_map_layer.cpp",
+   "scene/resources/3d/mesh_library.cpp",
+   "scene/resources/3d/mesh_library.h"
+  ]
+ },
+ {
+  "sha": "e40f3946d7d52da5cab045fe1ce853c22565d6a2",
+  "query": "Wayland Embedder: Refactor message sending and debug log\n\nThe original code is very messy due to its experimental nature. This is\none the first step towards a more maintainable and streamlined\nimplementation.\n\nMain changes include:\n\n * Message signature parsing. This adds basic safeguards to message\nconstruction before sending, such as validating that the number of\npassed arguments makes sense. It's possible to add more advanced checks.\n\n * Custom (simplified) debug log. By setting\n\"GODOT_WAYLAND_EMBEDDER_DEBUG\" to \"1\", the embedder will print something\nsimilar to libwayland's `WAYLAND_DEBUG` setting.\n\n * Hand-written wrappers for client events. This is very much\nincomplete, but the idea is to \"test\" how a bunch of generated methods\nwould work. We can't keep passing arguments by hand, it m",
+  "gold_files": [
+   "platform/linuxbsd/wayland/wayland_embedder.cpp",
+   "platform/linuxbsd/wayland/wayland_embedder.h",
+   "platform/linuxbsd/wayland/wayland_thread.cpp"
+  ]
+ },
+ {
+  "sha": "aaf21bc4fbcb5201d7ab888af0556372a3bf9224",
+  "query": "ItemList, Tree: Fix analog stick moving through many items at once.\n\nCaused by any joypad motion past the deadzone resulting in selection\nchanging. Now requires that the input is just pressed, but also changes\nselection on echo events (so that keyboard event echo still selects\nthrough multiple items).\n\nAdds InputEvent.is_action_just_pressed_or_echo (internal method) which\ndetermines whether the event should be used to trigger a discrete action\nsuch as UI navigation.",
+  "gold_files": [
+   "core/input/input_event.cpp",
+   "core/input/input_event.h",
+   "scene/gui/item_list.cpp",
+   "scene/gui/tree.cpp"
+  ]
+ },
+ {
+  "sha": "5974878f17c988021c681b4ba5ed25be9ae13a29",
+  "query": "Use fog in WorldEnvironment sky reflections",
+  "gold_files": [
+   "drivers/gles3/rasterizer_scene_gles3.cpp",
+   "drivers/gles3/rasterizer_scene_gles3.h",
+   "servers/rendering/renderer_rd/environment/sky.cpp",
+   "servers/rendering/renderer_rd/environment/sky.h"
+  ]
+ },
+ {
+  "sha": "445f00325f836beb6d734508b4f078d5aa9aafd0",
+  "query": "Add undo support to editor setting overrides",
+  "gold_files": [
+   "editor/settings/editor_settings_dialog.cpp",
+   "editor/settings/editor_settings_dialog.h",
+   "editor/settings/project_settings_editor.cpp",
+   "editor/settings/project_settings_editor.h"
+  ]
+ },
+ {
+  "sha": "98f1b42bfae9004a1b96e11648e957986c84b902",
+  "query": "GDScript: Replace AST node `datatype` with subtype specific fields\n\n- Replace AST node `datatype` with subtype specific fields\n- Remove unread `match_branch_type`\n- Limit `downgrade_node_type_source` to expression nodes\n  This method is a noop, for everything that's not an identifier or subscript node. Both of those are expressions, so for non expressions we can just remove the calls to this method.\n- Remove calls to `decide_suite_type` which pass an unhandled statement type\n- `decide_suite_type`: remove handling for suite types that are never passed to the function\n- Split off `decide_pattern_type` from `decide_suite_type`\n  Since the top-level statements of a suite can't contain patterns we can cleanly split this method into two dedicated ones.\n- Inline `decide_suite_type`\n- Inline node ",
+  "gold_files": [
+   "modules/gdscript/editor/gdscript_docgen.cpp",
+   "modules/gdscript/gdscript_analyzer.cpp",
+   "modules/gdscript/gdscript_analyzer.h",
+   "modules/gdscript/gdscript_compiler.cpp",
+   "modules/gdscript/gdscript_editor.cpp",
+   "modules/gdscript/gdscript_parser.cpp",
+   "modules/gdscript/gdscript_parser.h",
+   "modules/gdscript/language_server/gdscript_extend_parser.cpp"
+  ]
+ },
+ {
+  "sha": "e6a13d6fa893cdc230eb3139c93a207c851e8925",
+  "query": "Draw correct background when using fog and clear color / color in Compatibility",
+  "gold_files": [
+   "drivers/gles3/rasterizer_scene_gles3.cpp",
+   "drivers/gles3/rasterizer_scene_gles3.h",
+   "servers/rendering/renderer_rd/environment/sky.cpp",
+   "servers/rendering/renderer_rd/environment/sky.h"
+  ]
+ },
+ {
+  "sha": "6eafc2e939b74b68ddabc3427e6485df980074a0",
+  "query": "Migrate enum and int constants to GDType for Variant",
+  "gold_files": [
+   "core/object/gdtype.h",
+   "core/variant/variant.cpp",
+   "core/variant/variant.h",
+   "core/variant/variant_call.cpp"
+  ]
+ },
+ {
+  "sha": "0e19cc4e8a7c3651a9e02ab2bb64d1fcf9733ab2",
+  "query": "LSP: Handle JSONRPC responses",
+  "gold_files": [
+   "modules/gdscript/language_server/gdscript_language_protocol.cpp",
+   "modules/gdscript/language_server/gdscript_language_protocol.h",
+   "modules/jsonrpc/jsonrpc.cpp",
+   "modules/jsonrpc/jsonrpc.h"
+  ]
+ },
+ {
+  "sha": "8ed6ef8777a542ed856510167c5ef017ad708273",
+  "query": "Fix texture checks if stereo rendering is enabled\n\nCo-authored-by: Skyth <email redacted>",
+  "gold_files": [
+   "servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp",
+   "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.cpp",
+   "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h",
+   "servers/rendering/renderer_rd/forward_mobile/render_forward_mobile.cpp",
+   "servers/rendering/renderer_rd/forward_mobile/scene_shader_forward_mobile.cpp",
+   "servers/rendering/renderer_rd/forward_mobile/scene_shader_forward_mobile.h",
+   "servers/rendering/renderer_rd/renderer_compositor_rd.cpp",
+   "servers/rendering/renderer_rd/renderer_scene_render_rd.cpp"
+  ]
+ },
+ {
+  "sha": "a716fe3a9fe913046393c33fc578da35ce04786e",
+  "query": "Add `_LIFETIME_BOUND_` annotations for elements of core containers.",
+  "gold_files": [
+   "core/templates/a_hash_map.h",
+   "core/templates/cowdata.h",
+   "core/templates/fixed_vector.h",
+   "core/templates/hash_map.h",
+   "core/templates/hash_set.h",
+   "core/templates/list.h",
+   "core/templates/local_vector.h",
+   "core/templates/vector.h"
+  ]
+ },
+ {
+  "sha": "e339d03747f16d4258af93e0619c12ef90ca2a3f",
+  "query": "Add `Span` constructor to `Vector`, to be able to delete faulty `LocalVector::operator Vector`.",
+  "gold_files": [
+   "core/templates/cowdata.h",
+   "core/templates/local_vector.h",
+   "core/templates/vector.h"
+  ]
+ },
+ {
+  "sha": "e9b27fd3bbf9939914d550689d04b1abc899db55",
+  "query": "Implement tangent space generation with vertex splitting using meshopt\n\nmeshopt_generateTangents is used to generate per-corner tangent vectors.\nFor unindexed inputs, we then simply copy the result to the output. For\nindexed inputs, we copy them into the existing vertices and split\nvertices with divergent tangents on the fly.\n\nSplitting may interfere with blend shapes as it may disturb shared\nindexing. While it would be possible to propagate the split vector into\nthe blend shape code and apply it to the blend targets as well, for now\nwe simply avoid doing the splitting in the first place if the mesh has\nblend shapes.\n\nScript binding for generate_tangents uses pre-splitting behavior for\ncompatibility.",
+  "gold_files": [
+   "modules/fbx/fbx_document.cpp",
+   "modules/gltf/gltf_document.cpp",
+   "modules/meshoptimizer/register_types.cpp",
+   "scene/resources/surface_tool.cpp",
+   "scene/resources/surface_tool.h"
+  ]
+ },
+ {
+  "sha": "1ed0eefd2d5ff53da4b9437cb76795b24c4c05d9",
+  "query": "Implement `internationalization/locale/allow_fallback`\n\nCo-Authored-By: A Thousand Ships <email redacted>",
+  "gold_files": [
+   "core/string/translation_domain.cpp",
+   "core/string/translation_server.cpp",
+   "core/string/translation_server.h",
+   "editor/editor_node.cpp"
+  ]
+ },
+ {
+  "sha": "81007a82f47e2426125913326e2661a911858116",
+  "query": "Adds Hit Margin for BaseButton by overriden has_point",
+  "gold_files": [
+   "editor/themes/theme_classic.cpp",
+   "editor/themes/theme_modern.cpp",
+   "scene/gui/base_button.cpp",
+   "scene/gui/base_button.h"
+  ]
+ },
+ {
+  "sha": "ffdda126fc8a8e01ff549a43566da82696a18c22",
+  "query": "Editor: Add resumable download with retry for export templates\n\nWhen downloading export templates, connection drops now trigger automatic retry with HTTP Range-based resume instead of failing permanently.\n\nAdd keep_partial_download and append_to_download_file properties to HTTPRequest so partial files can be preserved and resumed with 206 Partial Content responses. Use them in ExportTemplateManager to retry failed template downloads, resume ZIP fragments when possible, and report retry failures clearly.\n\nFixes #108952\n\nCo-authored-by: A Thousand Ships <email redacted>",
+  "gold_files": [
+   "editor/export/export_template_manager.cpp",
+   "editor/export/export_template_manager.h",
+   "scene/main/http_request.cpp",
+   "scene/main/http_request.h"
+  ]
+ },
+ {
+  "sha": "eca80a8f3cbdf545f2e960ac2f6022b153acdba3",
+  "query": "SCons: Migrate from `os.system` to `subprocess`",
+  "gold_files": [
+   "misc/scripts/dotnet_format.py",
+   "platform/linuxbsd/detect.py",
+   "platform/linuxbsd/platform_linuxbsd_builders.py",
+   "platform/macos/platform_macos_builders.py",
+   "platform/windows/platform_windows_builders.py"
+  ]
+ },
+ {
+  "sha": "1e33be1bd79bd50a9f1d86b4d4b24d80217e6f91",
+  "query": "Make `MeshLibrary` use `PropertyListHelper` internally\n\nCo-authored-by: Tomasz Chabora <email redacted>",
+  "gold_files": [
+   "editor/scene/3d/mesh_library_editor_plugin.cpp",
+   "scene/property_list_helper.cpp",
+   "scene/property_list_helper.h",
+   "scene/resources/3d/mesh_library.cpp",
+   "scene/resources/3d/mesh_library.h"
+  ]
+ },
+ {
+  "sha": "ad74e634d6ddb647ef3ed93eaf55f45341ae5fae",
+  "query": "GDScript: Use extends line as range for MISSING_TOOL warning",
+  "gold_files": [
+   "modules/gdscript/gdscript_analyzer.cpp",
+   "modules/gdscript/gdscript_parser.cpp",
+   "modules/gdscript/gdscript_parser.h"
+  ]
+ },
+ {
+  "sha": "fb9176a653082624d80a8c4342236f72fe2bc2e8",
+  "query": "Improve `ScrollContainer::ensure_control_visible`\n\nEnsure minimum scrolling and maximum visibility in a single axis.\n\nFor the normal case (rotation 0 or 90 degrees), this works fine.\n\nIn some extreme cases (rotated or skewed), the controls may not be visible.\nOr the scroll position is not precise enough.\n\nImplement `Rect2::intersection_transformed()`\n\nA rect that just contains all the intersection points will be returned.\n\nUse `Rect2::intersection_transformed()` to get a more precise intersection rectangle",
+  "gold_files": [
+   "core/math/rect2.cpp",
+   "core/math/rect2.h",
+   "scene/gui/scroll_container.cpp",
+   "scene/gui/scroll_container.h"
+  ]
+ }
+]

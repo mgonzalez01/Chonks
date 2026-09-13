@@ -1,0 +1,85 @@
+{
+  "server_url": "http://localhost:11438",
+  "db": "/path/to/.db/chonks.db",
+  "codebase": "/path/to/your/source/root",
+
+  "embed_url": "http://localhost:11437/v1/embeddings",
+  "embed_model": "jina-code-embeddings-0.5b",
+
+  "_embed_throughput_comment": "Indexing is GPU-bound; these keys feed the embedder (CLI --embed-batch/--embed-inflight > config > defaults 128/2). Defaults suit a heavy model (a 4B saturates the GPU on one batch). A small/fast embedder (e.g. jina-code-0.5b) starves on them -- raise both (512/8 works well) and raise llama-server --parallel to match, keeping --ctx-size/--parallel >= your largest chunk. Tune against the run summary's chunks/s. See DOCS.md 'Indexing throughput'.",
+  "embed_batch": 128,
+  "embed_inflight": 2,
+
+  "_exclude_comment": "No excludes ship as hardcoded defaults in the code -- they're inherently per-codebase (a vendored SDK under a junk-looking path like .nuget/ may be legit content). This list is the recommended starting point for a fresh setup; curate it per codebase. Common candidates to add: .venv/, venv/, node_modules/, __pycache__/, .git/, .claude/, dist/, .next/, target/, and any other dependency-install or build-output directory in your repo.",
+  "exclude": [
+    "thirdparty/",
+    "bin/",
+    ".godot/",
+    "misc/",
+    ".venv/",
+    "node_modules/",
+    "__pycache__/",
+    ".claude/"
+  ],
+
+  "_include_comment": "Re-admits a subtree under an excluded prefix -- e.g. \"thirdparty/embree/\" re-admits that vendored library even though thirdparty/ is excluded above. Empty by default.",
+  "include": [],
+
+  "macros": [
+    "UCLASS",
+    "GENERATED_BODY",
+    "UPROPERTY",
+    "UFUNCTION"
+  ],
+
+  "fallback_extensions": [
+    ".html", ".vue", ".svelte", ".md", ".markdown",
+    ".yaml", ".yml", ".toml", ".json"
+  ],
+
+  "subsystems": {
+    "core":      ["core/"],
+    "rendering": ["servers/rendering/", "drivers/"],
+    "editor":    ["editor/"],
+    "scripting": ["modules/gdscript/"]
+  },
+
+  "repomap": {
+    "token_budget": 8000
+  },
+
+  "_edge_type_weights_comment": "Top-level (not nested under repomap/research) -- shared by repomap.py's index-time PageRank and research.py's structural boost/graph-expansion. All 1.0 (shown here) is the default and reproduces the previous behaviour exactly -- edge_type is one of calls/imports/inherits/xlang (extracted facts), associated (inferred, but PMI-selected as the high-signal top slice of mentions -- see associated_top_frac below), or mentions (inferred name co-occurrence, most edges on a large corpus, the noisiest signal). Weights only take effect for PageRank after the next index run (chunker.py persists PageRank at index time); research reads this map live on every /research call. POST /research also accepts a per-request edge_type_weights field that overrides this config-level map for that call only (request > project config > all-1.0 default); the MCP codebase_research tool's 'scope' parameter drives this. See DOCS.md.",
+  "edge_type_weights": {
+    "calls":      1.0,
+    "imports":    1.0,
+    "inherits":   1.0,
+    "xlang":      1.0,
+    "associated": 1.0,
+    "mentions":   1.0
+  },
+
+  "_embed_watchdog_secs_comment": "Top-level, default 300. If no embedding batch commits within this many seconds, index_paths aborts the run loudly with a NoProgressError naming the last-progress timestamp and embedder URL, instead of hanging forever on a wedged embedder. Resets on every batch commit (success or failure), so a legitimately slow batch never trips it -- raise it if your embedder's genuine per-batch latency is high.",
+  "embed_watchdog_secs": 300,
+
+  "_cap_mentions_fanout_comment": "Top-level, default false. When true, the mentions pass of build_refs skips any referenced name with more than 8 definer chunks (same skip-the-whole-name rule the xlang/typed passes already apply) instead of fanning out to every definer. On a large corpus, a few hundred ubiquitous names such as Update or Init can account for most of the graph's edges. Trade-off: find_usages loses mention edges for those names (typed edges already skip them; find_symbol still resolves them precisely). Enabling on an existing index requires `chonks index --rebuild-graphs` (graphs only, no re-embed).",
+  "cap_mentions_fanout": false,
+
+  "_associated_top_frac_comment": "Top-level, default 0.02 ('PMI-pruned mentions'). The mentions pass' (chunk, referenced name) population is PMI-ranked -- a focused chunk naming a rare name scores high, a wall-of-names chunk naming a ubiquitous name scores low -- and its top associated_top_frac fraction is labelled 'associated' instead of 'mentions'; the label change is the ONLY effect (edge_type_weights' associated default is 1.0, same as mentions, so ranking is untouched until you deliberately weight them apart). 0 disables entirely -- bit-identical chunk_refs to pre-PMI behaviour. Only the full-rebuild path (chonks index --rebuild-graphs, or a run that falls through build_refs' incremental-update gate) applies PMI labeling; the incremental path never promotes, so an existing index's associated labels reflect the last full graph build until the next --rebuild-graphs -- see repomap.build_refs' docstring.",
+  "associated_top_frac": 0.02,
+
+  "_file_cap_comment": "search.file_cap (semantic mode only): caps chunks per path in the returned top_k, backfilling freed slots from the next-ranked chunks of other files -- stops a near-duplicate wall of one hot file (e.g. a heavily-referenced symbol's own chunk repeated by near-identical surrounding context) from consuming most of the result set. 0 (shown here) is the default and reproduces the uncapped behaviour exactly. POST /search also accepts a per-request file_cap field that overrides this config-level value for that call only (request > project config > 0/off default).",
+  "search": {
+    "blend_alpha": 1.0,
+    "blend_beta":  0.2,
+    "file_cap":    0
+  },
+
+  "research": {
+    "max_iterations":        3,
+    "convergence_threshold": 0.15,
+    "oversample_factor":     3,
+    "max_candidates":        500,
+    "top_k":                 50,
+    "iteration_timeout_s":   30
+  }
+}

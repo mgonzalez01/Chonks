@@ -1,0 +1,489 @@
+{
+ "description": "Per-run adoption for the two steering conditions on the 24 Godot questions (agentic_questions.json), Sonnet 5, 57k-chunk index. adopted = at least one mcp__chonks__* tool call in the run. Derived from the run records; transcripts are not shipped.",
+ "conditions": {
+  "cold nudge": "one-line 'prefer the Chonks tools' recommendation",
+  "CLAUDE.md mandate": "the text of mcp-server/CLAUDE.md in the agent's CLAUDE.md"
+ },
+ "runs": [
+  {
+   "condition": "cold nudge",
+   "qid": "look-06736732eb",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 4,
+   "cost_usd": 0.1202187
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-21311533f6",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 3,
+   "cost_usd": 0.11434710000000001
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-431190aa94",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 5,
+   "cost_usd": 0.1068423
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-59578cec0f",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 4,
+   "cost_usd": 0.08377119999999999
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-8a2c342cba",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 9,
+   "cost_usd": 0.16050379999999997
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-9f3c20a7a3",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 3,
+   "cost_usd": 0.0848823
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-bf42dcec87",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 3,
+   "adopted": true,
+   "num_turns": 5,
+   "cost_usd": 0.3250084
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-c1c595c6c0",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 3,
+   "cost_usd": 0.08776880000000001
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-c98d5ce993",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 5,
+   "cost_usd": 0.1279787
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-e106879764",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 6,
+   "cost_usd": 0.1568816
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-e3602a83b1",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 5,
+   "cost_usd": 0.10168479999999999
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "look-f748f81d00",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 3,
+   "cost_usd": 0.08609309999999999
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-065e0ea994",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 10,
+   "cost_usd": 0.16003409999999998
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-31bb0dca2f",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 5,
+   "cost_usd": 0.15636109999999998
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-4b9c9042a0",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 4,
+   "adopted": true,
+   "num_turns": 14,
+   "cost_usd": 0.4208969
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-5757afc209",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 9,
+   "cost_usd": 0.1697112
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-735581a2aa",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 8,
+   "cost_usd": 0.1904822
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-a45f77199b",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 11,
+   "cost_usd": 0.20767410000000003
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-af26bbed52",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 8,
+   "cost_usd": 0.22723170000000004
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-d087def33f",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 8,
+   "cost_usd": 0.18519449999999998
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-d97481c022",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 7,
+   "cost_usd": 0.2134567
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-d99a7b9e45",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 8,
+   "cost_usd": 0.16905779999999998
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-e0d87e93a1",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 6,
+   "cost_usd": 0.14823409999999998
+  },
+  {
+   "condition": "cold nudge",
+   "qid": "rel-f9c6a734c3",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 0,
+   "adopted": false,
+   "num_turns": 8,
+   "cost_usd": 0.1937987
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-06736732eb",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 3,
+   "cost_usd": 0.1483813
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-21311533f6",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 3,
+   "cost_usd": 0.1652833
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-431190aa94",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 3,
+   "cost_usd": 0.32746139999999996
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-59578cec0f",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.1012507
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-8a2c342cba",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.1319066
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-9f3c20a7a3",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 5,
+   "cost_usd": 0.12287110000000001
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-bf42dcec87",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.3058546
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-c1c595c6c0",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.1547491
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-c98d5ce993",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.2143541
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-e106879764",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.16599950000000002
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-e3602a83b1",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 3,
+   "cost_usd": 0.12725229999999998
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "look-f748f81d00",
+   "kind": "lookup",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 6,
+   "cost_usd": 0.13680869999999998
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-065e0ea994",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 14,
+   "cost_usd": 0.2308949
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-31bb0dca2f",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 7,
+   "cost_usd": 0.1966944
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-4b9c9042a0",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 4,
+   "adopted": true,
+   "num_turns": 13,
+   "cost_usd": 0.40699370000000007
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-5757afc209",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 8,
+   "cost_usd": 0.1605507
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-735581a2aa",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 4,
+   "cost_usd": 0.13983
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-a45f77199b",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 10,
+   "cost_usd": 0.19689589999999998
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-af26bbed52",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 8,
+   "cost_usd": 0.2111601
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-d087def33f",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 2,
+   "adopted": true,
+   "num_turns": 12,
+   "cost_usd": 0.2465134
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-d97481c022",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 9,
+   "cost_usd": 0.23593139999999999
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-d99a7b9e45",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 10,
+   "cost_usd": 0.21734939999999997
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-e0d87e93a1",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 3,
+   "adopted": true,
+   "num_turns": 6,
+   "cost_usd": 0.16079839999999998
+  },
+  {
+   "condition": "CLAUDE.md mandate",
+   "qid": "rel-f9c6a734c3",
+   "kind": "relational",
+   "ok": true,
+   "chonks_tool_calls": 1,
+   "adopted": true,
+   "num_turns": 16,
+   "cost_usd": 0.2950794
+  }
+ ]
+}

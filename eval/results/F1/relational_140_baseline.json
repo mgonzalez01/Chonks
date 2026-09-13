@@ -1,0 +1,650 @@
+[
+  {
+    "a_name": "ObjectGDExtension",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does ObjectGDExtension work and what does it depend on?",
+    "gold_n": 7,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.14285714285714285
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "ZipArchive::try_open_pack",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does ZipArchive::try_open_pack work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "ConvexHullInternal::shift_face",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does ConvexHullInternal::shift_face work and what does it depend on?",
+    "gold_n": 6,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.16666666666666666,
+          "50": 0.16666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "Array::bsearch",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does Array::bsearch work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "Variant::get_ptr_builtin_method_with_compatibility",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does Variant::get_ptr_builtin_method_with_compatibility work and what does it depend on?",
+    "gold_n": 5,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.2
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.2
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "ResourceSaver::add_custom_savers",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does ResourceSaver::add_custom_savers work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.6666666666666666,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "PList::load_file",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does PList::load_file work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "Crypto::hmac_digest",
+    "s1": "core",
+    "neighbour_subsystem": "core",
+    "query": "How does Crypto::hmac_digest work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.6666666666666666,
+          "20": 1.0,
+          "50": 1.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.6666666666666666,
+          "20": 0.6666666666666666,
+          "50": 1.0
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "AreaLight3D::set_area_texture",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does AreaLight3D::set_area_texture work and what does it depend on?",
+    "gold_n": 8,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.125,
+          "20": 0.125,
+          "50": 0.125
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.125,
+          "20": 0.375,
+          "50": 0.75
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "GPUParticlesCollisionBox3D::set_size",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does GPUParticlesCollisionBox3D::set_size work and what does it depend on?",
+    "gold_n": 4,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.25,
+          "20": 0.5,
+          "50": 0.75
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.25,
+          "20": 0.5,
+          "50": 0.5
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "AnimationPlayer::_process_playback_data",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does AnimationPlayer::_process_playback_data work and what does it depend on?",
+    "gold_n": 8,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.125,
+          "20": 0.125,
+          "50": 0.25
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.125,
+          "20": 0.125,
+          "50": 0.375
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "PinJoint2D::set_motor_target_velocity",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does PinJoint2D::set_motor_target_velocity work and what does it depend on?",
+    "gold_n": 4,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.25,
+          "20": 0.25,
+          "50": 0.25
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.25,
+          "20": 0.5,
+          "50": 0.5
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "SixDOFJointData",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does SixDOFJointData work and what does it depend on?",
+    "gold_n": 8,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.125
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.375
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "SplitContainer",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does SplitContainer work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.3333333333333333,
+          "20": 0.3333333333333333,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "RichTextLabel::_find_click_in_line",
+    "s1": "scene",
+    "neighbour_subsystem": "servers",
+    "query": "How does RichTextLabel::_find_click_in_line work and what does it depend on?",
+    "gold_n": 4,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.25,
+          "50": 0.25
+        },
+        "anchor_found": false,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "IterateIK3D::_bind_methods",
+    "s1": "scene",
+    "neighbour_subsystem": "scene",
+    "query": "How does IterateIK3D::_bind_methods work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "ShaderRD::_add_stage",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does ShaderRD::_add_stage work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.3333333333333333,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 1.0
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "RenderingDevice::_shader_create_from_spirv",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does RenderingDevice::_shader_create_from_spirv work and what does it depend on?",
+    "gold_n": 3,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.6666666666666666,
+          "20": 0.6666666666666666,
+          "50": 0.6666666666666666
+        },
+        "anchor_found": false,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "init",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does init work and what does it depend on?",
+    "gold_n": 4,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": false,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": false,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "RenderingServer::mesh_create_surface_data_from_arrays",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does RenderingServer::mesh_create_surface_data_from_arrays work and what does it depend on?",
+    "gold_n": 6,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.16666666666666666,
+          "50": 0.3333333333333333
+        },
+        "anchor_found": false,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "SceneShaderForwardMobile::ShaderData::_create_pipeline",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does SceneShaderForwardMobile::ShaderData::_create_pipeline work and what does it depend on?",
+    "gold_n": 4,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.25
+        },
+        "anchor_found": false,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "RenderSceneBuffersRD",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does RenderSceneBuffersRD work and what does it depend on?",
+    "gold_n": 6,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.16666666666666666
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.16666666666666666,
+          "20": 0.16666666666666666,
+          "50": 0.8333333333333334
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "SkyRD::setup_sky",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does SkyRD::setup_sky work and what does it depend on?",
+    "gold_n": 13,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.0,
+          "50": 0.0
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.07692307692307693,
+          "20": 0.07692307692307693,
+          "50": 0.3076923076923077
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  },
+  {
+    "a_name": "RenderingShaderContainer::get_shader_reflection",
+    "s1": "servers",
+    "neighbour_subsystem": "servers",
+    "query": "How does RenderingShaderContainer::get_shader_reflection work and what does it depend on?",
+    "gold_n": 7,
+    "per_mode": {
+      "hybrid": {
+        "recall": {
+          "10": 0.0,
+          "20": 0.14285714285714285,
+          "50": 0.42857142857142855
+        },
+        "anchor_found": true,
+        "error": false
+      },
+      "research": {
+        "recall": {
+          "10": 0.14285714285714285,
+          "20": 0.14285714285714285,
+          "50": 0.2857142857142857
+        },
+        "anchor_found": true,
+        "error": false
+      }
+    }
+  }
+]
