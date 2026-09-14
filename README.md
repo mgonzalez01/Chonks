@@ -13,6 +13,8 @@ Agentic search with grep, glob, and repo maps works well until the codebase outg
 
 Four processes and one file are involved. The agent talks to a small MCP adapter, the adapter talks to the Python backend over HTTP, and the backend reads the SQLite index and asks the embedding server for query vectors. The same embedding server is used when the index is built.
 
+On 100 held-out Loc-Bench issues, Acc@5 is 64/100, with no LLM in the retrieval loop. Full numbers in [Benchmarks](#benchmarks).
+
 ```mermaid
 flowchart LR
     CC[Claude Code] -- MCP --> ADP[MCP adapter<br/>node]
@@ -66,7 +68,7 @@ cd ..
 uv run chonks init
 ```
 
-The wizard asks for the codebase path, suggests excludes it found by scanning the tree, pings the embedding server, and writes `config.json`. Nothing is excluded without confirmation. `--yes` with `--codebase`, `--db`, `--embed-url`, and `--embed-model` skips the prompts. The embedding server is not started yet at this point (that is step 3), so the wizard's warning that it could not reach it is expected here.
+The wizard asks for the codebase path, suggests excludes it found by scanning the tree, pings the embedding server, and writes `config.json`. Nothing is excluded without confirmation, so `--yes` on its own indexes the scan-detected excludes too, `node_modules` and the like included; add `--auto-exclude` to apply them instead. `--yes` with `--codebase`, `--db`, `--embed-url`, `--embed-model`, and `--auto-exclude` skips the prompts. The embedding server is not started yet at this point (that is step 3), so the wizard's warning that it could not reach it is expected here.
 
 ### 3. Start the embedding server
 

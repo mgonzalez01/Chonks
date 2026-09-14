@@ -83,7 +83,7 @@ Godot (MIT) is a fully open corpus that can be used to check the harness, or as 
 
 ```bash
 git clone https://github.com/godotengine/godot.git /tmp/godot-src
-git -C /tmp/godot-src checkout 2c089e9bf0b8712d0bc444c2ceaf9c777
+git -C /tmp/godot-src checkout 2c089e9bf0b8712d0bc444c2ceaf9c543ed9c777
 chonks index /tmp/godot-src --db godot.db \
     --embed-url http://localhost:11437/v1/embeddings --embed-model <your-model>
 chonks serve --db godot.db --port 11438
