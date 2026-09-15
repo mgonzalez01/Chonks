@@ -40,12 +40,12 @@ Index-time settings were `cap_mentions_fanout` off, `associated_top_frac` 0.02 (
 
 | measurement | result | file |
 |---|---|---|
-| Loc-Bench n=100, search | Acc@5 64, Acc@10 73 | `n100_140_baseline.jsonl` |
-| Loc-Bench n=100, research | Acc@5 64, Acc@10 74 | `n100_140_baseline.jsonl` |
-| Loc-Bench panel n=15, search / research | 10/11 and 7/10 at Acc@5/Acc@10 | `panel_140_baseline.jsonl` |
+| Loc-Bench n=100, search | Acc@5 64, Acc@10 73 | `n100_F1_baseline.jsonl` |
+| Loc-Bench n=100, research | Acc@5 64, Acc@10 74 | `n100_F1_baseline.jsonl` |
+| Loc-Bench panel n=15, search / research | 10/11 and 7/10 at Acc@5/Acc@10 | `panel_F1_baseline.jsonl` |
 | Loc-Bench panel n=15 with Qwen3-Embedding-0.6B and its query instruction, search / research | 7/10 and 9/9 at Acc@5/Acc@10 | `panel_qwen3_instruct.jsonl` |
 | Loc-Bench panel n=15 with Qwen3-Embedding-0.6B, no query instruction, search / research | 7/10 and 7/10 at Acc@5/Acc@10 | `panel_qwen3_bare.jsonl` |
-| Godot neighbourhood coverage, 24 anchors | hybrid R@10/20/50 0.11/0.19/0.32, research 0.14/0.21/0.39 | `relational_140_baseline.json` |
+| Godot neighbourhood coverage, 24 anchors | hybrid R@10/20/50 0.11/0.19/0.32, research 0.14/0.21/0.39 | `relational_F1_baseline.json` |
 | Godot feature-set coverage, 20 questions, 50-chunk budget | search 0.678, research 0.843, 12 wins / 8 ties / 0 losses | `fm_godot_F1.jsonl` |
 | Adoption, 24 Godot questions | cold nudge 4/24; `CLAUDE.md` mandate 24/24 | `adoption_godot.json` |
 
