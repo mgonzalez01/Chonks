@@ -1498,3 +1498,10 @@ def test_hub_edge_types_and_collapse_rank_are_shared_with_core_edges():
     }
     assert store_mod._HUB_EDGE_TYPES is edges._HUB_EDGE_TYPES
     assert store_mod._COLLAPSE_RANK is edges._COLLAPSE_RANK
+
+
+def test_batched():
+    from chonks.core.batching import batched
+    assert list(batched([0, 1, 2, 3, 4], 2)) == [[0, 1], [2, 3], [4]]
+    assert list(batched([0, 1, 2, 3], 2)) == [[0, 1], [2, 3]]
+    assert list(batched([], 2)) == []

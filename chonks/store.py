@@ -18,6 +18,7 @@ import numpy as np
 import sqlite_vec
 
 from chonks.chunking import CODE_LANGUAGES
+from chonks.core.batching import batched
 from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
 
 SCHEMA_VERSION = 5
@@ -669,8 +670,7 @@ class Store:
                     "SELECT id FROM chunks WHERE path=?", (path,)
                 ).fetchall()
             ]
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 self._conn.execute(
                     f"DELETE FROM chunk_vecs WHERE id IN ({placeholders})", batch
@@ -844,8 +844,7 @@ class Store:
 
         results: list[dict[str, Any]] = []
         with self._lock:
-            for i in range(0, len(from_ids), 900):
-                batch = from_ids[i:i + 900]
+            for batch in batched(from_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 sql = (f"SELECT id AS chunk_id, path, name, chunk_type, start_line, end_line "
                        f"FROM chunks WHERE id IN ({placeholders})")
@@ -901,8 +900,7 @@ class Store:
 
         results: list[dict[str, Any]] = []
         with self._lock:
-            for i in range(0, len(to_ids), 900):
-                batch = to_ids[i:i + 900]
+            for batch in batched(to_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 sql = (f"SELECT id AS chunk_id, path, name, chunk_type, start_line, end_line "
                        f"FROM chunks WHERE id IN ({placeholders})")
@@ -941,8 +939,7 @@ class Store:
         definitions: list[dict[str, Any]] = []
         edges: list[dict[str, Any]] = []
         with self._lock:
-            for i in range(0, len(def_chunk_ids), 900):
-                batch = def_chunk_ids[i:i + 900]
+            for batch in batched(def_chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT path, name, chunk_type FROM chunks WHERE id IN ({placeholders})",
@@ -1046,8 +1043,7 @@ class Store:
             return set()
         out: set[str] = set()
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT DISTINCT name FROM symbols WHERE chunk_id IN ({placeholders})",
@@ -1063,8 +1059,7 @@ class Store:
             return {}
         out: dict[str, list[str]] = defaultdict(list)
         with self._lock:
-            for i in range(0, len(names), 900):
-                batch = names[i:i + 900]
+            for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT name, chunk_id FROM symbols "
@@ -1188,8 +1183,7 @@ class Store:
             )
         self._set_dim(len(embeddings[0]), model=model)
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 self._conn.execute(f"DELETE FROM chunk_vecs WHERE id IN ({placeholders})", batch)
             for cid, emb in zip(ids, embeddings):
@@ -1686,8 +1680,7 @@ class Store:
             return {}
         out: dict[str, list[tuple[str, str]]] = defaultdict(list)
         with self._lock:
-            for i in range(0, len(names), 900):
-                batch = names[i:i + 900]
+            for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders})",
@@ -1705,8 +1698,7 @@ class Store:
             return []
         results: list[dict[str, Any]] = []
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT * FROM chunks WHERE id IN ({placeholders})",
@@ -1724,8 +1716,7 @@ class Store:
             return []
         results: list[dict[str, Any]] = []
         with self._lock:
-            for i in range(0, len(names), 900):
-                batch = names[i:i + 900]
+            for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
                 sql = (
                     f"SELECT * FROM chunks WHERE path = ? AND name IN ({placeholders})"
@@ -1851,8 +1842,7 @@ class Store:
             # Sliced at 450 (not 900): this statement binds batch+batch, so a
             # 900-slice would bind up to 1800 params, over SQLite's default
             # SQLITE_MAX_VARIABLE_NUMBER (999) -> "too many SQL variables".
-            for i in range(0, len(chunk_ids), 450):
-                batch = chunk_ids[i:i + 450]
+            for batch in batched(chunk_ids, 450):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT chunk_id, neighbor_id, distance FROM chunk_neighbors "
@@ -1883,8 +1873,7 @@ class Store:
             return set()
         out: set[str] = set()
         with self._lock:
-            for i in range(0, len(neighbor_ids), 900):
-                batch = neighbor_ids[i:i + 900]
+            for batch in batched(neighbor_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT DISTINCT chunk_id FROM chunk_neighbors WHERE neighbor_id IN ({placeholders})",
@@ -1900,16 +1889,14 @@ class Store:
             return 0
         deleted = 0
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 cur = self._conn.execute(
                     f"DELETE FROM chunk_neighbors WHERE chunk_id IN ({placeholders})",
                     batch,
                 )
                 deleted += cur.rowcount if cur.rowcount is not None else 0
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 cur = self._conn.execute(
                     f"DELETE FROM chunk_neighbors WHERE neighbor_id IN ({placeholders})",
@@ -1925,8 +1912,7 @@ class Store:
             return 0
         deleted = 0
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 cur = self._conn.execute(
                     f"DELETE FROM chunk_neighbors WHERE chunk_id IN ({placeholders})",
@@ -2036,8 +2022,7 @@ class Store:
             return {}
         out: dict[str, bytes] = {}
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 try:
                     rows = self._conn.execute(
@@ -2126,8 +2111,7 @@ class Store:
             return {}
         result: dict[str, list[float]] = {}
         with self._lock:
-            for i in range(0, len(paths), 900):
-                batch = paths[i:i + 900]
+            for batch in batched(paths, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT path, summary_embedding FROM folder_summaries WHERE path IN ({placeholders})",
@@ -2328,8 +2312,7 @@ class Store:
         id_to_path = {"file:" + p: p for p in paths}
         from_ids = list(id_to_path.keys())
         with self._lock:
-            for i in range(0, len(from_ids), 900):
-                batch = from_ids[i:i + 900]
+            for batch in batched(from_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"""SELECT ge.from_id AS from_id, gn.path AS to_path
@@ -2376,8 +2359,7 @@ class Store:
             return {}
         out: dict[str, float] = {}
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT chunk_id, score FROM chunk_pagerank WHERE chunk_id IN ({placeholders})",
@@ -2436,15 +2418,13 @@ class Store:
             return
         ids = list(chunk_ids)
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 self._conn.execute(
                     f"DELETE FROM chunk_indegree WHERE chunk_id IN ({placeholders})",
                     batch,
                 )
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs "
@@ -2468,8 +2448,7 @@ class Store:
         with self._lock:
             # Sliced at 450, not 900 (see get_neighbor_edges_touching: this
             # statement binds batch+batch).
-            for i in range(0, len(ids), 450):
-                batch = ids[i:i + 450]
+            for batch in batched(ids, 450):
                 placeholders = ",".join("?" * len(batch))
                 where = f"from_id IN ({placeholders}) OR to_id IN ({placeholders})"
                 params = batch + batch
@@ -2492,8 +2471,7 @@ class Store:
         removed = 0
         affected_to_ids: set[str] = set()
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 where = f"from_id IN ({placeholders})"
                 affected_to_ids.update(
@@ -2518,8 +2496,7 @@ class Store:
         with self._lock:
             # Sliced at 450, not 900 (see get_neighbor_edges_touching: this
             # statement binds batch+batch).
-            for i in range(0, len(ids), 450):
-                batch = ids[i:i + 450]
+            for batch in batched(ids, 450):
                 placeholders = ",".join("?" * len(batch))
                 where = (
                     f"edge_type='xlang' AND "
@@ -2564,8 +2541,7 @@ class Store:
             return set()
         out: set[str] = set()
         with self._lock:
-            for i in range(0, len(target_ids), 900):
-                batch = target_ids[i:i + 900]
+            for batch in batched(target_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT DISTINCT from_id FROM chunk_refs WHERE to_id IN ({placeholders})",
@@ -2582,8 +2558,7 @@ class Store:
             return []
         results: dict[str, dict[str, Any]] = {}
         with self._lock:
-            for i in range(0, len(names), 200):
-                batch = names[i:i + 200]
+            for batch in batched(names, 200):
                 phrase_query = " OR ".join(
                     '"' + n.replace('"', '""') + '"' for n in batch
                 )
@@ -2657,8 +2632,7 @@ class Store:
             return []
         results: list[tuple[str, str]] = []
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT from_id, to_id FROM chunk_refs WHERE from_id IN ({placeholders})",
@@ -2674,8 +2648,7 @@ class Store:
             return []
         results: list[tuple[str, str]] = []
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT from_id, to_id FROM chunk_refs WHERE to_id IN ({placeholders})",
@@ -2692,8 +2665,7 @@ class Store:
             return []
         results: list[tuple[str, str, str]] = []
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT from_id, to_id, edge_type FROM chunk_refs WHERE from_id IN ({placeholders})",
@@ -2709,8 +2681,7 @@ class Store:
             return []
         results: list[tuple[str, str, str]] = []
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT from_id, to_id, edge_type FROM chunk_refs WHERE to_id IN ({placeholders})",
@@ -2726,8 +2697,7 @@ class Store:
             return []
         results: list[tuple[str, str, str]] = []
         with self._lock:
-            for i in range(0, len(chunk_ids), 900):
-                batch = chunk_ids[i:i + 900]
+            for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT from_id, to_id, edge_type FROM chunk_refs WHERE from_id IN ({placeholders})",
@@ -2744,8 +2714,7 @@ class Store:
             return {}
         out: dict[str, int] = {}
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT to_id, COUNT(*) AS n FROM chunk_refs "
@@ -2764,8 +2733,7 @@ class Store:
             return {}
         out: dict[str, dict[str, int]] = {}
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs "
@@ -2839,8 +2807,7 @@ class Store:
         ids = [r["id"] for r in rows]
         breakdown: dict[str, dict[str, int]] = {}
         with self._lock:
-            for i in range(0, len(ids), 900):
-                batch = ids[i:i + 900]
+            for batch in batched(ids, 900):
                 ph = ",".join("?" * len(batch))
                 type_clauses = [f"chunk_id IN ({ph})"]
                 type_params: list[Any] = list(batch)
@@ -2940,8 +2907,7 @@ class Store:
             ids = by_degree[degree]
             meta: dict[str, dict[str, Any]] = {}
             with self._lock:
-                for i in range(0, len(ids), 900):
-                    batch = ids[i:i + 900]
+                for batch in batched(ids, 900):
                     ph = ",".join("?" * len(batch))
                     for r in self._conn.execute(
                         "SELECT id, path, name, chunk_type, start_line FROM chunks"
