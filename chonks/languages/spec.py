@@ -85,6 +85,7 @@ class LanguageSpec:
     boundary_nodes: frozenset[str]
     container_nodes: frozenset[str] = frozenset()
     salvage_nodes: frozenset[str] = frozenset()
+    salvage_extra: NodePred | None = None  # checked before salvage_nodes
     boundary_filters: Mapping[str, NodePred] = field(default_factory=dict)
     extra_boundary: NodePred | None = None
     synthetic_chunk_type: NameFn | None = None
@@ -109,6 +110,8 @@ class LanguageSpec:
     # tier 2: literals
     literals: "LiteralSpec | None" = None
     literal_wrapper: "Callable[[str], tuple[str, str] | object] | None" = None
+    # called with the literal's letter prefix; True = raw mode
+    raw_string_prefix: "Callable[[str], bool] | None" = None
     # tier 3: file level, outside chunking
     file_metadata: "Callable[[str], dict | None] | None" = None
     header_exts: frozenset[str] = frozenset()  # dotless lower-case, validated separately

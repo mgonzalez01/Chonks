@@ -1,8 +1,39 @@
 """C++ language plugin data."""
 from __future__ import annotations
 
-from ._ast import name_last_or_text, name_strip_angle_brackets, name_text
-from .spec import ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NestedSpec
+from typing import TYPE_CHECKING
+
+from ._ast import name_last_or_text, name_strip_angle_brackets, name_text, terminal_identifier
+from ._naming import cpp_function_declarator_name, namespace_name, tag_specifier_name, template_inner_name
+from .spec import (
+    ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED,
+)
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
+
+
+def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None | object":
+    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls'. Right-recursive
+    grammar: follow 'name' down to the deepest qualified_identifier, then
+    read its 'scope'."""
+    if callee.type != "qualified_identifier":
+        return NOT_HANDLED
+    cur = callee
+    while True:
+        nxt = cur.child_by_field_name("name")
+        if nxt is not None and nxt.type == "qualified_identifier":
+            cur = nxt
+        else:
+            break
+    return terminal_identifier(cur.child_by_field_name("scope"), src)
+
+
+def classify_param(part: str) -> "str | object":
+    if part == "..." or part.endswith("..."):
+        return "variadic"
+    return NOT_HANDLED
+
 
 INCLUDE = Children((
     ChildSpec(("string_literal",), "imports",
@@ -30,6 +61,13 @@ CPP = LanguageSpec(
     }),
     container_nodes=frozenset({"namespace_definition", "declaration_list"}),
     salvage_nodes=frozenset({"function_definition"}),
+    name_rules=(
+        NameRule(("function_definition",), cpp_function_declarator_name),
+        NameRule(("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"),
+                 tag_specifier_name),
+        NameRule(("namespace_definition",), namespace_name),
+        NameRule(("template_declaration",), template_inner_name),
+    ),
     kind_labels={
         "function_definition": "function",
         "class_specifier": "class",
@@ -49,8 +87,11 @@ CPP = LanguageSpec(
     identifier_leaf_types=frozenset({
         "identifier", "field_identifier", "type_identifier", "namespace_identifier",
     }),
+    call_receiver=qualified_receiver,
     variadic_arg_types=frozenset({"parameter_pack_expansion"}),
     class_like_chunk_types=frozenset({"class_specifier", "struct_specifier"}),
+    classify_param=classify_param,
+    empty_param_spellings=frozenset({"void"}),
     literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
                          concat_types=("concatenated_string",)),
     header_exts=frozenset({"h", "hh", "hpp", "hxx"}),
