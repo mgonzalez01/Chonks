@@ -958,3 +958,20 @@ def test_insert_chunks_alone_never_sets_the_completeness_flag(tmp_path):
         [_embed()], model="test",
     )
     assert store.get_meta("literal_index_version") is None
+
+
+@pytest.mark.parametrize("text", [
+    "one line", "first\nsecond", "first\nsecond\nthird", "\nleading newline",
+    "trailing\n", "first\r\nsecond", "héllo wörld\nsecond", "",
+])
+def test_first_line_sql_matches_first_line(text):
+    """The SQL first-line expression must agree with the Python one."""
+    import sqlite3
+
+    from chonks.store import _FIRST_LINE_SQL, _first_line
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE cl (text TEXT)")
+    conn.execute("INSERT INTO cl (text) VALUES (?)", (text,))
+    result = conn.execute(f"SELECT {_FIRST_LINE_SQL} FROM cl").fetchone()[0]
+    assert result == _first_line(text)
