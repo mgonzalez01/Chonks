@@ -51,7 +51,6 @@ _KNOWN_INVERSIONS: set[tuple[str, str]] = {
     ("chonks.repomap", "chonks.repomap.trace"),
     ("chonks.repomap.render", "chonks.repomap.pagerank"),
     ("chonks.research", "chonks.repomap"),
-    ("chonks.store", "chonks.chunking"),
     ("chonks.store", "chonks.repomap"),
 }
 

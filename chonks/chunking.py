@@ -13,6 +13,11 @@ from typing import Any, Iterable
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
+from chonks.languages import (
+    EXT_TO_LANG as _EXT_TO_LANG,
+    flags as _lang_flags,
+    table as _lang_table,
+)
 from chonks.languages._ast import (
     last_identifier as _last_identifier,
     TERMINAL_IDENTIFIER_TYPES as _TERMINAL_IDENTIFIER_TYPES,
@@ -58,119 +63,13 @@ PARSE_TIMEOUT_MICROS = 30_000_000  # 30 seconds
 
 # file extension -> (tree-sitter language, structural node types that
 # become chunk boundaries).
+_BOUNDARY_NODES = _lang_table("boundary_nodes")
 
-_BOUNDARY_NODES: dict[str, set[str]] = {
-    "cpp": {
-        "function_definition",
-        "class_specifier",
-        "struct_specifier",
-        "template_declaration",
-    },
-    # struct/union/enum_specifier also match bare tag refs and forward decls;
-    # _is_boundary's C guard requires a body to treat one as a real boundary.
-    "c": {
-        "function_definition",
-        "struct_specifier",
-        "union_specifier",
-        "enum_specifier",
-        "type_definition",
-    },
-    "hlsl": {
-        "function_definition",
-        "struct_specifier",
-        # cbuffer/tbuffer are detected via _is_cbuffer() because tree-sitter-hlsl
-        # parses them as `declaration` nodes, not a dedicated node type.
-    },
-    "python": {
-        "function_definition",
-        "class_definition",
-        "decorated_definition",
-    },
-    "c_sharp": {
-        "method_declaration",
-        "constructor_declaration",
-        "destructor_declaration",
-        "property_declaration",
-        "class_declaration",
-        "struct_declaration",
-        "interface_declaration",
-        "enum_declaration",
-        "operator_declaration",
-        "conversion_operator_declaration",
-    },
-    "gdscript": {
-        "function_definition",
-        "class_definition",
-    },
-    # Lua's grammar gives named and `local` functions the same node type
-    # (function_declaration); anonymous function_definition is left
-    # unboundaried since it has no name field.
-    "lua": {
-        "function_declaration",
-    },
-}
-
-# typescript/tsx are supersets of the javascript grammar, so their boundary
-# sets layer on javascript's core plus TS-only declaration types.
-_JS_CORE_BOUNDARIES = {
-    "function_declaration",
-    "generator_function_declaration",
-    "method_definition",
-    "class_declaration",
-}
-_TS_EXTRA_BOUNDARIES = {
-    "interface_declaration",
-    "enum_declaration",
-    "type_alias_declaration",
-    "abstract_class_declaration",
-}
 _JS_TS_LANGS = {"javascript", "typescript", "tsx"}
-
-_BOUNDARY_NODES["javascript"] = set(_JS_CORE_BOUNDARIES)
-_BOUNDARY_NODES["typescript"] = _JS_CORE_BOUNDARIES | _TS_EXTRA_BOUNDARIES
-_BOUNDARY_NODES["tsx"]        = _JS_CORE_BOUNDARIES | _TS_EXTRA_BOUNDARIES
 
 # Container nodes: recurse through them to find inner boundaries.
 # If a container yields no inner boundaries, fall back to treating it as one chunk.
-_CONTAINER_NODES: dict[str, set[str]] = {
-    "cpp":        {"namespace_definition", "declaration_list"},
-    "c":          set(),
-    "hlsl":       set(),
-    "python":     set(),
-    "c_sharp":    {"namespace_declaration", "class_declaration", "struct_declaration"},
-    "gdscript":   set(),
-    "lua":        set(),
-    "javascript": set(),
-    # internal_module/module aren't boundary types; listed here only so an
-    # EMPTY TS/TSX namespace still becomes its own chunk instead of vanishing.
-    "typescript": {"internal_module", "module"},
-    "tsx":        {"internal_module", "module"},
-}
-
-_EXT_TO_LANG: dict[str, str] = {
-    ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
-    # .h stays on "cpp" not "c": remapping would churn boundaries across
-    # every existing C++ corpus (see chunker.py's content-hash skip).
-    ".h": "cpp", ".hpp": "cpp", ".hxx": "cpp", ".inl": "cpp",
-    # CUDA/Obj-C++/Metal ride the cpp grammar best-effort; unmapped, whole
-    # GPU/macOS backends silently land in unsupported_ext_skipped.
-    ".cu": "cpp", ".cuh": "cpp",
-    ".mm": "cpp", ".metal": "cpp",
-    ".c": "c",
-    ".hlsl": "hlsl", ".fx": "hlsl", ".fxh": "hlsl",
-    ".py": "python",
-    # .pyi is Python's cross-language interface layer; dropping it starves
-    # xlang pairing of its highest-precision anchor.
-    ".pyi": "python",
-    ".cs": "c_sharp",
-    ".gd": "gdscript",
-    ".ts": "typescript", ".tsx": "tsx",
-    ".js": "javascript", ".jsx": "javascript",
-    ".mjs": "javascript", ".cjs": "javascript",
-    # Best-effort tier; unmapped, cross-language C++/Lua binding surfaces
-    # (e.g. cocos2d-x) go invisible to co-change pairing.
-    ".lua": "lua",
-}
+_CONTAINER_NODES = _lang_table("container_nodes")
 
 
 def _lang_for_path(path: Path) -> str | None:
@@ -368,21 +267,7 @@ def _is_boundary(node: Node, lang: str, src: bytes) -> bool:
 # Salvage-eligible: statement-body types only. Member-body types
 # (class/struct) are excluded, or an errored class explodes into one
 # chunk per method (methods are always nested there).
-_SALVAGE_ELIGIBLE_BOUNDARY_TYPES: dict[str, set[str]] = {
-    "cpp":        {"function_definition"},
-    "c":          {"function_definition"},
-    "hlsl":       {"function_definition"},   # cbuffer/tbuffer: see _is_cbuffer branch below
-    "python":     {"function_definition"},
-    "c_sharp":    {
-        "method_declaration", "constructor_declaration", "destructor_declaration",
-        "operator_declaration", "conversion_operator_declaration",
-    },
-    "gdscript":   {"function_definition"},
-    "lua":        {"function_declaration"},
-    "javascript": {"function_declaration", "generator_function_declaration", "method_definition"},
-    "typescript": {"function_declaration", "generator_function_declaration", "method_definition"},
-    "tsx":        {"function_declaration", "generator_function_declaration", "method_definition"},
-}
+_SALVAGE_ELIGIBLE_BOUNDARY_TYPES = _lang_table("salvage_nodes")
 
 
 def _is_salvage_eligible(node: Node, lang: str, src: bytes) -> bool:
@@ -652,85 +537,7 @@ def _call_arity(args_node: "Node | None") -> int | None:
 # Declarative per-language specs, a table of NodeRules walked generically
 # by _apply_rule below. Adding a language means writing a spec, not a new
 # branch of the walker.
-
-# --- cpp ---------------------------------------------------------------
-_CPP_INCLUDE = _Children((
-    _ChildSpec(("string_literal",), "imports",
-               nested=_NestedSpec(("string_content",), _name_text)),
-    _ChildSpec(("system_lib_string",), "imports", name_fn=_name_strip_angle_brackets),
-))
-_CPP_BASES = _Children((
-    _ChildSpec(("base_class_clause",), "inherits",
-               nested=_NestedSpec(("type_identifier", "qualified_identifier"),
-                                  _name_last_or_text)),
-))
-_CPP_SPEC: dict[str, _NodeRule] = {
-    "preproc_include": _CPP_INCLUDE,
-    "call_expression": _Field("function", "calls"),
-    "class_specifier": _CPP_BASES,
-    "struct_specifier": _CPP_BASES,
-}
-
-# --- c -------------------------------------------------------------------
-# c is the grammar cpp is a superset of, so preproc_include/call_expression
-# reuse cpp's rules as-is. No inherits rule: C has no base classes.
-_C_SPEC: dict[str, _NodeRule] = {
-    "preproc_include": _CPP_INCLUDE,
-    "call_expression": _Field("function", "calls"),
-}
-
-# --- c_sharp -------------------------------------------------------------
-_CSHARP_BASES = _Children((
-    _ChildSpec(("base_list",), "inherits",
-               nested=_NestedSpec(("identifier",), _name_text)),
-))
-_CSHARP_SPEC: dict[str, _NodeRule] = {
-    "using_directive": _Children((
-        _ChildSpec(("identifier", "qualified_name"), "imports",
-                   name_fn=_name_last_or_text),
-    )),
-    "invocation_expression": _Field("function", "calls"),
-    "object_creation_expression": _Children((
-        _ChildSpec(("identifier", "generic_name", "qualified_name"), "calls",
-                   name_fn=_name_last_or_text, break_outer=True),
-    )),
-    "class_declaration": _CSHARP_BASES,
-    "struct_declaration": _CSHARP_BASES,
-    "interface_declaration": _CSHARP_BASES,
-}
-
-# --- python ----------------------------------------------------------------
-_PYTHON_IMPORT = _Children((
-    _ChildSpec(("dotted_name",), "imports"),
-    _ChildSpec(("aliased_import",), "imports",
-               nested=_NestedSpec(("dotted_name",), _name_text, break_inner=True)),
-))
-_PYTHON_SPEC: dict[str, _NodeRule] = {
-    "import_statement": _PYTHON_IMPORT,
-    "import_from_statement": _PYTHON_IMPORT,
-    "call": _Field("function", "calls"),
-    "class_definition": _FieldChildren("superclasses", ("identifier",), "inherits"),
-}
-
-# --- gdscript ----------------------------------------------------------
-_GDSCRIPT_CALL = _Children((
-    _ChildSpec(("identifier",), "calls", break_outer=True),
-))
-_GDSCRIPT_SPEC: dict[str, _NodeRule] = {
-    "call": _GDSCRIPT_CALL,
-    "attribute_call": _GDSCRIPT_CALL,
-    "extends_statement": _Children((
-        _ChildSpec(("type",), "inherits", name_fn=_name_last_or_text),
-    )),
-}
-
-LANG_REFS_SPECS: dict[str, dict[str, _NodeRule]] = {
-    "cpp": _CPP_SPEC,
-    "c": _C_SPEC,
-    "c_sharp": _CSHARP_SPEC,
-    "python": _PYTHON_SPEC,
-    "gdscript": _GDSCRIPT_SPEC,
-}
+LANG_REFS_SPECS = _lang_table("refs_spec")
 
 _REFS_LANGS = set(LANG_REFS_SPECS)
 
@@ -896,34 +703,7 @@ def _leaf_literal_text(n: Node, src: bytes, lang: str) -> str:
     return text
 
 
-def _is_python_docstring_position(n: Node) -> bool:
-    """True when `n` is the first statement of a module/function/class
-    body. tree-sitter-python gives docstrings no expression_statement
-    wrapper, so position must be read off the parent chain instead."""
-    parent = n.parent
-    if parent is None or not parent.named_children or parent.named_children[0] != n:
-        return False
-    if parent.type == "module":
-        return True
-    return parent.type == "block" and parent.parent is not None and \
-        parent.parent.type in ("function_definition", "class_definition")
-
-
-_LITERAL_SPECS: dict[str, _LiteralSpec] = {
-    "python": _LiteralSpec(leaf_types=("string",), concat_types=("concatenated_string",),
-                            plus_type="binary_operator", skip_fn=_is_python_docstring_position),
-    "cpp": _LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
-                        concat_types=("concatenated_string",)),
-    "c": _LiteralSpec(leaf_types=("string_literal",), concat_types=("concatenated_string",)),
-    "c_sharp": _LiteralSpec(
-        leaf_types=("string_literal", "verbatim_string_literal", "interpolated_string_expression"),
-        plus_type="binary_expression"),
-    "gdscript": _LiteralSpec(leaf_types=("string",)),
-    "javascript": _LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
-    "typescript": _LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
-    "tsx": _LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
-    "lua": _LiteralSpec(leaf_types=("string",), plus_type="binary_expression", plus_op=".."),
-}
+_LITERAL_SPECS = _lang_table("literals")
 
 
 def _plus_chain_pieces(n: Node, spec: _LiteralSpec, src: bytes, lang: str) -> list[str] | None:
@@ -1043,10 +823,7 @@ def _extract_refs(node: Node, lang: str, src: bytes) -> dict[str, list[str]]:
 
 # Keyword right before a definition's name (skippable past an unrelated
 # same-named call); empty string for languages without one.
-_DEF_SIGNATURE_KEYWORD: dict[str, str] = {
-    "python": r"\bdef\s+",
-    "gdscript": r"\bfunc\s+",
-}
+_DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
 
 
 def _find_signature_param_texts(content: str, name: str, lang: str) -> list[str]:
@@ -1789,7 +1566,7 @@ def _fill_coverage_gaps(segs: list, src: bytes) -> list:
 # Q_OBJECT/...), dropping the class name. Discovery is purely structural
 # (no hardcoded names), so C's own annotation macros benefit too.
 
-_MACRO_LANGS = {"cpp", "c"}
+_MACRO_LANGS = _lang_flags("c_macro_self_heal")
 _MAX_MACRO_CANDIDATES = 48  # cap trial-reparses per pass on pathological files
 # A leading macro (UCLASS) only surfaces once the export macro beside the
 # class name is blanked, so healing needs multiple passes.
@@ -2006,7 +1783,7 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
 
 
 # Line-comment prefixes per language (block comments /* */ handled separately).
-_COMMENT_PREFIXES = {"python": ("#",)}
+_COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
 _COMMENT_PREFIXES_DEFAULT = ("//", "/*", "*/", "*")  # cpp / c / c_sharp / hlsl
 # Divider/comment punctuation: a span of only these (+ whitespace) has no text.
 _DIVIDER_RE = re.compile(r"[/*#=\-_~<>|+.\s]")
@@ -2243,8 +2020,7 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
     _literal_cap_state["dropped"] = 0
     _literal_extract_cache.clear()
 
-    # tree-sitter-language-pack uses 'csharp' but we use 'c_sharp' internally
-    _LANG_PACK_NAME = {"c_sharp": "csharp"}
+    _LANG_PACK_NAME = _lang_table("grammar")
     parser = get_parser(_LANG_PACK_NAME.get(lang, lang))
     # timeout_micros is deprecated in 0.25, but progress_callback (its
     # replacement) is silently ignored for bytestring source.

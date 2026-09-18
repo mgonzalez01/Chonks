@@ -17,10 +17,10 @@ from typing import Any
 import numpy as np
 import sqlite_vec
 
-from chonks.chunking import CODE_LANGUAGES
 from chonks.core.batching import batched
 from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
 from chonks.core.skeleton import *
+from chonks.languages import CODE_LANGUAGES
 
 SCHEMA_VERSION = 5
 
