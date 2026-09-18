@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.pyo
 chonks.egg-info/
+build/
 *.db
 *.db-shm
 *.db-wal
