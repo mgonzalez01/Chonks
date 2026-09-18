@@ -1480,3 +1480,21 @@ def test_chunk_kind_code_matches_ast_language_regardless_of_parse_health(tmp_pat
     )
     assert store.search_regex("garbage", chunk_kind="code")
     assert not store.search_regex("garbage", chunk_kind="docs")
+
+
+def test_hub_edge_types_and_collapse_rank_are_shared_with_core_edges():
+    """Guards the store.py import: both names must be the same objects as
+    the ones in chonks.core.edges, not copies."""
+    import chonks.core.edges as edges
+    import chonks.store as store_mod
+    assert edges._HUB_EDGE_TYPES == frozenset(
+        {"calls", "imports", "inherits", "mentions", "xlang", "associated"}
+    )
+    assert edges._COLLAPSE_RANK == {
+        "calls": 0, "imports": 0, "inherits": 0,
+        "xlang": 1,
+        "associated": 2,
+        "mentions": 3,
+    }
+    assert store_mod._HUB_EDGE_TYPES is edges._HUB_EDGE_TYPES
+    assert store_mod._COLLAPSE_RANK is edges._COLLAPSE_RANK

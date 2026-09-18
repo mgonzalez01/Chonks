@@ -18,7 +18,7 @@ import numpy as np
 import sqlite_vec
 
 from chonks.chunking import CODE_LANGUAGES
-from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
+from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
 
 SCHEMA_VERSION = 5
 
@@ -26,9 +26,6 @@ SCHEMA_VERSION = 5
 # block every other request for minutes on a huge corpus. Above this size
 # the global branch requires a path_prefix instead.
 _HUBS_GLOBAL_MAX_CHUNKS = 100_000
-
-# Valid chunk_refs.edge_type values, for get_hubs' edge_types filter.
-_HUB_EDGE_TYPES = frozenset({"calls", "imports", "inherits", "mentions", "xlang", "associated"})
 
 # Header/impl pairing (rebuild_hierarchy) is same-dir only; cross-dir layouts
 # (include/src) are not paired. Extension matching is case-insensitive.
@@ -52,16 +49,6 @@ _VEC_KNN_MAX_K = 4096
 # lose to a longer chunk repeating the query tokens. Regression-gated on the
 # LocBench panel, don't change without re-running it.
 _FTS_NAME_WEIGHT = 5.0
-
-# When a chunk has edges of more than one type into the resolution set, the
-# lowest rank wins (deterministic; SQL row order is not). Shared by
-# find_usages and find_outgoing.
-_COLLAPSE_RANK = {
-    "calls": 0, "imports": 0, "inherits": 0,
-    "xlang": 1,
-    "associated": 2,
-    "mentions": 3,
-}
 
 
 # ---------------------------------------------------------------------------

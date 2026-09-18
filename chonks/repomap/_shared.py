@@ -2,43 +2,11 @@
 
 from __future__ import annotations
 
-# Skips short noise tokens like "i" or "ok" when matching references.
-_MIN_NAME_LEN = 3
-
-# Caps cross-language edges per name: ubiquitous names (Initialize, Update)
-# would otherwise create thousands of low-signal edges.
-_MAX_CROSS_LANG_OCCURRENCES = 8
-
-# PageRank has no incremental algorithm, so a small batch (see
-# pagerank._PAGERANK_REFRESH_MIN_FRACTION) skips the live recompute and
-# reuses stale scores; churn accumulates in this meta key until it crosses
-# that fraction, forcing a refresh.
-_PAGERANK_STALE_META_KEY = "pagerank_stale_chunks"
-
-# All-1.0 defaults reproduce pre-weighting PageRank exactly; the
-# associated/mentions split stays a ranking-inert display label until a
-# caller sets these two weights apart.
-DEFAULT_EDGE_TYPE_WEIGHTS: dict[str, float] = {
-    "calls":      1.0,
-    "imports":    1.0,
-    "inherits":   1.0,
-    "xlang":      1.0,
-    "associated": 1.0,
-    "mentions":   1.0,
-}
-
-# Provenance is derived from edge_type at query time.
-# 'extracted' labels the fact's mechanism: an
-# ambiguous name's fan-out edges are all still labelled extracted.
-PROVENANCE_BY_EDGE_TYPE = {
-    "calls": "extracted", "imports": "extracted", "inherits": "extracted",
-    "contains": "extracted",
-    "mentions": "inferred", "associated": "inferred", "semantic": "inferred",
-    "xlang": "paired",
-}
-
-
-def edge_provenance(edge_type: str) -> str:
-    """Map edge_type to provenance (extracted/inferred/paired); unknown
-    types default to inferred so an old or new DB never crashes here."""
-    return PROVENANCE_BY_EDGE_TYPE.get(edge_type, "inferred")
+from chonks.core.edges import (
+    _MIN_NAME_LEN,
+    _MAX_CROSS_LANG_OCCURRENCES,
+    _PAGERANK_STALE_META_KEY,
+    DEFAULT_EDGE_TYPE_WEIGHTS,
+    PROVENANCE_BY_EDGE_TYPE,
+    edge_provenance,
+)
