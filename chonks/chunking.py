@@ -8,10 +8,30 @@ import re
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
+
+from chonks.languages._ast import (
+    last_identifier as _last_identifier,
+    TERMINAL_IDENTIFIER_TYPES as _TERMINAL_IDENTIFIER_TYPES,
+    terminal_identifier as _terminal_identifier,
+    name_text as _name_text,
+    name_last_or_text as _name_last_or_text,
+    name_call_target as _name_call_target,
+    name_strip_angle_brackets as _name_strip_angle_brackets,
+)
+from chonks.languages.spec import (
+    NameFn as _NameFn,
+    NestedSpec as _NestedSpec,
+    ChildSpec as _ChildSpec,
+    FieldChildren as _FieldChildren,
+    Field as _Field,
+    Children as _Children,
+    NodeRule as _NodeRule,
+    LiteralSpec as _LiteralSpec,
+)
 
 logger = logging.getLogger("chunking")
 
@@ -541,19 +561,6 @@ _REFS_MAX_NAMES = 200
 # of the 200 name slots by itself (dedup is by full fingerprint, not name).
 _REFS_MAX_CALL_VARIANTS_PER_NAME = 8
 
-def _last_identifier(node: Node, src: bytes) -> str | None:
-    """Rightmost identifier-like leaf of a dotted/member chain (a.b.c):
-    the referenced name, not the receiver it's called through."""
-    for child in reversed(node.children):
-        if child.type in ("identifier", "field_identifier", "type_identifier"):
-            return src[child.start_byte:child.end_byte].decode(errors="replace")
-        # recurse into nested chains (field_expression/member_access_expression/attribute)
-        if child.is_named:
-            found = _last_identifier(child, src)
-            if found:
-                return found
-    return None
-
 
 # Call-site fingerprint: receiver is the IMMEDIATE token adjacent to the
 # called name, not the chain's root ('a.b.c()' -> 'b'), matching repomap's
@@ -568,18 +575,6 @@ _CHAIN_BASE_FIELD: dict[str, str] = {
     "member_access_expression": "expression",
     "qualified_name": "qualifier",
 }
-
-_TERMINAL_IDENTIFIER_TYPES = ("identifier", "field_identifier", "type_identifier", "namespace_identifier")
-
-
-def _terminal_identifier(n: "Node | None", src: bytes) -> str | None:
-    """`n`'s own text if it's an identifier-like leaf, else the rightmost
-    such leaf in its subtree."""
-    if n is None:
-        return None
-    if n.type in _TERMINAL_IDENTIFIER_TYPES:
-        return _name_text(n, src)
-    return _last_identifier(n, src)
 
 
 def _cpp_qualified_immediate_receiver(n: Node, src: bytes) -> str | None:
@@ -657,68 +652,6 @@ def _call_arity(args_node: "Node | None") -> int | None:
 # Declarative per-language specs, a table of NodeRules walked generically
 # by _apply_rule below. Adding a language means writing a spec, not a new
 # branch of the walker.
-
-_NameFn = Callable[[Node, bytes], "str | None"]
-
-
-def _name_text(n: Node, src: bytes) -> str:
-    return src[n.start_byte:n.end_byte].decode(errors="replace")
-
-
-def _name_last_or_text(n: Node, src: bytes) -> str | None:
-    return _last_identifier(n, src) or _name_text(n, src)
-
-
-def _name_call_target(n: Node, src: bytes) -> str | None:
-    # The called *name* is always the rightmost identifier-like leaf of
-    # whatever expression is being invoked (bare name, member access,
-    # qualified/namespaced name, ...).
-    if n.type in ("identifier", "field_identifier"):
-        return _name_text(n, src)
-    return _last_identifier(n, src)
-
-
-def _name_strip_angle_brackets(n: Node, src: bytes) -> str:
-    return _name_text(n, src).strip("<>")
-
-
-@dataclass(frozen=True)
-class _NestedSpec:
-    types: tuple[str, ...]
-    name_fn: _NameFn
-    break_inner: bool = False
-
-
-@dataclass(frozen=True)
-class _ChildSpec:
-    types: tuple[str, ...]
-    bucket: str
-    name_fn: _NameFn = _name_text
-    nested: "_NestedSpec | None" = None
-    break_outer: bool = False
-
-
-@dataclass(frozen=True)
-class _Field:
-    field: str
-    bucket: str
-    name_fn: _NameFn = _name_call_target
-
-
-@dataclass(frozen=True)
-class _FieldChildren:
-    field: str
-    types: tuple[str, ...]
-    bucket: str
-    name_fn: _NameFn = _name_text
-
-
-@dataclass(frozen=True)
-class _Children:
-    specs: tuple[_ChildSpec, ...]
-
-
-_NodeRule = "_Field | _FieldChildren | _Children"
 
 # --- cpp ---------------------------------------------------------------
 _CPP_INCLUDE = _Children((
@@ -974,16 +907,6 @@ def _is_python_docstring_position(n: Node) -> bool:
         return True
     return parent.type == "block" and parent.parent is not None and \
         parent.parent.type in ("function_definition", "class_definition")
-
-
-@dataclass(frozen=True)
-class _LiteralSpec:
-    leaf_types: tuple[str, ...]      # node types that are themselves one string literal
-    concat_types: tuple[str, ...] = ()  # adjacent-juxtaposition container types;
-                                         # grammar guarantees pure leaf children, no purity check
-    plus_type: str | None = None     # binary +/concat node type; only joined if pure literals
-    plus_op: str = "+"               # the concat operator token inside plus_type
-    skip_fn: "Callable[[Node], bool] | None" = None  # leaf-level exclusion (e.g. docstrings)
 
 
 _LITERAL_SPECS: dict[str, _LiteralSpec] = {
