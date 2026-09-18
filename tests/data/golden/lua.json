@@ -1,0 +1,422 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "greet",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "-- A note about this function.\nfunction greet()\nend",
+          "end_line": 3,
+          "literals": [],
+          "name": "greet",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "greet",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "lua_comment_only_span",
+    "language": "lua",
+    "source": "-- A note about this function.\nfunction greet()\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function load(name)\n    print([[raw bracket text with backslash-n: \\n stays literal]])\nend",
+          "end_line": 4,
+          "literals": [
+            [
+              "raw bracket text with backslash-n: \\n stays literal",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fraw bracket text with backslash-n: \\n stays literal"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_lua_long_bracket_string_not_decoded",
+    "language": "lua",
+    "source": "\nfunction load(name)\n    print([[raw bracket text with backslash-n: \\n stays literal]])\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 193,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "baz",
+            "start_line": 132
+          },
+          {
+            "end_line": 130,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "bar",
+            "start_line": 68
+          },
+          {
+            "end_line": 66,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "M.foo",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "module",
+          "content": "local M = {}",
+          "end_line": 2,
+          "literals": [],
+          "name": "<module>",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        },
+        {
+          "chunk_type": "function_declaration",
+          "content": "function M.foo(x)\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\n  return x + 1\nend",
+          "end_line": 66,
+          "literals": [],
+          "name": "M.foo",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 4
+        },
+        {
+          "chunk_type": "function_declaration",
+          "content": "local function bar(y)\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\n  return y * 2\nend",
+          "end_line": 130,
+          "literals": [],
+          "name": "bar",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 68
+        },
+        {
+          "chunk_type": "function_declaration",
+          "content": "function baz()\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\nend",
+          "end_line": 193,
+          "literals": [],
+          "name": "baz",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 132
+        },
+        {
+          "chunk_type": "module",
+          "content": "return M",
+          "end_line": 195,
+          "literals": [],
+          "name": "<module>",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 195
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 193,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "baz",
+          "start_line": 132
+        },
+        {
+          "end_line": 130,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "bar",
+          "start_line": 68
+        },
+        {
+          "end_line": 66,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "M.foo",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "test_lua_module_chunks_functions_and_local_functions",
+    "language": "lua",
+    "source": "\nlocal M = {}\n\nfunction M.foo(x)\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\n  return x + 1\nend\n\nlocal function bar(y)\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\n  return y * 2\nend\n\nfunction baz()\n  print(0)\n  print(1)\n  print(2)\n  print(3)\n  print(4)\n  print(5)\n  print(6)\n  print(7)\n  print(8)\n  print(9)\n  print(10)\n  print(11)\n  print(12)\n  print(13)\n  print(14)\n  print(15)\n  print(16)\n  print(17)\n  print(18)\n  print(19)\n  print(20)\n  print(21)\n  print(22)\n  print(23)\n  print(24)\n  print(25)\n  print(26)\n  print(27)\n  print(28)\n  print(29)\n  print(30)\n  print(31)\n  print(32)\n  print(33)\n  print(34)\n  print(35)\n  print(36)\n  print(37)\n  print(38)\n  print(39)\n  print(40)\n  print(41)\n  print(42)\n  print(43)\n  print(44)\n  print(45)\n  print(46)\n  print(47)\n  print(48)\n  print(49)\n  print(50)\n  print(51)\n  print(52)\n  print(53)\n  print(54)\n  print(55)\n  print(56)\n  print(57)\n  print(58)\n  print(59)\nend\n\nreturn M\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "greet",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function greet()\n  local msg = \"hello there, \"..'friend of mine'\nend",
+          "end_line": 4,
+          "literals": [
+            [
+              "hello there, friend of mine",
+              3
+            ]
+          ],
+          "name": "greet",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fhello there, friend of mine"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "greet",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_lua_pure_concat_chain_joins",
+    "language": "lua",
+    "source": "\nfunction greet()\n  local msg = \"hello there, \"..'friend of mine'\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function load(name)\n    print(\"line one\\nline two decoded\")\nend",
+          "end_line": 4,
+          "literals": [
+            [
+              "line one\nline two decoded",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fline one\nline two decoded"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_lua_regular_string_escapes_decoded",
+    "language": "lua",
+    "source": "\nfunction load(name)\n    print(\"line one\\nline two decoded\")\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function load(name)\n  print(\"failed to load \"..name)\nend",
+          "end_line": 4,
+          "literals": [
+            [
+              "failed to load ",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffailed to load "
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_lua_string_literal_and_concat_join",
+    "language": "lua",
+    "source": "\nfunction load(name)\n  print(\"failed to load \"..name)\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "Methods.greet",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "local Methods = {}\nfunction Methods.greet(self, name)\n  print(\"hi \" .. name)\nend\nMethods.legacy = {\n  ping = function(self)\n    print(\"pong\")\n  end,\n}\n\nreturn Methods",
+          "end_line": 14,
+          "literals": [],
+          "name": "Methods.greet",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "Methods.greet",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "test_lua_table_of_methods_no_parse_error",
+    "language": "lua",
+    "source": "\nlocal Methods = {}\n\nfunction Methods.greet(self, name)\n  print(\"hi \" .. name)\nend\n\nMethods.legacy = {\n  ping = function(self)\n    print(\"pong\")\n  end,\n}\n\nreturn Methods\n"
+  }
+]

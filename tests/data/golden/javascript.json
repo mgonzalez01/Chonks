@@ -1,0 +1,301 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "javascript",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function load(name, code) {\n    const s = `failed to load ${name}: ${code}`;\n}",
+          "end_line": 4,
+          "literals": [
+            [
+              "failed to load ${name}: ${code}",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffailed to load ${name}: ${code}"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "javascript",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_javascript_template_literal_holes_survive",
+    "language": "javascript",
+    "source": "\nfunction load(name, code) {\n    const s = `failed to load ${name}: ${code}`;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "lexical_declaration",
+            "language": "javascript",
+            "name": "double",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "lexical_declaration",
+          "content": "const double = (x) => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * 2;\n};",
+          "end_line": 9,
+          "literals": [],
+          "name": "double",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "lexical_declaration",
+          "language": "javascript",
+          "name": "double",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_js_const_arrow_function_named_after_variable",
+    "language": "javascript",
+    "source": "export const double = (x) => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * 2;\n};\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 19,
+            "kind": "class_declaration",
+            "language": "javascript",
+            "name": "Widget",
+            "start_line": 1
+          },
+          {
+            "end_line": 18,
+            "kind": "method_definition",
+            "language": "javascript",
+            "name": "render",
+            "start_line": 10
+          },
+          {
+            "end_line": 9,
+            "kind": "method_definition",
+            "language": "javascript",
+            "name": "constructor",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class Widget {\n  constructor() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n  render() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n    return 1;\n  }\n}",
+          "end_line": 19,
+          "literals": [],
+          "name": "Widget",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 19,
+          "kind": "class_declaration",
+          "language": "javascript",
+          "name": "Widget",
+          "start_line": 1
+        },
+        {
+          "end_line": 18,
+          "kind": "method_definition",
+          "language": "javascript",
+          "name": "render",
+          "start_line": 10
+        },
+        {
+          "end_line": 9,
+          "kind": "method_definition",
+          "language": "javascript",
+          "name": "constructor",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_js_exported_class_and_methods",
+    "language": "javascript",
+    "source": "export class Widget {\n  constructor() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n  render() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n    return 1;\n  }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "function_declaration",
+            "language": "javascript",
+            "name": "add",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function add(a, b) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn a + b;\n}",
+          "end_line": 9,
+          "literals": [],
+          "name": "add",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "function_declaration",
+          "language": "javascript",
+          "name": "add",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_js_function_declaration_detected_and_named",
+    "language": "javascript",
+    "source": "export function add(a, b) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn a + b;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "generator_function_declaration",
+            "language": "javascript",
+            "name": "gen",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "generator_function_declaration",
+          "content": "function* gen() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nyield 1;\n}",
+          "end_line": 9,
+          "literals": [],
+          "name": "gen",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "generator_function_declaration",
+          "language": "javascript",
+          "name": "gen",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_js_generator_function_declaration_detected",
+    "language": "javascript",
+    "source": "export function* gen() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nyield 1;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "variable_declaration",
+            "language": "javascript",
+            "name": "square",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "variable_declaration",
+          "content": "var square = function(x) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * x;\n};",
+          "end_line": 9,
+          "literals": [],
+          "name": "square",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "variable_declaration",
+          "language": "javascript",
+          "name": "square",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_js_var_function_expression_named_after_variable",
+    "language": "javascript",
+    "source": "var square = function(x) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * x;\n};\n"
+  }
+]

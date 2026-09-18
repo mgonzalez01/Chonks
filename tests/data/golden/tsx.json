@@ -1,0 +1,90 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "lexical_declaration",
+            "language": "tsx",
+            "name": "Comp",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "lexical_declaration",
+          "content": "const Comp = () => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <span>hi</span>;\n};",
+          "end_line": 9,
+          "literals": [],
+          "name": "Comp",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "lexical_declaration",
+          "language": "tsx",
+          "name": "Comp",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_tsx_arrow_component_named_after_variable",
+    "language": "tsx",
+    "source": "export const Comp = () => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <span>hi</span>;\n};\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "function_declaration",
+            "language": "tsx",
+            "name": "App",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function App() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <div className=\"x\">Hi</div>;\n}",
+          "end_line": 9,
+          "literals": [],
+          "name": "App",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "function_declaration",
+          "language": "tsx",
+          "name": "App",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_tsx_function_component_detected",
+    "language": "tsx",
+    "source": "export function App() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <div className=\"x\">Hi</div>;\n}\n"
+  }
+]

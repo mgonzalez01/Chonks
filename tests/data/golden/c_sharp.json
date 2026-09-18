@@ -1,0 +1,821 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 5,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "C",
+            "start_line": 1
+          },
+          {
+            "end_line": 4,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Foo"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class C {\n    void Driver() {\n        Foo(x: 1, 2);\n    }\n}",
+          "end_line": 5,
+          "literals": [],
+          "name": "C",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "Foo",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 5,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "C",
+          "start_line": 1
+        },
+        {
+          "end_line": 4,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "csharp_named_argument_call",
+    "language": "c_sharp",
+    "source": "class C {\n    void Driver() {\n        Foo(x: 1, 2);\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "C",
+            "start_line": 1
+          },
+          {
+            "end_line": 3,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Driver",
+            "start_line": 3
+          },
+          {
+            "end_line": 2,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Sum",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            0,
+            3,
+            true
+          ],
+          "chunk_index": 0,
+          "name": "Sum"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class C {\n    int Sum(params int[] xs) { return 0; }\n    void Driver() { Sum(1, 2, 3); }\n}",
+          "end_line": 4,
+          "literals": [],
+          "name": "C",
+          "refs": {
+            "calls": [
+              {
+                "arity": 3,
+                "name": "Sum",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "C",
+          "start_line": 1
+        },
+        {
+          "end_line": 3,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Driver",
+          "start_line": 3
+        },
+        {
+          "end_line": 2,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Sum",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "csharp_params_parameter",
+    "language": "c_sharp",
+    "source": "class C {\n    int Sum(params int[] xs) { return 0; }\n    void Driver() { Sum(1, 2, 3); }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 25,
+            "kind": "interface_declaration",
+            "language": "c_sharp",
+            "name": "IExtra",
+            "start_line": 25
+          },
+          {
+            "end_line": 23,
+            "kind": "struct_declaration",
+            "language": "c_sharp",
+            "name": "SDerived",
+            "start_line": 23
+          },
+          {
+            "end_line": 22,
+            "kind": "struct_declaration",
+            "language": "c_sharp",
+            "name": "SBase",
+            "start_line": 22
+          },
+          {
+            "end_line": 20,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "Bar",
+            "start_line": 11
+          },
+          {
+            "end_line": 19,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Run",
+            "start_line": 12
+          },
+          {
+            "end_line": 9,
+            "kind": "interface_declaration",
+            "language": "c_sharp",
+            "name": "IThing",
+            "start_line": 9
+          },
+          {
+            "end_line": 8,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "Base",
+            "start_line": 8
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Call"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Helper"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Type"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Widget"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "using System;\nusing System.Collections.Generic;\nusing Godot;\nnamespace Foo {\nclass Base {}\ninterface IThing {}\nclass Bar : Base, IThing {\n    void Run() {\n        Helper();\n        Helper();\n        this.other.Call(x);\n        new Widget();\n        new List<int>();\n        var q = new Some.Qualified.Type();\n    }\n}",
+          "end_line": 20,
+          "literals": [],
+          "name": "Base",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "Helper",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "Call",
+                "receiver": "other"
+              },
+              {
+                "arity": 0,
+                "name": "Widget",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "List",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "Type",
+                "receiver": "Qualified"
+              }
+            ],
+            "imports": [
+              "System",
+              "Generic",
+              "Godot"
+            ],
+            "inherits": [
+              "Base",
+              "IThing"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        },
+        {
+          "chunk_type": "struct_declaration",
+          "content": "struct SBase {}\nstruct SDerived : SBase {}\ninterface IExtra : IThing {}",
+          "end_line": 25,
+          "literals": [],
+          "name": "SBase",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [
+              "SBase",
+              "IThing"
+            ],
+            "literals": []
+          },
+          "start_line": 22
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 25,
+          "kind": "interface_declaration",
+          "language": "c_sharp",
+          "name": "IExtra",
+          "start_line": 25
+        },
+        {
+          "end_line": 23,
+          "kind": "struct_declaration",
+          "language": "c_sharp",
+          "name": "SDerived",
+          "start_line": 23
+        },
+        {
+          "end_line": 22,
+          "kind": "struct_declaration",
+          "language": "c_sharp",
+          "name": "SBase",
+          "start_line": 22
+        },
+        {
+          "end_line": 20,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "Bar",
+          "start_line": 11
+        },
+        {
+          "end_line": 19,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Run",
+          "start_line": 12
+        },
+        {
+          "end_line": 9,
+          "kind": "interface_declaration",
+          "language": "c_sharp",
+          "name": "IThing",
+          "start_line": 9
+        },
+        {
+          "end_line": 8,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "Base",
+          "start_line": 8
+        }
+      ]
+    },
+    "id": "refs_equivalence_c_sharp",
+    "language": "c_sharp",
+    "source": "\nusing System;\nusing System.Collections.Generic;\nusing Godot;\n\nnamespace Foo {\n\nclass Base {}\ninterface IThing {}\n\nclass Bar : Base, IThing {\n    void Run() {\n        Helper();\n        Helper();\n        this.other.Call(x);\n        new Widget();\n        new List<int>();\n        var q = new Some.Qualified.Type();\n    }\n}\n\nstruct SBase {}\nstruct SDerived : SBase {}\n\ninterface IExtra : IThing {}\n\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "X",
+            "start_line": 2
+          },
+          {
+            "end_line": 5,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Load",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class X {\n    void Load(string name, int code) {\n        var s = $\"failed to load {name}: {code:D4}\";\n    }\n}",
+          "end_line": 6,
+          "literals": [
+            [
+              "failed to load {name}: {code:D4}",
+              4
+            ]
+          ],
+          "name": "X",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "4\u001ffailed to load {name}: {code:D4}"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "X",
+          "start_line": 2
+        },
+        {
+          "end_line": 5,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Load",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_c_sharp_interpolated_string_holes_survive",
+    "language": "c_sharp",
+    "source": "\nclass X {\n    void Load(string name, int code) {\n        var s = $\"failed to load {name}: {code:D4}\";\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "X",
+            "start_line": 2
+          },
+          {
+            "end_line": 5,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Load",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class X {\n    void Load() {\n        var r = @\"raw path value here\";\n    }\n}",
+          "end_line": 6,
+          "literals": [
+            [
+              "raw path value here",
+              4
+            ]
+          ],
+          "name": "X",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "4\u001fraw path value here"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "X",
+          "start_line": 2
+        },
+        {
+          "end_line": 5,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Load",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_c_sharp_verbatim_string_strips_at_prefix",
+    "language": "c_sharp",
+    "source": "\nclass X {\n    void Load() {\n        var r = @\"raw path value here\";\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "B",
+            "start_line": 2
+          },
+          {
+            "end_line": 5,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Driver",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Foo"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class B {\n    void Driver() {\n        Foo(1, /*c*/ 2);\n    }\n}",
+          "end_line": 6,
+          "literals": [],
+          "name": "B",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "Foo",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "B",
+          "start_line": 2
+        },
+        {
+          "end_line": 5,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Driver",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_call_arity_skips_comment_c_sharp",
+    "language": "c_sharp",
+    "source": "\nclass B {\n    void Driver() {\n        Foo(1, /*c*/ 2);\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "C",
+            "start_line": 2
+          },
+          {
+            "end_line": 5,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "F",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class C {\n    void F() {\n        string a = \"line one\\nline two decoded\";\n    }\n}",
+          "end_line": 6,
+          "literals": [
+            [
+              "line one\nline two decoded",
+              4
+            ]
+          ],
+          "name": "C",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "4\u001fline one\nline two decoded"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "C",
+          "start_line": 2
+        },
+        {
+          "end_line": 5,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "F",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_csharp_regular_string_escapes_decoded",
+    "language": "c_sharp",
+    "source": "\nclass C {\n    void F() {\n        string a = \"line one\\nline two decoded\";\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "C",
+            "start_line": 2
+          },
+          {
+            "end_line": 5,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "F",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class C {\n    void F() {\n        string a = @\"path\\to\\file with backslash-n: \\n stays literal and \"\"quoted\"\" becomes quoted\";\n    }\n}",
+          "end_line": 6,
+          "literals": [
+            [
+              "path\\to\\file with backslash-n: \\n stays literal and \"quoted\" becomes quoted",
+              4
+            ]
+          ],
+          "name": "C",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "4\u001fpath\\to\\file with backslash-n: \\n stays literal and \"quoted\" becomes quoted"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "C",
+          "start_line": 2
+        },
+        {
+          "end_line": 5,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "F",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_csharp_verbatim_string_only_decodes_doubled_quote",
+    "language": "c_sharp",
+    "source": "\nclass C {\n    void F() {\n        string a = @\"path\\to\\file with backslash-n: \\n stays literal and \"\"quoted\"\" becomes quoted\";\n    }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 12,
+            "kind": "class_declaration",
+            "language": "c_sharp",
+            "name": "Bar",
+            "start_line": 6
+          },
+          {
+            "end_line": 11,
+            "kind": "method_declaration",
+            "language": "c_sharp",
+            "name": "Run",
+            "start_line": 7
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Call"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Helper"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "Widget"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "using System;\nusing Godot;\nnamespace Foo {\nclass Bar : Node, IThing {\n    void Run() {\n        Helper();\n        this.other.Call(x);\n        new Widget();\n    }\n}",
+          "end_line": 12,
+          "literals": [],
+          "name": "Bar",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "Helper",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "Call",
+                "receiver": "other"
+              },
+              {
+                "arity": 0,
+                "name": "Widget",
+                "receiver": null
+              }
+            ],
+            "imports": [
+              "System",
+              "Godot"
+            ],
+            "inherits": [
+              "Node",
+              "IThing"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 12,
+          "kind": "class_declaration",
+          "language": "c_sharp",
+          "name": "Bar",
+          "start_line": 6
+        },
+        {
+          "end_line": 11,
+          "kind": "method_declaration",
+          "language": "c_sharp",
+          "name": "Run",
+          "start_line": 7
+        }
+      ]
+    },
+    "id": "test_extract_refs_c_sharp",
+    "language": "c_sharp",
+    "source": "\nusing System;\nusing Godot;\n\nnamespace Foo {\nclass Bar : Node, IThing {\n    void Run() {\n        Helper();\n        this.other.Call(x);\n        new Widget();\n    }\n}\n}\n"
+  }
+]

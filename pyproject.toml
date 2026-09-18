@@ -46,8 +46,8 @@ Documentation = "https://github.com/mgonzalez01/Chonks/blob/main/DOCS.md"
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["chonks", "chonks.repomap"]
+[tool.setuptools.packages.find]
+include = ["chonks*"]
 
 [dependency-groups]
 dev = [

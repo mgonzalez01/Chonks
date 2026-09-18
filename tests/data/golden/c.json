@@ -1,0 +1,539 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 11,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "use_point",
+            "start_line": 9
+          },
+          {
+            "end_line": 7,
+            "kind": "struct_specifier",
+            "language": "c",
+            "name": "point",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "struct_specifier",
+          "content": "struct node;\nenum color\nstruct point {\n    int x;\n    int y;\n}\nint use_point(struct point p) {\n    return p.x + p.y;\n}",
+          "end_line": 11,
+          "literals": [],
+          "name": "point",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 11,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "use_point",
+          "start_line": 9
+        },
+        {
+          "end_line": 7,
+          "kind": "struct_specifier",
+          "language": "c",
+          "name": "point",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "c_tag_forward_declaration",
+    "language": "c",
+    "source": "struct node;\nenum color;\n\nstruct point {\n    int x;\n    int y;\n};\n\nint use_point(struct point p) {\n    return p.x + p.y;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "driver",
+            "start_line": 2
+          },
+          {
+            "end_line": 1,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "sum_all",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            4,
+            true
+          ],
+          "chunk_index": 0,
+          "name": "sum_all"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "int sum_all(int count, ...) { return 0; }\nvoid driver() { sum_all(3, 1, 2, 3); }",
+          "end_line": 2,
+          "literals": [],
+          "name": "sum_all",
+          "refs": {
+            "calls": [
+              {
+                "arity": 4,
+                "name": "sum_all",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "driver",
+          "start_line": 2
+        },
+        {
+          "end_line": 1,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "sum_all",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "c_variadic_definer",
+    "language": "c",
+    "source": "int sum_all(int count, ...) { return 0; }\nvoid driver() { sum_all(3, 1, 2, 3); }\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "driver",
+            "start_line": 2
+          },
+          {
+            "end_line": 1,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "f",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "f"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "int f(void) { return 0; }\nvoid driver() { f(); }",
+          "end_line": 2,
+          "literals": [],
+          "name": "f",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "f",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "driver",
+          "start_line": 2
+        },
+        {
+          "end_line": 1,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "f",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "c_void_param",
+    "language": "c",
+    "source": "int f(void) { return 0; }\nvoid driver() { f(); }\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "f"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "void driver() {\n    f(1, /*c*/ 2);\n}",
+          "end_line": 4,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "f",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_arity_skips_comment_c",
+    "language": "c",
+    "source": "\nvoid driver() {\n    f(1, /*c*/ 2);\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "discovered_macros": [
+          "DECLARE_ASN1_FUNCTIONS",
+          "IMPLEMENT_ASN1_FUNCTIONS"
+        ],
+        "macro_healed": 1,
+        "symbols": [
+          {
+            "end_line": 18,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "MyType_new",
+            "start_line": 15
+          },
+          {
+            "end_line": 11,
+            "kind": "struct_specifier",
+            "language": "c",
+            "name": "st_MyType",
+            "start_line": 8
+          },
+          {
+            "end_line": 4,
+            "kind": "type_definition",
+            "language": "c",
+            "name": "MyType",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "calloc"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "type_definition",
+          "content": "#include <stdio.h>\ntypedef struct st_MyType MyType;\nDECLARE_ASN1_FUNCTIONS(MyType)\nstruct st_MyType {\n    int id;\n    char *name;\n}\nIMPLEMENT_ASN1_FUNCTIONS(MyType)\nstatic int MyType_new(MyType **out) {\n    *out = calloc(1, sizeof(MyType));\n    return *out != NULL;\n}",
+          "end_line": 18,
+          "literals": [],
+          "name": "MyType",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "calloc",
+                "receiver": null
+              }
+            ],
+            "imports": [
+              "stdio.h"
+            ],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 18,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "MyType_new",
+          "start_line": 13
+        },
+        {
+          "end_line": 4,
+          "kind": "type_definition",
+          "language": "c",
+          "name": "MyType",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "test_collect_symbols_after_macro_heal_c_openssl_style",
+    "language": "c",
+    "source": "\n#include <stdio.h>\n\ntypedef struct st_MyType MyType;\n\nDECLARE_ASN1_FUNCTIONS(MyType)\n\nstruct st_MyType {\n    int id;\n    char *name;\n};\n\nIMPLEMENT_ASN1_FUNCTIONS(MyType)\n\nstatic int MyType_new(MyType **out) {\n    *out = calloc(1, sizeof(MyType));\n    return *out != NULL;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 10,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "driver",
+            "start_line": 7
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "helper"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "process"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "#include <foo.h>\n#include \"bar.h\"\n\nint helper(int x);\nint driver(int x) {\n    int r = helper(x);\n    return process(r);\n}",
+          "end_line": 10,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "helper",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "process",
+                "receiver": null
+              }
+            ],
+            "imports": [
+              "foo.h",
+              "bar.h"
+            ],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 10,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "driver",
+          "start_line": 7
+        }
+      ]
+    },
+    "id": "test_extract_refs_c",
+    "language": "c",
+    "source": "\n#include <foo.h>\n#include \"bar.h\"\n\nint helper(int x);\n\nint driver(int x) {\n    int r = helper(x);\n    return process(r);\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "f",
+            "start_line": 2
+          },
+          {
+            "end_line": 1,
+            "kind": "struct_specifier",
+            "language": "c",
+            "name": "A",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "struct_specifier",
+          "content": "struct A { int x; }\nint f(void) { return 0; }",
+          "end_line": 2,
+          "literals": [],
+          "name": "A",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "f",
+          "start_line": 2
+        },
+        {
+          "end_line": 1,
+          "kind": "struct_specifier",
+          "language": "c",
+          "name": "A",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_parse_error_counter_absent_on_clean_c",
+    "language": "c",
+    "source": "struct A { int x; };\nint f(void) { return 0; }\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "discovered_macros": [
+          "MY_EXPORT_ANNOTATION"
+        ],
+        "macro_healed": 1,
+        "symbols": [
+          {
+            "end_line": 5,
+            "kind": "function_definition",
+            "language": "c",
+            "name": "foo",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "MY_EXPORT_ANNOTATION\nint foo(void) {\n    return 0;\n}",
+          "end_line": 5,
+          "literals": [],
+          "name": "foo",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 5,
+          "kind": "function_definition",
+          "language": "c",
+          "name": "foo",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_parse_error_counter_set_on_macro_c",
+    "language": "c",
+    "source": "\nMY_EXPORT_ANNOTATION\nint foo(void) {\n    return 0;\n}\n"
+  }
+]
