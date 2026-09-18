@@ -1505,3 +1505,11 @@ def test_batched():
     assert list(batched([0, 1, 2, 3, 4], 2)) == [[0, 1], [2, 3], [4]]
     assert list(batched([0, 1, 2, 3], 2)) == [[0, 1], [2, 3]]
     assert list(batched([], 2)) == []
+
+
+def test_skeleton_all_names_are_store_globals():
+    """Guards the store.py star import: every name in skeleton.__all__ must
+    land in chonks.store's namespace."""
+    import chonks.core.skeleton as skeleton
+    import chonks.store
+    assert set(skeleton.__all__) <= set(vars(chonks.store))
