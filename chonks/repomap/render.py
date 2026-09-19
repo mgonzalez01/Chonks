@@ -8,52 +8,14 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
+from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
+
 from .pagerank import compute_pagerank_global
 
 if TYPE_CHECKING:
     from chonks.store import Store
 
-_NODE_TYPE_PREFIX: dict[str, str] = {
-    # Python
-    "function_definition": "function",
-    "class_definition": "class",
-    "decorated_definition": "function",
-    # C / C++
-    "function_declarator": "function",
-    "class_specifier": "class",
-    "struct_specifier": "struct",
-    "enum_specifier": "enum",
-    "namespace_definition": "namespace",
-    "template_declaration": "template",
-    # C: adds two node types beyond cpp's set (enum/struct already covered above).
-    "union_specifier": "union",
-    "type_definition": "typedef",
-    # HLSL (cbuffer/tbuffer get the synthetic chunk_type "cbuffer")
-    "cbuffer": "cbuffer",
-    # C#
-    "class_declaration": "class",
-    "method_declaration": "method",
-    "interface_declaration": "interface",
-    "struct_declaration": "struct",
-    "enum_declaration": "enum",
-    "namespace_declaration": "namespace",
-    "destructor_declaration": "destructor",
-    "property_declaration": "property",
-    "operator_declaration": "operator",
-    "conversion_operator_declaration": "operator",
-    # Generic / fallback node types seen in multi-language corpora
-    "method_definition": "method",
-    "constructor_declaration": "method",
-    # JS / TS / TSX
-    "function_declaration": "function",
-    "generator_function_declaration": "function",
-    "abstract_class_declaration": "class",
-    "type_alias_declaration": "type",
-    # Arrow/function var assignments have no dedicated JS/TS node type, so
-    # chunk_type falls back to the declaration statement's own node type.
-    "lexical_declaration": "function",
-    "variable_declaration": "function",
-}
+_NODE_TYPE_PREFIX = _lang_merged("kind_labels", GENERIC_KIND_LABELS)
 
 _CHARS_PER_TOKEN = 4
 

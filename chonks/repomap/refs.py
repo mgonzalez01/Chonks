@@ -12,6 +12,7 @@ from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, Iterator
 
 from chonks.chunking import _call_entry_name, _definer_param_arity
+from chonks.languages import union as _lang_union
 
 from ._shared import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 
@@ -90,11 +91,7 @@ def _classify_mentions(
 # Chunk types that stand in for "this chunk IS a class" in
 # _definer_qualifiers; omits types whose call sites never carry a
 # receiver fingerprint anyway (JS/TS/lua).
-_CLASS_LIKE_CHUNK_TYPES = frozenset({
-    "class_specifier", "struct_specifier",                                 # cpp
-    "class_definition",                                                    # python / gdscript
-    "class_declaration", "struct_declaration", "interface_declaration",    # c_sharp
-})
+_CLASS_LIKE_CHUNK_TYPES = _lang_union("class_like_chunk_types")
 
 
 def _call_entry_fields(entry: "str | dict") -> tuple[str | None, str | None, int | None]:

@@ -285,8 +285,9 @@ _REFS_MAX_CALL_VARIANTS_PER_NAME = 8
 # definer-qualifier split.
 
 # Left-recursive grammars only: chain nests on the base/left side, so the
-# base field's rightmost leaf is the immediate receiver. cpp/c's
-# qualified_identifier is right-recursive and handled separately below.
+# base field's rightmost leaf is the immediate receiver. cpp's
+# qualified_identifier is right-recursive and handled by the cpp spec's
+# call_receiver hook.
 _CHAIN_BASE_FIELD: dict[str, str] = {
     "field_expression": "argument",
     "attribute": "object",
@@ -422,8 +423,8 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                             if spec.nested.break_inner:
                                 break
                 elif spec.bucket == "calls":
-                    # gdscript's chain is flat, so `c` itself carries no
-                    # receiver; use the sibling-scan helper instead.
+                    # gdscript's chain is flat, so `c` itself carries no receiver;
+                    # the gdscript call_receiver hook scans the siblings instead.
                     receiver = _receiver(n, c, src, lang)
                     add_call(
                         spec.name_fn(c, src),

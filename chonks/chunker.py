@@ -49,6 +49,7 @@ from chonks.embedder import (
     _should_truncate_and_retry,
     compute_embed_timeout,
 )
+from chonks.languages import get_or_none as _lang_spec
 from chonks.repomap import build_neighbors, build_refs, persist_pagerank
 from chonks.store import Store
 from chonks.summaries import build_folder_summaries
@@ -205,8 +206,9 @@ def _is_oversize_data_blob(fpath: Path, ext: str, limit: int) -> bool:
 def _file_metadata(stored_path: str, lang: str) -> dict | None:
     """File-level context not derivable from chunk content alone (only Python
     module dotted-path today). Open JSON column, so new keys need no migration."""
-    if lang == "python" and stored_path.endswith(".py"):
-        return {"module": stored_path[:-3].replace("/", ".")}
+    spec = _lang_spec(lang)
+    if spec is not None and spec.file_metadata is not None:
+        return spec.file_metadata(stored_path)
     return None
 
 

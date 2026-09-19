@@ -20,7 +20,7 @@ import sqlite_vec
 from chonks.core.batching import batched
 from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
 from chonks.core.skeleton import *
-from chonks.languages import CODE_LANGUAGES
+from chonks.languages import CODE_LANGUAGES, union as _lang_union
 
 SCHEMA_VERSION = 5
 
@@ -31,8 +31,8 @@ _HUBS_GLOBAL_MAX_CHUNKS = 100_000
 
 # Header/impl pairing (rebuild_hierarchy) is same-dir only; cross-dir layouts
 # (include/src) are not paired. Extension matching is case-insensitive.
-HEADER_EXTS = {"h", "hh", "hpp", "hxx"}
-IMPL_EXTS = {"c", "cc", "cpp", "cxx", "m", "mm"}
+HEADER_EXTS = _lang_union("header_exts")
+IMPL_EXTS = _lang_union("impl_exts")
 
 
 def _provenance_rollup(edge_types: dict[str, int]) -> dict[str, int]:

@@ -24,7 +24,7 @@ C = LanguageSpec(
     grammar="c",
     extensions=frozenset({".c"}),
     # struct/union/enum_specifier also match bare tag refs and forward decls;
-    # _is_boundary's C guard requires a body to treat one as a real boundary.
+    # the boundary_filters entry requires a body to treat one as a real boundary.
     boundary_nodes=frozenset({
         "function_definition", "struct_specifier", "union_specifier",
         "enum_specifier", "type_definition",
