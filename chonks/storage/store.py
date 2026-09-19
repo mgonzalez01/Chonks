@@ -1241,6 +1241,44 @@ class Store:
     # Graph v2 hierarchy (Stage 1)
     # ------------------------------------------------------------------
 
+    def all_file_paths(self) -> list[str]:
+        with self._lock:
+            return [r["path"] for r in
+                    self._conn.execute("SELECT path FROM files").fetchall()]
+
+    def clear_hierarchy(self) -> None:
+        with self._lock:
+            self._conn.execute("DELETE FROM graph_edges")
+            self._conn.execute("DELETE FROM graph_nodes")
+
+    def insert_graph_nodes(self, rows: list[tuple]) -> None:
+        with self._lock:
+            self._conn.executemany(
+                "INSERT INTO graph_nodes(id, kind, path, parent_id) VALUES(?,?,?,?)",
+                rows,
+            )
+
+    def insert_graph_edges(self, rows: list[tuple], ignore_duplicates: bool = False) -> None:
+        with self._lock:
+            if ignore_duplicates:
+                self._conn.executemany(
+                    "INSERT OR IGNORE INTO graph_edges(from_id, to_id, edge_type) "
+                    "VALUES(?,?,?)",
+                    rows,
+                )
+            else:
+                self._conn.executemany(
+                    "INSERT INTO graph_edges(from_id, to_id, edge_type) VALUES(?,?,?)",
+                    rows,
+                )
+
+    def insert_chunk_contains_edges(self) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO graph_edges(from_id, to_id, edge_type) "
+                "SELECT 'file:' || path, id, 'contains' FROM chunks"
+            )
+
     def get_graph_node(self, node_id: str) -> dict | None:
         """One graph_nodes row as a dict, or None if node_id doesn't exist."""
         with self._lock:
