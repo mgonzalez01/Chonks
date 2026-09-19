@@ -873,7 +873,7 @@ def test_index_db_resolution_prefers_cli_then_config(tmp_path, monkeypatch):
     """`chonks index --config cfg.json` must write the config's db,
     not the argparse default .db/chonks.db; an explicit --db still wins."""
     import json
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     cfg = tmp_path / "config.json"
     cfg_db = tmp_path / "from-config.db"
@@ -886,9 +886,9 @@ def test_index_db_resolution_prefers_cli_then_config(tmp_path, monkeypatch):
         def __exit__(self, *a): return False
         def stats(self): return {}
         def path_family_rows(self): return []
-    monkeypatch.setattr(chunker, "Store", FakeStore)
+    monkeypatch.setattr(index_cmd, "Store", FakeStore)
     import collections
-    monkeypatch.setattr(chunker, "index_paths",
+    monkeypatch.setattr(index_cmd, "index_paths",
                         lambda *a, **k: collections.defaultdict(int))
 
     src = tmp_path / "src"; src.mkdir()
@@ -898,7 +898,7 @@ def test_index_db_resolution_prefers_cli_then_config(tmp_path, monkeypatch):
     ]:
         captured.clear()
         try:
-            chunker.main(argv)
+            index_cmd.main(argv)
         except SystemExit:
             pass
         assert captured.get("db") == expected, (argv, captured)
@@ -918,7 +918,7 @@ def test_index_summary_warns_on_docs_dominated_family(tmp_path, monkeypatch, cap
     warning doctor.py's breakdown section does, sourced from the real DB
     state left behind by index_paths (not a re-derivation of it)."""
     import collections
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     def fake_index_paths(paths, store, embedder, **kwargs):
         chunks = (
@@ -929,14 +929,14 @@ def test_index_summary_warns_on_docs_dominated_family(tmp_path, monkeypatch, cap
         store.commit()
         return collections.defaultdict(int)
 
-    monkeypatch.setattr(chunker, "index_paths", fake_index_paths)
+    monkeypatch.setattr(index_cmd, "index_paths", fake_index_paths)
 
     src = tmp_path / "src"
     src.mkdir()
     (src / "a.py").write_text("x = 1\n")
 
     try:
-        chunker.main(["--db", str(tmp_path / "test.db"), str(src)])
+        index_cmd.main(["--db", str(tmp_path / "test.db"), str(src)])
     except SystemExit:
         pass
 
@@ -949,7 +949,7 @@ def test_index_summary_warns_on_docs_dominated_family(tmp_path, monkeypatch, cap
 def test_index_summary_silent_for_healthy_src_dominant_corpus(tmp_path, monkeypatch, capsys):
     """Normal code dominance (src/ = 90% of chunks, all code) must not warn."""
     import collections
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     def fake_index_paths(paths, store, embedder, **kwargs):
         chunks = (
@@ -960,14 +960,14 @@ def test_index_summary_silent_for_healthy_src_dominant_corpus(tmp_path, monkeypa
         store.commit()
         return collections.defaultdict(int)
 
-    monkeypatch.setattr(chunker, "index_paths", fake_index_paths)
+    monkeypatch.setattr(index_cmd, "index_paths", fake_index_paths)
 
     src = tmp_path / "src"
     src.mkdir()
     (src / "a.py").write_text("x = 1\n")
 
     try:
-        chunker.main(["--db", str(tmp_path / "test.db"), str(src)])
+        index_cmd.main(["--db", str(tmp_path / "test.db"), str(src)])
     except SystemExit:
         pass
 
@@ -1102,7 +1102,7 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
     CHONKS_KNN_BACKEND, which _Corpus reads); an already-set env var wins,
     and an unknown value is rejected at startup instead of silently running numpy."""
     import json
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     class FakeStore:
         def __init__(self, db): pass
@@ -1110,9 +1110,9 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
         def __exit__(self, *a): return False
         def stats(self): return {}
         def path_family_rows(self): return []
-    monkeypatch.setattr(chunker, "Store", FakeStore)
+    monkeypatch.setattr(index_cmd, "Store", FakeStore)
     import collections
-    monkeypatch.setattr(chunker, "index_paths",
+    monkeypatch.setattr(index_cmd, "index_paths",
                         lambda *a, **k: collections.defaultdict(int))
     src = tmp_path / "src"; src.mkdir()
 
@@ -1129,7 +1129,7 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
         if env_value is not None:
             os.environ["CHONKS_KNN_BACKEND"] = env_value
         try:
-            chunker.main(["--config", str(cfg), str(src)])
+            index_cmd.main(["--config", str(cfg), str(src)])
             return os.environ.get("CHONKS_KNN_BACKEND")
         except SystemExit as e:
             if e.code not in (None, 0):
@@ -1557,16 +1557,16 @@ def test_rebuild_knn_skips_build_refs_when_refs_present(tmp_path, monkeypatch):
     persisted; build_refs dominates wall clock at scale for no benefit."""
     import pytest
 
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     calls: list[str] = []
-    monkeypatch.setattr(chunker, "build_refs",
+    monkeypatch.setattr(index_cmd, "build_refs",
                          lambda *a, **k: calls.append("build_refs") or 0)
-    monkeypatch.setattr(chunker, "build_neighbors",
+    monkeypatch.setattr(index_cmd, "build_neighbors",
                          lambda *a, **k: calls.append("build_neighbors") or 0)
-    monkeypatch.setattr(chunker, "persist_pagerank",
+    monkeypatch.setattr(index_cmd, "persist_pagerank",
                          lambda *a, **k: calls.append("persist_pagerank") or 0)
-    monkeypatch.setattr(chunker, "build_folder_summaries",
+    monkeypatch.setattr(index_cmd, "build_folder_summaries",
                          lambda *a, **k: calls.append("build_folder_summaries")
                          or {"refreshed": 0, "pruned": 0})
 
@@ -1576,7 +1576,7 @@ def test_rebuild_knn_skips_build_refs_when_refs_present(tmp_path, monkeypatch):
     store.close()
 
     with pytest.raises(SystemExit) as exc:
-        chunker.main(["--db", str(tmp_path / "test.db"), "--rebuild-knn"])
+        index_cmd.main(["--db", str(tmp_path / "test.db"), "--rebuild-knn"])
     assert exc.value.code in (None, 0)
 
     assert calls == ["build_neighbors", "persist_pagerank", "build_folder_summaries"], (
@@ -1590,16 +1590,16 @@ def test_rebuild_knn_falls_back_to_full_chain_when_refs_empty(tmp_path, monkeypa
     to running build_refs too rather than leaving the graph unbuilt."""
     import pytest
 
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as index_cmd
 
     calls: list[str] = []
-    monkeypatch.setattr(chunker, "build_refs",
+    monkeypatch.setattr(index_cmd, "build_refs",
                          lambda *a, **k: calls.append("build_refs") or 0)
-    monkeypatch.setattr(chunker, "build_neighbors",
+    monkeypatch.setattr(index_cmd, "build_neighbors",
                          lambda *a, **k: calls.append("build_neighbors") or 0)
-    monkeypatch.setattr(chunker, "persist_pagerank",
+    monkeypatch.setattr(index_cmd, "persist_pagerank",
                          lambda *a, **k: calls.append("persist_pagerank") or 0)
-    monkeypatch.setattr(chunker, "build_folder_summaries",
+    monkeypatch.setattr(index_cmd, "build_folder_summaries",
                          lambda *a, **k: calls.append("build_folder_summaries")
                          or {"refreshed": 0, "pruned": 0})
 
@@ -1607,7 +1607,7 @@ def test_rebuild_knn_falls_back_to_full_chain_when_refs_empty(tmp_path, monkeypa
     store.close()
 
     with pytest.raises(SystemExit) as exc:
-        chunker.main(["--db", str(tmp_path / "test.db"), "--rebuild-knn"])
+        index_cmd.main(["--db", str(tmp_path / "test.db"), "--rebuild-knn"])
     assert exc.value.code in (None, 0)
 
     assert calls == ["build_refs", "build_neighbors", "persist_pagerank",
