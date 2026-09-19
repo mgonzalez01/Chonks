@@ -39,15 +39,17 @@ from .knn import (
     _topk_for_rows,
     build_neighbors,
 )
-from .refs import (
+from chonks.index.graph.call_resolve import (
     _arity_compatible,
+    _call_entry_fields,
+    _definer_qualifiers,
+    _discriminate_definers,
+)
+from .refs import (
     _bare_alias_definers,
     _build_graph,
     _build_refs_incremental,
-    _call_entry_fields,
     _classify_mentions,
-    _definer_qualifiers,
-    _discriminate_definers,
     _name_keys,
     _resolve_names,
     _xlang_pairs_for_names,
