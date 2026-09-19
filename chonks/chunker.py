@@ -4,7 +4,6 @@ segmentation lives in chunking.py, the embedding client in embedder.py.
 Supported languages and fallback rules are documented in DOCS.md.
 """
 
-import hashlib
 import json
 import logging
 import os
@@ -13,7 +12,6 @@ import sys
 import threading
 import time
 from collections import deque
-from concurrent.futures import Future
 from pathlib import Path
 
 import httpx
@@ -48,8 +46,30 @@ from chonks.embedder import (
     _should_truncate_and_retry,
     compute_embed_timeout,
 )
+from chonks.index.admission import (
+    DEFAULT_DATA_BLOB_SIZE_LIMIT,
+    DEFAULT_FALLBACK_EXTENSIONS,
+    _file_hash,
+    _is_oversize_data_blob,
+)
 from chonks.index.embed_retry import _batch_label, _embed_isolating, _embed_one_isolating
-from chonks.languages import get_or_none as _lang_spec
+from chonks.index.macro_memo import (
+    _MACRO_PERSIST_MIN_FILES,
+    _UNHEALABLE_HASH_CAP,
+    _vocab_fingerprint,
+)
+from chonks.index.pipeline import (
+    EMBEDDER_DOWN_THRESHOLD,
+    EmbedderDownError,
+    NoProgressError,
+    _DaemonPool,
+    _SENTINEL,
+)
+from chonks.index.rows import (
+    _chunk_id,
+    _chunk_metadata,
+    _file_metadata,
+)
 from chonks.repomap import build_neighbors, build_refs, persist_pagerank
 from chonks.store import Store
 from chonks.summaries import build_folder_summaries
@@ -60,169 +80,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Incremental indexer
 # ---------------------------------------------------------------------------
-
-def _file_hash(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:  # 64KB is an arbitrary streaming-read size, not a format constant
-        for block in iter(lambda: f.read(65536), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
-def _chunk_id(path: str, start_line: int, content: str) -> str:
-    # Hash the full content, not a truncated prefix, so two chunks at the same
-    # path:start_line that differ only later still get different ids. Otherwise
-    # INSERT OR REPLACE would silently overwrite one with the other.
-    key = f"{path}:{start_line}:{content}"
-    return hashlib.sha256(key.encode()).hexdigest()[:16]
-
-
-_SENTINEL = object()  # pipeline end-of-stream marker
-
-
-class _DaemonPool:
-    """Daemon-thread ThreadPoolExecutor stand-in: stdlib non-daemon workers
-    would block process shutdown if one hangs inside the embedder HTTP call.
-    Safe because a batch only counts once commit_phase writes it under the lock."""
-
-    def __init__(self, max_workers: int):
-        self._q: queue.Queue = queue.Queue()
-        self._threads = [
-            threading.Thread(target=self._worker, daemon=True,
-                             name=f"embed-pool-{i}")
-            for i in range(max_workers)
-        ]
-        for t in self._threads:
-            t.start()
-
-    def _worker(self) -> None:
-        while True:
-            item = self._q.get()
-            if item is None:
-                return
-            fut, fn, args = item
-            try:
-                fut.set_result(fn(*args))
-            except BaseException as e:
-                fut.set_exception(e)
-
-    def submit(self, fn, *args):
-        fut: Future = Future()
-        self._q.put((fut, fn, args))
-        return fut
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc) -> None:
-        for _ in self._threads:
-            self._q.put(None)  # wake idle workers; wedged ones are daemon
-
-
-class NoProgressError(RuntimeError):
-    """Raised by index_paths' progress monitor when no embedding batch has
-    committed within `no_progress_timeout` seconds, since a wedged embedder
-    thread would otherwise hang the run silently forever."""
-
-
-class EmbedderDownError(RuntimeError):
-    """After EMBEDDER_DOWN_THRESHOLD consecutive whole-batch failures (non-4xx).
-    A dead embedder fails fast, which resets the no-progress watchdog's clock
-    every time, so this circuit breaker catches what that watchdog can't."""
-
-
-# Non-4xx whole-batch failures before EmbedderDownError aborts. Counts only
-# the outer failure, not _embed_isolating's nested per-chunk ones (those are
-# normal). 5 balances tolerating a network blip against a fast abort.
-EMBEDDER_DOWN_THRESHOLD = 5
-
-# A macro must heal >= this many files to be persisted; otherwise a one-off
-# false-admit from a single weird file poisons every future index.
-_MACRO_PERSIST_MIN_FILES = 2
-
-# Bound on the persisted unhealable-content hash set. NOT cleared on --force,
-# since surviving repeat force-reindexes of a partly-unhealable corpus is the
-# point; FIFO-capped so it can't grow unbounded.
-_UNHEALABLE_HASH_CAP = 100_000
-
-
-def _vocab_fingerprint(vocab: set[str]) -> str:
-    """Invalidates the unhealable-content memo when the vocab changes: a file
-    healing depends on which macros are pre-blanked, so a memo built under a
-    narrower vocab must be dropped once the vocab grows."""
-    return hashlib.sha256("\n".join(sorted(vocab)).encode()).hexdigest()
-
-
-DEFAULT_FALLBACK_EXTENSIONS = [
-    ".html", ".vue", ".svelte", ".md", ".markdown",
-    ".yaml", ".yml", ".toml", ".json",
-]
-
-# .md is excluded from the size guard (often the best doc, never gated);
-# .html is included since at this size it's a generated bundle, not
-# hand-written docs.
-DATA_BLOB_EXTENSIONS = {".json", ".yaml", ".yml", ".toml", ".html"}
-
-# Size threshold (bytes) above which a DATA_BLOB_EXTENSIONS file is skipped
-# rather than chunked.
-DEFAULT_DATA_BLOB_SIZE_LIMIT = 256 * 1024
-
-# Second size-guard family: bundles that look like real source by size alone,
-# so this also requires line density over MINIFIED_AVG_LINE_LEN (minified
-# output only).
-MINIFIED_GUARD_EXTENSIONS = {".js", ".mjs", ".cjs", ".css"}
-MINIFIED_AVG_LINE_LEN = 500
-
-
-def _is_oversize_data_blob(fpath: Path, ext: str, limit: int) -> bool:
-    """True if `fpath` should be skipped under the data-blob policy instead
-    of queued for chunking. `limit` <= 0 disables the guard entirely."""
-    if limit <= 0:
-        return False
-    is_data = ext in DATA_BLOB_EXTENSIONS
-    is_bundle_ext = ext in MINIFIED_GUARD_EXTENSIONS
-    if not (is_data or is_bundle_ext):
-        return False
-    try:
-        size = fpath.stat().st_size
-    except OSError:
-        return False
-    if size <= limit:
-        return False
-    if is_data:
-        return True
-    # Sample the first 64KB rather than the whole file: density is uniform in
-    # minified output, and reading a 50MB bundle just to decide to skip it
-    # defeats the point.
-    try:
-        with open(fpath, "rb") as f:
-            sample = f.read(65536)
-    except OSError:
-        return False
-    lines = max(1, sample.count(b"\n"))
-    return len(sample) / lines > MINIFIED_AVG_LINE_LEN
-
-
-def _file_metadata(stored_path: str, lang: str) -> dict | None:
-    """File-level context not derivable from chunk content alone (only Python
-    module dotted-path today). Open JSON column, so new keys need no migration."""
-    spec = _lang_spec(lang)
-    if spec is not None and spec.file_metadata is not None:
-        return spec.file_metadata(stored_path)
-    return None
-
-
-def _chunk_metadata(file_metadata: dict | None, refs: dict | None) -> dict | None:
-    """Merge file-level metadata with a chunk's AST-derived refs. Only
-    non-empty ref lists are added, so untouched chunks keep the column as
-    before typed edges existed."""
-    md = dict(file_metadata) if file_metadata else {}
-    for key in ("calls", "imports", "inherits"):
-        vals = (refs or {}).get(key)
-        if vals:
-            md[key] = vals
-    return md or None
-
 
 def index_paths(
     paths: list[str | Path],
