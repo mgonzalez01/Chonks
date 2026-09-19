@@ -62,6 +62,8 @@ HLSL = LanguageSpec(
         "struct_specifier": "struct",
         "cbuffer": "cbuffer",
     },
+    # BUG preserved: no LiteralSpec, so find_by_message sees no HLSL string.
+    # A fix changes stored chunk metadata, so an indexed repo needs a re-index.
     display_name="HLSL",
 )
 

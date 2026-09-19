@@ -74,6 +74,9 @@ C_SHARP = LanguageSpec(
         "conversion_operator_declaration": "operator",
         "constructor_declaration": "method",
     },
+    # BUG preserved: a named argument (`x: 1`) has the node type `argument`,
+    # the same as a positional one, so call arity counts it as positional.
+    # A fix changes stored chunk metadata, so an indexed repo needs a re-index.
     literals=LiteralSpec(
         leaf_types=("string_literal", "verbatim_string_literal", "interpolated_string_expression"),
         plus_type="binary_expression"),

@@ -1,6 +1,6 @@
 """chunking.py: tree-sitter AST segmentation (cAST-style). Pure,
 dependency-light core of the indexer, bytes + language tag in, chunk dicts
-out, no I/O/embedding/DB. Languages: _EXT_TO_LANG; text fallback: segment_text_file."""
+out, no I/O/embedding/DB. Languages: chonks.languages.describe(); text fallback: segment_text_file."""
 
 import bisect
 import logging
@@ -66,8 +66,7 @@ FALLBACK_OVERLAP_LINES = 5
 # adversarial file can loop the parser indefinitely.
 PARSE_TIMEOUT_MICROS = 30_000_000  # 30 seconds
 
-# file extension -> (tree-sitter language, structural node types that
-# become chunk boundaries).
+# language -> structural node types that become chunk boundaries.
 _BOUNDARY_NODES = _lang_table("boundary_nodes")
 
 # Container nodes: recurse through them to find inner boundaries.
@@ -874,6 +873,8 @@ def _merge_small(segs: list, src: bytes) -> list:
 # Identity-free trivia (lone '#if'/'#endif', bare 'namespace X {') has no
 # name of its own, so it's safe to fold into a neighbour without touching
 # ITS name, unlike _merge_small's guard, which protects the opposite.
+# BUG preserved: both patterns are C and C++ syntax, but they run for every
+# language. A fix moves chunk boundaries and needs a CHUNKER_VERSION bump.
 _PREPROC_CONDITIONAL_RE = re.compile(r"^#\s*(if|ifdef|ifndef|elif|else|endif)\b")
 _CONTAINER_OPEN_RE = re.compile(r'^(namespace\s+[\w:]+\s*\{|extern\s+"C"\s*\{)\s*$')
 # Braces/parens/semicolons/commas only (a lone "}", "};", "} {", …).
@@ -1452,7 +1453,7 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
 
 # Line-comment prefixes per language (block comments /* */ handled separately).
 _COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
-_COMMENT_PREFIXES_DEFAULT = ("//", "/*", "*/", "*")  # cpp / c / c_sharp / hlsl
+_COMMENT_PREFIXES_DEFAULT = ("//", "/*", "*/", "*")  # every language without its own prefixes
 # Divider/comment punctuation: a span of only these (+ whitespace) has no text.
 _DIVIDER_RE = re.compile(r"[/*#=\-_~<>|+.\s]")
 
