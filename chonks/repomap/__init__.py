@@ -7,8 +7,8 @@ Split by subsystem:
 - .knn:       k-NN neighbor graph (backend detection, _Corpus, build_neighbors).
 - .refs:      chunk_refs graph construction (mentions/xlang/typed edges, build_refs).
 - .pagerank:  PageRank compute/persist/read.
-- .render:    repo-map text rendering (build_repomap).
-- .trace:     trace_path bidirectional BFS.
+- chonks.retrieval.repomap:    repo-map text rendering (build_repomap).
+- chonks.retrieval.trace:     trace_path bidirectional BFS.
 
 This module re-exports every name any production or test file imports
 directly from `chonks.repomap`, including private (underscore) names that
@@ -60,7 +60,7 @@ from .pagerank import (
     compute_pagerank_global,
     persist_pagerank,
 )
-from .render import (
+from chonks.retrieval.repomap import (
     _NODE_TYPE_PREFIX,
     _build_repomap_from_chunks,
     _dir_overview,
@@ -68,7 +68,7 @@ from .render import (
     _summarize_omitted_subtrees,
     build_repomap,
 )
-from .trace import (
+from chonks.retrieval.trace import (
     _adjacency,
     _bidirectional_bfs,
     _edge_rank,

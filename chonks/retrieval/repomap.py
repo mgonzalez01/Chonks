@@ -10,8 +10,6 @@ import networkx as nx
 
 from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
 
-from .pagerank import compute_pagerank_global
-
 if TYPE_CHECKING:
     from chonks.store import Store
 
@@ -229,6 +227,7 @@ def build_repomap(
         scope = f"under '{path_prefix}'" if path_prefix else "in the index"
         return f"No named symbols found {scope}."
 
+    from chonks.repomap.pagerank import compute_pagerank_global
     pr = compute_pagerank_global(store)
 
     # Per-file mean of known (covered-by-a-chunk) symbol scores, used as the

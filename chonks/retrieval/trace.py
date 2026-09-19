@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from ._shared import edge_provenance
+from chonks.core.edges import edge_provenance
 
 if TYPE_CHECKING:
     from chonks.store import Store
