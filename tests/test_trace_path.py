@@ -102,6 +102,7 @@ def test_trace_path_no_structural_path(tmp_path):
     result = trace_path(store, "fnA", "fnB")
     assert result["found"] is False
     assert "error" in result
+    assert "reason" not in result
     assert result["used_semantic"] is False
 
 
@@ -115,10 +116,12 @@ def test_trace_path_unknown_symbol(tmp_path):
     result = trace_path(store, "doesNotExist", "fnA")
     assert result["found"] is False
     assert "doesNotExist" in result["error"]
+    assert result["reason"] == "unknown_symbol"
 
     result2 = trace_path(store, "fnA", "alsoMissing")
     assert result2["found"] is False
     assert "alsoMissing" in result2["error"]
+    assert result2["reason"] == "unknown_symbol"
 
 
 def test_trace_path_multiple_definitions_picks_reachable_one(tmp_path):

@@ -170,14 +170,15 @@ def trace_path(
 ) -> dict:
     """Shortest path from `from_symbol` to `to_symbol` over chunk_refs and,
     as an include_semantic=True fallback only, chunk_neighbors. Returns
-    {"found", "hops": [...], "used_semantic"} or {"found": False, "error"}."""
+    {"found", "hops": [...], "used_semantic"} or {"found": False, "error"} (and
+    "reason": "unknown_symbol" when a symbol does not exist)."""
     from_ids = store.resolve_symbol_chunk_ids(from_symbol)
     to_ids = store.resolve_symbol_chunk_ids(to_symbol)
 
     if not from_ids:
-        return {"found": False, "error": f"Unknown symbol: {from_symbol!r}", "used_semantic": False}
+        return {"found": False, "error": f"Unknown symbol: {from_symbol!r}", "reason": "unknown_symbol", "used_semantic": False}
     if not to_ids:
-        return {"found": False, "error": f"Unknown symbol: {to_symbol!r}", "used_semantic": False}
+        return {"found": False, "error": f"Unknown symbol: {to_symbol!r}", "reason": "unknown_symbol", "used_semantic": False}
 
     path = _bidirectional_bfs(store, from_ids, to_ids, max_depth, max_fanout, include_semantic=False)
     used_semantic = False

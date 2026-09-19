@@ -568,7 +568,7 @@ def trace(req: TraceRequest) -> JSONResponse:
         req.project or DEFAULT_PROJECT, req.from_symbol, req.to_symbol,
         result["found"], result.get("depth"),
     )
-    if not result["found"] and "Unknown symbol" in result.get("error", ""):
+    if not result["found"] and result.get("reason") == "unknown_symbol":
         raise HTTPException(404, result["error"])
     return JSONResponse(result)
 
