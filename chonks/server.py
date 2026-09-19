@@ -37,6 +37,7 @@ from chonks.embedder import (
 from chonks.query_reformulate import DEFAULT_REFORMULATE_QUERY
 from chonks.repomap import build_repomap, trace_path
 from chonks.research import deep_research
+from chonks.retrieval import graph_queries, message_match
 from chonks.searcher import DEFAULT_BLEND_ALPHA, DEFAULT_BLEND_BETA, DEFAULT_FILE_CAP, Searcher, rank_files
 from chonks.store import Store
 
@@ -382,7 +383,7 @@ def usages(req: UsagesRequest) -> JSONResponse:
     """Who references `name`. The above-cap case returns `content_matches`
     (FTS scan hits) as a separate list, not merged into `usages`."""
     project = _get_project(req.project)
-    result = project["store"].find_usages(req.name, req.path_prefix, limit=req.limit)
+    result = graph_queries.find_usages(project["store"], req.name, req.path_prefix, limit=req.limit)
     rows = result["results"]
     logger.info("usages  project=%r  name=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, len(rows))
@@ -398,7 +399,7 @@ def impact(req: ImpactRequest) -> JSONResponse:
     for the field-level contract and Store.get_impact for the ranking."""
     project = _get_project(req.project)
     try:
-        result = project["store"].get_impact(
+        result = graph_queries.get_impact(project["store"],
             req.name, req.path_prefix, limit=req.limit or 20,
             rank_by=req.rank_by or "pagerank_sum",
         )
@@ -417,7 +418,7 @@ def outgoing(req: OutgoingRequest) -> JSONResponse:
     """Forward counterpart to /usages. Zero outgoing edges is a valid empty
     result (note: None), distinct from a symbol-not-found miss."""
     project = _get_project(req.project)
-    result = project["store"].find_outgoing(req.name, req.path_prefix, limit=req.limit)
+    result = graph_queries.find_outgoing(project["store"], req.name, req.path_prefix, limit=req.limit)
     rows = result["results"]
     logger.info("outgoing  project=%r  name=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, len(rows))
@@ -507,9 +508,9 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
     if req.definition_source:
         _attach_definition_source(store, definitions, req.definition_source_max_chars)
 
-    usages_result = store.find_usages(req.name, req.path_prefix, limit=req.usages_limit or 30)
-    outgoing_result = store.find_outgoing(req.name, req.path_prefix, limit=req.outgoing_limit or 30)
-    impact_result = store.get_impact(req.name, req.path_prefix, limit=req.impact_limit or 10)
+    usages_result = graph_queries.find_usages(store, req.name, req.path_prefix, limit=req.usages_limit or 30)
+    outgoing_result = graph_queries.find_outgoing(store, req.name, req.path_prefix, limit=req.outgoing_limit or 30)
+    impact_result = graph_queries.get_impact(store, req.name, req.path_prefix, limit=req.impact_limit or 10)
 
     logger.info(
         "investigate  project=%r  name=%r  definitions=%d  usages=%d  outgoing=%d  impact_files=%d",
@@ -542,7 +543,7 @@ def hubs(req: HubsRequest) -> JSONResponse:
     """path_prefix scopes the hub chunks themselves, not their referrers."""
     project = _get_project(req.project)
     try:
-        result = project["store"].get_hubs(
+        result = graph_queries.get_hubs(project["store"],
             req.path_prefix, limit=req.limit or 20, edge_types=req.edge_types,
         )
     except ValueError as e:
@@ -578,7 +579,7 @@ def find_by_message(req: FindByMessageRequest) -> JSONResponse:
     find the source literal that emitted it, including through format holes;
     see DOCS.md for the field-level contract."""
     project = _get_project(req.project)
-    result = project["store"].find_by_message(req.message, limit=req.limit or 20)
+    result = message_match.find_by_message(project["store"], req.message, limit=req.limit or 20)
     rows = result["results"]
     logger.info("find_by_message  project=%r  hits=%d  truncated=%s",
                 req.project or DEFAULT_PROJECT, len(rows), result["truncated"])

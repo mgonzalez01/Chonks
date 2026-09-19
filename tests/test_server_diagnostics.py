@@ -195,15 +195,15 @@ def test_investigate_endpoint_truncates_source_at_small_budget(monkeypatch, tmp_
 
 
 def test_investigate_endpoint_short_circuits_on_total_miss(monkeypatch, tmp_path):
+    import chonks.retrieval.graph_queries as graph_queries
     project = _setup_default_project(monkeypatch, tmp_path)
-    store = project["store"]
 
     def _boom(*a, **kw):
         raise AssertionError("should not be called on a total miss")
 
-    monkeypatch.setattr(store, "find_usages", _boom)
-    monkeypatch.setattr(store, "find_outgoing", _boom)
-    monkeypatch.setattr(store, "get_impact", _boom)
+    monkeypatch.setattr(graph_queries, "find_usages", _boom)
+    monkeypatch.setattr(graph_queries, "find_outgoing", _boom)
+    monkeypatch.setattr(graph_queries, "get_impact", _boom)
 
     req = server.InvestigateRequest(name="doesNotExist")
     body = json.loads(server.investigate(req).body)
