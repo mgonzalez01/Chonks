@@ -34,7 +34,7 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.searcher": "retrieval",
     "chonks.server": "serve",
     "chonks.store": "facade",
-    "chonks.summaries": "index",
+    "chonks.summaries": "facade",
 }
 
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
