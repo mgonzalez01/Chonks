@@ -3,7 +3,7 @@ import sqlite3
 
 import numpy as np
 import pytest
-from chonks.chunking import CODE_LANGUAGES
+from chonks.languages import CODE_LANGUAGES
 from chonks.store import Store, _chunk_kind_clause
 
 
