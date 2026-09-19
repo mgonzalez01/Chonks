@@ -11,7 +11,6 @@ from collections import Counter
 
 import pytest
 
-import chonks.store as store_mod
 from chonks.repomap import build_refs
 from chonks.store import Store
 
@@ -283,13 +282,14 @@ def test_hubs_old_db_fallback_still_works_with_empty_indegree_table(tmp_path):
 
 
 def test_hubs_global_guard_still_fires_on_empty_indegree_table(tmp_path, monkeypatch):
+    import chonks.retrieval.graph_queries as graph_queries
     store = Store(tmp_path / "old.db")
     store.insert_chunks(
         [_chunk("hub", "src/base.cpp", "Base"), _chunk("r1", "src/a.cpp", "a1")],
         [_embed(), _embed()],
     )
     store.insert_refs([("r1", "hub", "calls")])
-    monkeypatch.setattr(store_mod, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
+    monkeypatch.setattr(graph_queries, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
 
     with pytest.raises(ValueError, match="path_prefix"):
         store.get_hubs()

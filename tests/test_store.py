@@ -1307,14 +1307,14 @@ def test_get_hubs_global_guard_large_corpus(tmp_path, monkeypatch):
     """Unscoped get_hubs on a large corpus must refuse loudly (measured >10
     min at 385k chunks, store lock held for the whole walk) rather than wedge
     the server; scoped calls stay allowed."""
-    import chonks.store as store_mod
+    import chonks.retrieval.graph_queries as graph_queries
     store = _make_store(tmp_path)
     store.insert_chunks(
         [_chunk("h1", "src/core.cpp", "Core"), _chunk("h2", "src/user.cpp", "use")],
         [_fake_embedding()] * 2,
     )
     store.insert_refs([("h2", "h1", "calls")])
-    monkeypatch.setattr(store_mod, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
+    monkeypatch.setattr(graph_queries, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
     with pytest.raises(ValueError, match="path_prefix"):
         store.get_hubs()
     assert store.get_hubs(path_prefix="src")["hubs"]  # scoped branch unaffected

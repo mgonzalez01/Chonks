@@ -8,32 +8,16 @@ import sqlite3
 from collections import defaultdict
 from typing import Any
 
-from chonks.core.batching import batched
-from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, edge_provenance
+from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES
 from chonks.core.skeleton import *
 from chonks.languages import union as _lang_union
 from chonks.storage.schema import SCHEMA_VERSION
 from chonks.storage.store import Store as _RowStore, _chunk_kind_clause
 
-# Unscoped get_hubs scans all of chunk_refs under the store lock, which can
-# block every other request for minutes on a huge corpus. Above this size
-# the global branch requires a path_prefix instead.
-_HUBS_GLOBAL_MAX_CHUNKS = 100_000
-
 # Header/impl pairing (rebuild_hierarchy) is same-dir only; cross-dir layouts
 # (include/src) are not paired. Extension matching is case-insensitive.
 HEADER_EXTS = _lang_union("header_exts")
 IMPL_EXTS = _lang_union("impl_exts")
-
-
-def _provenance_rollup(edge_types: dict[str, int]) -> dict[str, int]:
-    """Roll up {edge_type: count} into {provenance: count}; shared by
-    get_hubs' precomputed and live paths so both use the same rollup."""
-    out: dict[str, int] = {}
-    for et, n in edge_types.items():
-        prov = edge_provenance(et)
-        out[prov] = out.get(prov, 0) + n
-    return out
 
 
 # ---------------------------------------------------------------------------
@@ -483,193 +467,7 @@ class Store(_RowStore):
 
         return {"nodes": node_count, "edges": edge_count}
 
-    # ------------------------------------------------------------------
-    # Persisted in-degree
-    # ------------------------------------------------------------------
-
     def get_hubs(self, path_prefix: str | None = None, limit: int = 20,
                  edge_types: list[str] | None = None) -> dict[str, Any]:
-        """Named chunks ranked by in-degree, then PageRank, then path for
-        determinism. Dispatches on chunk_indegree: precomputed when
-        possible, else a live fallback gated by _get_hubs_live's guard."""
-        # [] normalizes to None: the live path's `is not None` check would
-        # otherwise filter every type out on an empty list.
-        edge_types_set: set[str] | None = None
-        if edge_types:
-            edge_types_set = set(edge_types)
-            invalid = edge_types_set - _HUB_EDGE_TYPES
-            if invalid:
-                raise ValueError(
-                    f"invalid edge_types {sorted(invalid)!r} — valid types are "
-                    f"{sorted(_HUB_EDGE_TYPES)}"
-                )
-
-        if self.has_indegree():
-            return self._get_hubs_precomputed(path_prefix, limit, edge_types_set)
-        return self._get_hubs_live(path_prefix, limit, edge_types_set)
-
-    def _get_hubs_precomputed(
-        self, path_prefix: str | None, limit: int, edge_types_set: set[str] | None,
-    ) -> dict[str, Any]:
-        """get_hubs via chunk_indegree: one aggregate query covers both
-        scoped and unscoped cases, since this table stays small regardless
-        of corpus size (unlike chunk_refs)."""
-        clauses = ["c.name IS NOT NULL"]
-        params: list[Any] = []
-        if edge_types_set:
-            placeholders = ",".join("?" * len(edge_types_set))
-            clauses.append(f"ci.edge_type IN ({placeholders})")
-            params.extend(sorted(edge_types_set))
-        if path_prefix:
-            # RANGE, not LIKE: an ESCAPE clause disables SQLite's LIKE-prefix
-            # index optimization (same trick as _get_hubs_live).
-            lo = path_prefix.rstrip("/\\")
-            clauses.append("c.path >= ? AND c.path < ?")
-            params.extend([lo, lo + "\U0010FFFF"])
-        where = " AND ".join(clauses)
-        params.append(limit)
-        with self._lock:
-            rows = self._conn.execute(
-                f"""
-                SELECT c.id AS id, c.path AS path, c.name AS name,
-                       c.chunk_type AS chunk_type, c.start_line AS start_line,
-                       SUM(ci.n) AS in_degree, COALESCE(pr.score, 0.0) AS pagerank
-                FROM chunk_indegree ci
-                JOIN chunks c ON c.id = ci.chunk_id
-                LEFT JOIN chunk_pagerank pr ON pr.chunk_id = ci.chunk_id
-                WHERE {where}
-                GROUP BY ci.chunk_id
-                ORDER BY in_degree DESC, pagerank DESC, c.path ASC, c.start_line ASC
-                LIMIT ?
-                """,
-                params,
-            ).fetchall()
-        if not rows:
-            return {"hubs": []}
-
-        ids = [r["id"] for r in rows]
-        breakdown: dict[str, dict[str, int]] = {}
-        with self._lock:
-            for batch in batched(ids, 900):
-                ph = ",".join("?" * len(batch))
-                type_clauses = [f"chunk_id IN ({ph})"]
-                type_params: list[Any] = list(batch)
-                if edge_types_set:
-                    ph2 = ",".join("?" * len(edge_types_set))
-                    type_clauses.append(f"edge_type IN ({ph2})")
-                    type_params.extend(sorted(edge_types_set))
-                for r in self._conn.execute(
-                    f"SELECT chunk_id, edge_type, n FROM chunk_indegree WHERE "
-                    f"{' AND '.join(type_clauses)}",
-                    type_params,
-                ):
-                    breakdown.setdefault(r["chunk_id"], {})[r["edge_type"]] = r["n"]
-
-        return {"hubs": [{
-            "path": r["path"],
-            "name": r["name"],
-            "chunk_type": r["chunk_type"],
-            "start_line": r["start_line"],
-            "in_degree": r["in_degree"],
-            "pagerank": r["pagerank"],
-            "edge_types": breakdown.get(r["id"], {}),
-            "by_provenance": _provenance_rollup(breakdown.get(r["id"], {})),
-        } for r in rows]}
-
-    def _get_hubs_live(
-        self, path_prefix: str | None, limit: int, edge_types_set: set[str] | None,
-    ) -> dict[str, Any]:
-        """Live fallback for get_hubs when chunk_indegree is empty (old DB).
-        edge_types_set is filtered in Python, not pushed into SQL."""
-        if path_prefix:
-            # RANGE, not LIKE: chunks is wide, so an unindexed LIKE scan
-            # reads the whole corpus off disk. U+10FFFF bounds the range
-            # to exactly the lo-prefixed paths.
-            lo = path_prefix.rstrip("/\\")
-            with self._lock:
-                candidates = [dict(r) for r in self._conn.execute(
-                    "SELECT id, path, name, chunk_type, start_line FROM chunks"
-                    " WHERE name IS NOT NULL AND path >= ? AND path < ?",
-                    (lo, lo + "\U0010FFFF"),
-                ).fetchall()]
-            if not candidates:
-                return {"hubs": []}
-            ids = [c["id"] for c in candidates]
-            edge_counts = self._indegree_by_type(ids)
-            pagerank = self.get_pagerank_for_chunks(ids)
-            hubs: list[dict[str, Any]] = []
-            for c in candidates:
-                types = edge_counts.get(c["id"])
-                if not types:
-                    continue
-                if edge_types_set is not None:
-                    types = {t: n for t, n in types.items() if t in edge_types_set}
-                    if not types:
-                        continue
-                hubs.append({
-                    "path": c["path"],
-                    "name": c["name"],
-                    "chunk_type": c["chunk_type"],
-                    "start_line": c["start_line"],
-                    "in_degree": sum(types.values()),
-                    "pagerank": pagerank.get(c["id"], 0.0),
-                    "edge_types": types,
-                    "by_provenance": _provenance_rollup(types),
-                })
-            hubs.sort(key=lambda h: (-h["in_degree"], -h["pagerank"], h["path"], h["start_line"]))
-            return {"hubs": hubs[:limit]}
-
-        # Whole-corpus branch. Guarded by _HUBS_GLOBAL_MAX_CHUNKS: the
-        # GROUP BY over chunk_refs holds the store lock and can take minutes
-        # on a huge corpus, blocking every other request.
-        if self.count_chunks() > _HUBS_GLOBAL_MAX_CHUNKS:
-            raise ValueError(
-                "global /hubs on a corpus over "
-                f"{_HUBS_GLOBAL_MAX_CHUNKS} chunks requires precomputed "
-                "in-degree, and this DB doesn't have it yet (chunk_indegree "
-                "is empty) — re-index (or run the graph rebuild) to populate "
-                "it, or pass a path_prefix (or @subsystem) to scope the "
-                "request in the meantime"
-            )
-        with self._lock:
-            rows = self._conn.execute(
-                "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs"
-                " GROUP BY to_id, edge_type"
-            ).fetchall()
-        by_id: dict[str, dict[str, int]] = {}
-        for r in rows:
-            if edge_types_set is not None and r["edge_type"] not in edge_types_set:
-                continue
-            by_id.setdefault(r["to_id"], {})[r["edge_type"]] = r["n"]
-        by_degree: dict[int, list[str]] = {}
-        for cid, types in by_id.items():
-            by_degree.setdefault(sum(types.values()), []).append(cid)
-
-        hubs = []
-        for degree in sorted(by_degree, reverse=True):
-            ids = by_degree[degree]
-            meta: dict[str, dict[str, Any]] = {}
-            with self._lock:
-                for batch in batched(ids, 900):
-                    ph = ",".join("?" * len(batch))
-                    for r in self._conn.execute(
-                        "SELECT id, path, name, chunk_type, start_line FROM chunks"
-                        f" WHERE name IS NOT NULL AND id IN ({ph})", batch,
-                    ):
-                        meta[r["id"]] = dict(r)
-            pagerank = self.get_pagerank_for_chunks(list(meta))
-            group = [{
-                "path": meta[cid]["path"],
-                "name": meta[cid]["name"],
-                "chunk_type": meta[cid]["chunk_type"],
-                "start_line": meta[cid]["start_line"],
-                "in_degree": degree,
-                "pagerank": pagerank.get(cid, 0.0),
-                "edge_types": by_id[cid],
-                "by_provenance": _provenance_rollup(by_id[cid]),
-            } for cid in ids if cid in meta]
-            group.sort(key=lambda h: (-h["pagerank"], h["path"], h["start_line"]))
-            hubs.extend(group)
-            if len(hubs) >= limit:
-                break
-        return {"hubs": hubs[:limit]}
+        from chonks.retrieval.graph_queries import get_hubs
+        return get_hubs(self, path_prefix, limit=limit, edge_types=edge_types)
