@@ -77,6 +77,7 @@ C_SHARP = LanguageSpec(
     literals=LiteralSpec(
         leaf_types=("string_literal", "verbatim_string_literal", "interpolated_string_expression"),
         plus_type="binary_expression"),
+    display_name="C#",
 )
 
 LANGUAGES = (C_SHARP,)

@@ -55,6 +55,7 @@ C = LanguageSpec(
         "type_definition": "typedef",
     },
     literals=LiteralSpec(leaf_types=("string_literal",), concat_types=("concatenated_string",)),
+    display_name="C",
 )
 
 LANGUAGES = (C,)

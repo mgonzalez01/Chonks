@@ -13,6 +13,7 @@ from pathlib import Path
 
 from chonks.chunker import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.chunking import CHUNKER_VERSION
+from chonks.languages import describe as _describe_languages
 from chonks.ops.diagnostics import (
     dominance_warning,
     dotdir_breakdown,
@@ -391,6 +392,27 @@ def _table_sizes_section(conn: sqlite3.Connection) -> str:
     return "\n".join(lines)
 
 
+def _languages_section() -> str:
+    """One row per registered language, with its capability flags."""
+    lines = ["== Languages =="]
+    lines.append(f"{'language':<12} {'refs':<5} {'literals':<9} {'macro':<6} {'pairing':<8} extensions")
+    for row in _describe_languages():
+        lines.append(
+            f"{row['language']:<12} "
+            f"{'y' if row['typed_refs'] else '-':<5} "
+            f"{'y' if row['literals'] else '-':<9} "
+            f"{'y' if row['macro_heal'] else '-':<6} "
+            f"{'y' if row['pairing'] else '-':<8} "
+            f"{' '.join(row['extensions'])}"
+        )
+    lines.append("")
+    lines.append(
+        "refs: typed calls/imports/inherits edges. literals: find_by_message. "
+        "macro: C macro self-heal. pairing: header/impl pairing."
+    )
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
@@ -406,6 +428,7 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
         _edges_section(conn),
         _parse_health_section(conn),
         _table_sizes_section(conn),
+        _languages_section(),
     ]
     return "\n\n".join(sections) + "\n"
 

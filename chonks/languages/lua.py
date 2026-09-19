@@ -43,6 +43,7 @@ LUA = LanguageSpec(
     kind_labels={"function_declaration": "function"},
     literal_wrapper=literal_wrapper,
     literals=LiteralSpec(leaf_types=("string",), plus_type="binary_expression", plus_op=".."),
+    display_name="Lua",
 )
 
 LANGUAGES = (LUA,)

@@ -75,6 +75,7 @@ JAVASCRIPT = LanguageSpec(
         "variable_declaration": "function",
     },
     literals=LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
+    display_name="JavaScript",
 )
 
 TYPESCRIPT = LanguageSpec(
@@ -103,6 +104,7 @@ TYPESCRIPT = LanguageSpec(
         "enum_declaration": "enum",
     },
     literals=LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
+    display_name="TypeScript",
 )
 
 TSX = LanguageSpec(
@@ -129,6 +131,7 @@ TSX = LanguageSpec(
         "enum_declaration": "enum",
     },
     literals=LiteralSpec(leaf_types=("string", "template_string"), plus_type="binary_expression"),
+    display_name="TSX",
 )
 
 LANGUAGES = (JAVASCRIPT, TYPESCRIPT, TSX)

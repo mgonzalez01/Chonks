@@ -56,6 +56,7 @@ GDSCRIPT = LanguageSpec(
     class_like_chunk_types=frozenset({"class_definition"}),
     kind_labels={"function_definition": "function", "class_definition": "class"},
     literals=LiteralSpec(leaf_types=("string",)),
+    display_name="GDScript",
 )
 
 LANGUAGES = (GDSCRIPT,)

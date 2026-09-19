@@ -479,3 +479,18 @@ def test_set_model_missing_db_errors(tmp_path):
     with pytest.raises(SystemExit):
         main(["--db", str(tmp_path / "nope.db"), "--set-model", "x"])
     assert not (tmp_path / "nope.db").exists()
+
+
+def test_languages_section_lists_every_language(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "== Languages ==" in report
+    assert f"{'language':<12} {'refs':<5} {'literals':<9} {'macro':<6} {'pairing':<8} extensions" in report
+    assert f"{'C++':<12} {'y':<5} {'y':<9} {'y':<6} {'y':<8} .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm" in report
+    assert f"{'HLSL':<12} {'-':<5} {'-':<9} {'-':<6} {'-':<8} .fx .fxh .hlsl" in report
+    assert report.endswith(
+        "refs: typed calls/imports/inherits edges. literals: find_by_message. "
+        "macro: C macro self-heal. pairing: header/impl pairing.\n"
+    )

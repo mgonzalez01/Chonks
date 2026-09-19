@@ -137,3 +137,40 @@ def test_validate_missing_kind_label():
                              boundary_nodes=frozenset({"gizmo"}))
     with pytest.raises(ValueError, match="unlabeled"):
         languages.Registry((unlabeled,))
+
+
+def test_describe_has_one_row_per_spec():
+    rows = languages.describe()
+    assert [row["name"] for row in rows] == [s.name for s in languages.REGISTRY.specs]
+    expected_keys = [
+        "name", "language", "extensions", "boundaries", "typed_refs",
+        "literals", "arity_keyword", "macro_heal", "pairing",
+    ]
+    for row in rows:
+        assert list(row.keys()) == expected_keys
+
+
+def test_every_spec_has_a_unique_display_name():
+    names = [s.display_name for s in languages.REGISTRY.specs]
+    assert all(names)
+    assert len(set(names)) == len(names)
+
+
+def test_describe_row_values():
+    rows = {row["name"]: row for row in languages.describe()}
+    assert rows["cpp"] == {
+        "name": "cpp",
+        "language": "C++",
+        "extensions": (".cc", ".cpp", ".cu", ".cuh", ".cxx", ".h", ".hpp", ".hxx", ".inl", ".metal", ".mm"),
+        "boundaries": ("class_specifier", "function_definition", "struct_specifier", "template_declaration"),
+        "typed_refs": True,
+        "literals": True,
+        "arity_keyword": False,
+        "macro_heal": True,
+        "pairing": True,
+    }
+    assert rows["hlsl"]["typed_refs"] is False
+    assert rows["hlsl"]["literals"] is False
+    assert rows["python"]["arity_keyword"] is True
+    assert rows["python"]["macro_heal"] is False
+    assert rows["python"]["pairing"] is False

@@ -116,6 +116,7 @@ PYTHON = LanguageSpec(
                          plus_type="binary_operator", skip_fn=is_python_docstring_position),
     raw_string_prefix=is_raw_prefix,
     file_metadata=file_metadata,
+    display_name="Python",
 )
 
 LANGUAGES = (PYTHON,)

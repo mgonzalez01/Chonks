@@ -95,6 +95,23 @@ class Registry:
     def flags(self, attr: str) -> frozenset[str]:
         return frozenset(spec.name for spec in self.specs if getattr(spec, attr))
 
+    def describe(self) -> list[dict[str, object]]:
+        """One capability row per language, in registry order."""
+        return [
+            {
+                "name": spec.name,
+                "language": spec.display_name,
+                "extensions": tuple(sorted(spec.extensions)),
+                "boundaries": tuple(sorted(spec.boundary_nodes)),
+                "typed_refs": spec.refs_spec is not None,
+                "literals": spec.literals is not None,
+                "arity_keyword": spec.def_signature_keyword is not None,
+                "macro_heal": spec.c_macro_self_heal,
+                "pairing": bool(spec.header_exts or spec.impl_exts),
+            }
+            for spec in self.specs
+        ]
+
 
 def _discover() -> tuple[LanguageSpec, ...]:
     names = sorted(
@@ -136,6 +153,10 @@ def merged(attr: str, base: "Mapping[str, str] | None" = None) -> Mapping[str, s
 
 def flags(attr: str) -> frozenset[str]:
     return REGISTRY.flags(attr)
+
+
+def describe() -> list[dict[str, object]]:
+    return REGISTRY.describe()
 
 
 def lang_for_path(path: Path) -> str | None:

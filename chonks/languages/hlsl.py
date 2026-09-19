@@ -62,6 +62,7 @@ HLSL = LanguageSpec(
         "struct_specifier": "struct",
         "cbuffer": "cbuffer",
     },
+    display_name="HLSL",
 )
 
 LANGUAGES = (HLSL,)
