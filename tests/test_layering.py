@@ -17,7 +17,7 @@ _LAYER_MAP: dict[str, str] = {
     "chonks": "core",
     "chonks.chunker": "facade",
     "chonks.chunking": "index",
-    "chonks.cli": "ops",
+    "chonks.cli": "facade",
     "chonks.doctor": "facade",
     "chonks.embedder": "facade",
     "chonks.init": "facade",

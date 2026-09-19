@@ -405,5 +405,9 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
     return 0
 
 
+def main(argv: list[str] | None = None) -> int:
+    return run_wizard(argv)
+
+
 if __name__ == "__main__":
     sys.exit(run_wizard())
