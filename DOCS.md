@@ -46,17 +46,20 @@ Each subcommand's module is internal and the CLI is the only supported entry poi
 
 **Supported languages:**
 
+<!-- generated:language-extensions:begin -->
 | Language | Extensions |
 |---|---|
-| C++ | .cpp .h .hpp .hxx .inl .cc .cxx .cu .cuh .mm .metal |
 | C | .c |
-| HLSL | .hlsl .fx .fxh |
-| Python | .py .pyi |
 | C# | .cs |
+| C++ | .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm |
 | GDScript | .gd |
-| TypeScript | .ts .tsx |
-| JavaScript | .js .jsx .mjs .cjs |
+| HLSL | .fx .fxh .hlsl |
+| JavaScript | .cjs .js .jsx .mjs |
 | Lua | .lua |
+| Python | .py .pyi |
+| TSX | .tsx |
+| TypeScript | .ts |
+<!-- generated:language-extensions:end -->
 
 CUDA (`.cu`/`.cuh`) and Objective-C++/Metal (`.mm`/`.metal`) are parsed best-effort under the C++ grammar, and Lua best-effort under its own. `.h` stays on the C++ grammar. Any other text extension is skipped by default; the config's `fallback_extensions` allowlist (HTML, Vue, Svelte, Markdown, YAML, TOML, and JSON by default) admits markup, docs, and config files through a line-based chunker, as described under [Configuration](#configuration).
 
@@ -191,21 +194,26 @@ Excluded directories are pruned from the walk, include-aware, so a directory is 
 
 **Boundary nodes by language:**
 
+<!-- generated:language-boundaries:begin -->
 | Language | Extensions | Detected boundaries |
 |---|---|---|
-| C++ | .cpp .h .hpp .hxx .inl .cc .cxx .cu .cuh .mm .metal | function_definition, class_specifier, struct_specifier, template_declaration |
-| C | .c | function_definition, struct_specifier, union_specifier, enum_specifier, type_definition |
-| HLSL | .hlsl .fx .fxh | function_definition, struct_specifier, cbuffer* |
-| Python | .py .pyi | function_definition, class_definition, decorated_definition |
-| C# | .cs | method_declaration, constructor_declaration, destructor_declaration, property_declaration, class_declaration, struct_declaration, interface_declaration, enum_declaration, operator_declaration, conversion_operator_declaration |
-| GDScript | .gd | function_definition, class_definition |
-| JavaScript | .js .jsx .mjs .cjs | function_declaration, generator_function_declaration, method_definition, class_declaration, `const/let/var NAME = (...) => ...`† |
-| TypeScript | .ts .tsx | everything JavaScript detects, plus interface_declaration, enum_declaration, type_alias_declaration, abstract_class_declaration |
-| Lua | .lua | function_declaration (best-effort tier, registry-only via tree-sitter-language-pack) |
+| C | .c | enum_specifier, function_definition, struct_specifier, type_definition, union_specifier |
+| C# | .cs | class_declaration, constructor_declaration, conversion_operator_declaration, destructor_declaration, enum_declaration, interface_declaration, method_declaration, operator_declaration, property_declaration, struct_declaration |
+| C++ | .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm | class_specifier, function_definition, struct_specifier, template_declaration |
+| GDScript | .gd | class_definition, function_definition |
+| HLSL | .fx .fxh .hlsl | function_definition, struct_specifier |
+| JavaScript | .cjs .js .jsx .mjs | class_declaration, function_declaration, generator_function_declaration, method_definition |
+| Lua | .lua | function_declaration |
+| Python | .py .pyi | class_definition, decorated_definition, function_definition |
+| TSX | .tsx | abstract_class_declaration, class_declaration, enum_declaration, function_declaration, generator_function_declaration, interface_declaration, method_definition, type_alias_declaration |
+| TypeScript | .ts | abstract_class_declaration, class_declaration, enum_declaration, function_declaration, generator_function_declaration, interface_declaration, method_definition, type_alias_declaration |
+<!-- generated:language-boundaries:end -->
 
-\*HLSL `cbuffer`/`tbuffer` are detected via a custom predicate, because tree-sitter-hlsl parses them as generic `declaration` nodes.
+HLSL also detects `cbuffer` and `tbuffer` blocks. A custom predicate finds them, because tree-sitter-hlsl parses them as generic `declaration` nodes.
 
-†JS/TS grammars have no node type for a function assigned to a variable (`const foo = () => {...}`). `_is_arrow_var_decl` detects the pattern and boundaries the whole `lexical_declaration` or `variable_declaration`, naming it after the assigned variable.
+JavaScript, TypeScript and TSX also detect `const/let/var NAME = (...) => ...`. The grammars have no node type for a function assigned to a variable, so `is_arrow_var_decl` detects the pattern and makes the whole `lexical_declaration` or `variable_declaration` one chunk, named after the variable.
+
+Lua is a best-effort tier: its grammar comes from the `tree-sitter-language-pack` registry only.
 
 #### Adding a language
 
