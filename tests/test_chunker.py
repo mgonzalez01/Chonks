@@ -92,7 +92,6 @@ def test_index_populates_decoupled_symbols(tmp_path):
 
 def test_index_concurrent_returns_409(tmp_path):
     from fastapi.testclient import TestClient
-    import importlib
     import chonks.server as server
     barrier = threading.Barrier(2)
     release = threading.Event()
@@ -102,7 +101,7 @@ def test_index_concurrent_returns_409(tmp_path):
         release.wait()
         return {"indexed": 0, "skipped": 0, "errors": 0, "pruned": 0, "truncated": 0}
 
-    importlib.reload(server)
+    server._projects.clear()
     # Seed the project dict as main() would, including index_lock
     server._projects[server.DEFAULT_PROJECT] = {
         "db_path":      tmp_path / "test.db",
@@ -121,7 +120,7 @@ def test_index_concurrent_returns_409(tmp_path):
         "index_lock":   threading.Lock(),
     }
 
-    with patch("chonks.server.index_paths", side_effect=slow_index):
+    with patch("chonks.serve.app.index_paths", side_effect=slow_index):
         client = TestClient(server.app, raise_server_exceptions=False)
 
         results = []

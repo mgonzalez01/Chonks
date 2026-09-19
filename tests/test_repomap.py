@@ -916,13 +916,14 @@ def test_format_map_no_footer_when_everything_fits():
 
 def test_repomap_endpoint_applies_default_budget_to_scoped_calls(monkeypatch):
     import chonks.server as server
+    import chonks.serve.app as serve_app
 
     captured = {}
     def fake_build_repomap(store, path_prefix=None, query=None, token_budget=None):
         captured["budget"] = token_budget
         return "map"
-    monkeypatch.setattr(server, "build_repomap", fake_build_repomap)
-    monkeypatch.setattr(server, "_get_project",
+    monkeypatch.setattr(serve_app, "build_repomap", fake_build_repomap)
+    monkeypatch.setattr(serve_app, "_get_project",
                         lambda name: {"store": object(), "repomap_cfg": {}})
 
     server.repomap(server.RepomapRequest(path_prefix="src/gfx/"))

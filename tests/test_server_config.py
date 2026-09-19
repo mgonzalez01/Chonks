@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 import chonks.server as server
+import chonks.serve.app as serve_app
 
 
 def _run_main_with_config(monkeypatch, tmp_path, config: dict) -> None:
@@ -55,7 +56,7 @@ def test_research_endpoint_injects_edge_type_weights_into_cfg(monkeypatch, tmp_p
     def fake_deep_research(query, searcher, cfg=None, path_prefix=None):
         captured["cfg"] = cfg
         return {"chunks": [], "count": 0, "iterations": 0}
-    monkeypatch.setattr(server, "deep_research", fake_deep_research)
+    monkeypatch.setattr(serve_app, "deep_research", fake_deep_research)
 
     # Avoid opening a real Store/Searcher for the default project.
     project = server._projects[server.DEFAULT_PROJECT]
@@ -76,7 +77,7 @@ def test_research_endpoint_request_level_edge_type_weights_overrides_config(monk
     def fake_deep_research(query, searcher, cfg=None, path_prefix=None):
         captured["cfg"] = cfg
         return {"chunks": [], "count": 0, "iterations": 0}
-    monkeypatch.setattr(server, "deep_research", fake_deep_research)
+    monkeypatch.setattr(serve_app, "deep_research", fake_deep_research)
 
     project = server._projects[server.DEFAULT_PROJECT]
     project["store"] = object()
