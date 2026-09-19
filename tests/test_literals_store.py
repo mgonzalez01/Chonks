@@ -547,7 +547,7 @@ def test_skeleton_budget_is_per_query_not_per_candidate(tmp_path, monkeypatch):
     """The work budget bounds the whole find_by_message call, not each
     candidate row (pre-fix: candidate cap x per-row budget = 40M find calls
     ~= 7.6s at saturation)."""
-    import chonks.store as store_mod
+    import chonks.retrieval.message_match as message_match
 
     store = _make_store(tmp_path)
     text = "ab,%s," * 8 + "ZZZEND"
@@ -557,7 +557,7 @@ def test_skeleton_budget_is_per_query_not_per_candidate(tmp_path, monkeypatch):
     ]
     store.insert_chunks(rows, [_embed() for _ in rows], model="test")
     _mark_complete(store)
-    monkeypatch.setattr(store_mod, "_SKELETON_QUERY_BUDGET", 40)
+    monkeypatch.setattr(message_match, "_SKELETON_QUERY_BUDGET", 40)
     # fragment ",ZZZEND" passes the prefilter but is 90 chars past the last
     # hole's 80-char gap window, so every landing-point combination dead-ends.
     result = store.find_by_message("ab,1,ab,2,ab,3,ab,4,ab,5,ab,6,ab,7,ab,8," + "z" * 90 + ",ZZZEND")
@@ -712,7 +712,7 @@ def test_skeleton_verification_does_not_hold_the_store_lock(tmp_path):
     call completes quickly while the first is still "verifying"."""
     import threading
     import time
-    import chonks.store as store_mod
+    import chonks.retrieval.message_match as message_match
 
     store = _make_store(tmp_path)
     text = "slow %s pattern"
@@ -722,16 +722,16 @@ def test_skeleton_verification_does_not_hold_the_store_lock(tmp_path):
     )
     _mark_complete(store)
 
-    real_skeleton_match = store_mod._skeleton_match
+    real_skeleton_match = message_match._skeleton_match
     verifying = threading.Event()
     release = threading.Event()
 
-    def slow_skeleton_match(skeleton, message, budget=store_mod._SKELETON_WORK_BUDGET):
+    def slow_skeleton_match(skeleton, message, budget=message_match._SKELETON_WORK_BUDGET):
         verifying.set()
         release.wait(timeout=5)
         return real_skeleton_match(skeleton, message, budget)
 
-    store_mod._skeleton_match = slow_skeleton_match
+    message_match._skeleton_match = slow_skeleton_match
     try:
         query_thread = threading.Thread(
             target=store.find_by_message, args=("slow xyz pattern",)
@@ -748,7 +748,7 @@ def test_skeleton_verification_does_not_hold_the_store_lock(tmp_path):
         )
     finally:
         release.set()
-        store_mod._skeleton_match = real_skeleton_match
+        message_match._skeleton_match = real_skeleton_match
         query_thread.join(timeout=5)
 
 
@@ -877,9 +877,9 @@ def test_token_pool_cap_announced_when_a_short_fragment_is_crowded_out(tmp_path,
     """A message with more distinct significant tokens than _TOKEN_POOL_CAP
     can crowd the literal's own shorter discriminating token out of the FTS
     candidate query; that must be announced, not look like a clean no-match."""
-    import chonks.store as store_mod
+    import chonks.retrieval.message_match as message_match
 
-    monkeypatch.setattr(store_mod, "_TOKEN_POOL_CAP", 2)
+    monkeypatch.setattr(message_match, "_TOKEN_POOL_CAP", 2)
     store = _make_store(tmp_path)
     text = "shortfrag %s here"
     store.insert_chunks(
@@ -898,9 +898,9 @@ def test_token_pool_cap_announced_when_a_short_fragment_is_crowded_out(tmp_path,
 def test_candidate_pool_truncation_announced_even_with_results(tmp_path, monkeypatch):
     """candidates_truncated must be announced whenever it happens, not only
     when it also causes an empty result."""
-    import chonks.store as store_mod
+    import chonks.retrieval.message_match as message_match
 
-    monkeypatch.setattr(store_mod, "_LITERAL_CANDIDATE_CAP", 2)
+    monkeypatch.setattr(message_match, "_LITERAL_CANDIDATE_CAP", 2)
     store = _make_store(tmp_path)
     chunks = [
         _chunk(f"c{i}", f"f{i}.py", f'log("shared candidate pool token number {i}")',
