@@ -65,6 +65,7 @@ from chonks.index.pipeline import (
     _DaemonPool,
     _SENTINEL,
 )
+from chonks.index.progress import tqdm_reporter
 from chonks.index.rows import (
     _chunk_id,
     _chunk_metadata,
@@ -99,10 +100,13 @@ def index_paths(
     cap_mentions_fanout: bool = False,
     associated_top_frac: float = 0.0,
     no_progress_timeout: float = EMBED_WATCHDOG_SECS,
+    reporter=None,
 ) -> dict[str, int]:
     """Three-stage pipeline (scan, parse, embed); returns run stats. Config
     params are in DOCS.md. `cap_mentions_fanout`/`associated_top_frac` need
-    `--rebuild-graphs` to take effect on an existing index."""
+    `--rebuild-graphs` to take effect on an existing index. `reporter` is a
+    context manager that yields an object with `tick` and `finish`; None
+    draws the tqdm bars."""
     excludes = _normalize_prefixes(exclude)
     includes = _normalize_prefixes(include)
     fallback_exts = {e.lower() for e in
@@ -741,20 +745,9 @@ def index_paths(
     t_scanner.start()
 
     # ---------------------------------------------------- progress bars
-    _FMT_TOTAL    = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}"
-    _FMT_NOTOTAL  = "{desc}: {n_fmt} {unit} [{elapsed}, {rate_fmt}]"
+    with (reporter if reporter is not None else tqdm_reporter()) as progress:
 
-    with \
-        tqdm(total=None, desc="Scanning", unit="file",  position=0,
-             colour="green",  bar_format=_FMT_NOTOTAL, dynamic_ncols=True) as pb_files, \
-        tqdm(total=None,        desc="Queued  ", unit="chunk", position=1,
-             colour="cyan",   bar_format=_FMT_NOTOTAL, dynamic_ncols=True) as pb_queued, \
-        tqdm(total=None,        desc="Embedded", unit="chunk", position=2,
-             colour="yellow", bar_format=_FMT_NOTOTAL, dynamic_ncols=True) as pb_embedded:
-
-        last_parsed = last_embedded = 0
         _parser_sentinel_pushed = False
-        _files_total_set = False
         # Scanner/parser liveness for the watchdog's idle branch below: any
         # movement in these counters proves the pipeline is alive even when
         # the embedder has nothing in flight.
@@ -810,31 +803,7 @@ def index_paths(
                     f"The run appears wedged — aborting."
                 )
 
-            # Two-phase bar: shows discovered-file count pre-scan, then flips to
-            # parsed/total once the scan completes, avoiding a misleadingly
-            # small bar while the queue is already far ahead.
-            if not _files_total_set:
-                pb_files.n = scanned
-                if scan_done:
-                    pb_files.total       = to_index
-                    pb_files.bar_format  = _FMT_TOTAL
-                    pb_files.set_description("Parsed  ")
-                    pb_files.n           = parsed
-                    last_parsed          = parsed
-                    _files_total_set     = True
-                pb_files.refresh()
-            else:
-                pb_files.update(parsed - last_parsed)
-                last_parsed = parsed
-
-            pb_queued.n = queued - embedded  # current backlog, tends to 0
-            pb_queued.refresh()
-            pb_embedded.update(embedded - last_embedded)
-
-            if cur_file:
-                pb_files.set_postfix_str(cur_file, refresh=False)
-
-            last_embedded = embedded
+            progress.tick(scanned, parsed, queued, embedded, cur_file, scan_done, to_index)
 
             time.sleep(0.1)
 
@@ -843,10 +812,7 @@ def index_paths(
             parsed   = state["files_parsed"]
             queued   = state["chunks_queued"]
             embedded = state["chunks_embedded"]
-        pb_files.update(parsed - last_parsed)
-        pb_queued.n = queued - embedded
-        pb_queued.refresh()
-        pb_embedded.update(embedded - last_embedded)
+        progress.finish(parsed, queued, embedded)
 
     # Timeout guards: if a worker crashed and left the scanner/parser blocked on a
     # full queue, a boundless join would hang. 10 s is generous for clean shutdown.
