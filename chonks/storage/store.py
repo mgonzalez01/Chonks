@@ -1395,6 +1395,49 @@ class Store:
                 "SELECT 1 FROM chunk_indegree LIMIT 1"
             ).fetchone() is not None
 
+    def hub_indegree_rows(
+        self, path_prefix: str | None, limit: int, edge_types_set: set[str] | None,
+    ) -> list[sqlite3.Row]:
+        """Named chunks with summed chunk_indegree, ordered for get_hubs."""
+        clauses = ["c.name IS NOT NULL"]
+        params: list[Any] = []
+        if edge_types_set:
+            placeholders = ",".join("?" * len(edge_types_set))
+            clauses.append(f"ci.edge_type IN ({placeholders})")
+            params.extend(sorted(edge_types_set))
+        if path_prefix:
+            # RANGE, not LIKE: an ESCAPE clause disables SQLite's LIKE-prefix
+            # index optimization (same trick as _get_hubs_live).
+            lo = path_prefix.rstrip("/\\")
+            clauses.append("c.path >= ? AND c.path < ?")
+            params.extend([lo, lo + "\U0010FFFF"])
+        where = " AND ".join(clauses)
+        params.append(limit)
+        with self._lock:
+            return self._conn.execute(
+                f"""
+                SELECT c.id AS id, c.path AS path, c.name AS name,
+                       c.chunk_type AS chunk_type, c.start_line AS start_line,
+                       SUM(ci.n) AS in_degree, COALESCE(pr.score, 0.0) AS pagerank
+                FROM chunk_indegree ci
+                JOIN chunks c ON c.id = ci.chunk_id
+                LEFT JOIN chunk_pagerank pr ON pr.chunk_id = ci.chunk_id
+                WHERE {where}
+                GROUP BY ci.chunk_id
+                ORDER BY in_degree DESC, pagerank DESC, c.path ASC, c.start_line ASC
+                LIMIT ?
+                """,
+                params,
+            ).fetchall()
+
+    def hub_edge_type_rows(self) -> list[sqlite3.Row]:
+        """(to_id, edge_type, n) over all of chunk_refs. Holds the lock for the whole scan."""
+        with self._lock:
+            return self._conn.execute(
+                "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs"
+                " GROUP BY to_id, edge_type"
+            ).fetchall()
+
     def refresh_indegree(self, chunk_ids: list[str]) -> None:
         """Recompute chunk_indegree for exactly `chunk_ids` from current
         chunk_refs. Only valid when has_indegree() is true first. Doesn't

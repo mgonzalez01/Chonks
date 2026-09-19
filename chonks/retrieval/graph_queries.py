@@ -291,36 +291,7 @@ def _get_hubs_precomputed(
     """get_hubs via chunk_indegree: one aggregate query covers both
     scoped and unscoped cases, since this table stays small regardless
     of corpus size (unlike chunk_refs)."""
-    clauses = ["c.name IS NOT NULL"]
-    params: list[Any] = []
-    if edge_types_set:
-        placeholders = ",".join("?" * len(edge_types_set))
-        clauses.append(f"ci.edge_type IN ({placeholders})")
-        params.extend(sorted(edge_types_set))
-    if path_prefix:
-        # RANGE, not LIKE: an ESCAPE clause disables SQLite's LIKE-prefix
-        # index optimization (same trick as _get_hubs_live).
-        lo = path_prefix.rstrip("/\\")
-        clauses.append("c.path >= ? AND c.path < ?")
-        params.extend([lo, lo + "\U0010FFFF"])
-    where = " AND ".join(clauses)
-    params.append(limit)
-    with store._lock:
-        rows = store._conn.execute(
-            f"""
-                SELECT c.id AS id, c.path AS path, c.name AS name,
-                       c.chunk_type AS chunk_type, c.start_line AS start_line,
-                       SUM(ci.n) AS in_degree, COALESCE(pr.score, 0.0) AS pagerank
-                FROM chunk_indegree ci
-                JOIN chunks c ON c.id = ci.chunk_id
-                LEFT JOIN chunk_pagerank pr ON pr.chunk_id = ci.chunk_id
-                WHERE {where}
-                GROUP BY ci.chunk_id
-                ORDER BY in_degree DESC, pagerank DESC, c.path ASC, c.start_line ASC
-                LIMIT ?
-                """,
-            params,
-        ).fetchall()
+    rows = store.hub_indegree_rows(path_prefix, limit, edge_types_set)
     if not rows:
         return {"hubs": []}
 
@@ -409,11 +380,7 @@ def _get_hubs_live(
             "it, or pass a path_prefix (or @subsystem) to scope the "
             "request in the meantime"
         )
-    with store._lock:
-        rows = store._conn.execute(
-            "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs"
-            " GROUP BY to_id, edge_type"
-        ).fetchall()
+    rows = store.hub_edge_type_rows()
     by_id: dict[str, dict[str, int]] = {}
     for r in rows:
         if edge_types_set is not None and r["edge_type"] not in edge_types_set:
