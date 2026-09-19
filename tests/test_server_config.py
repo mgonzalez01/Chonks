@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 import chonks.server as server
 import chonks.serve.app as serve_app
+import chonks.serve.main as serve_main
 
 
 def _run_main_with_config(monkeypatch, tmp_path, config: dict) -> None:
@@ -100,7 +101,7 @@ def test_research_request_negative_edge_type_weight_rejected():
 
 def _main_with_probe(monkeypatch, tmp_path, probe_result, extra_args=()):
     monkeypatch.setattr(server.uvicorn, "run", lambda *a, **kw: None)
-    monkeypatch.setattr(server, "probe_embedder", lambda embedder, timeout=10.0: probe_result)
+    monkeypatch.setattr(serve_main, "probe_embedder", lambda embedder, timeout=10.0: probe_result)
     server._projects.clear()
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({"embed_url": "http://nowhere:1/v1/embeddings"}))
@@ -127,8 +128,8 @@ def test_serve_starts_when_probe_ok(monkeypatch, tmp_path):
     assert server.DEFAULT_PROJECT in server._projects
 
 
-# Captured at import, before the autouse conftest stub replaces the attribute.
-_real_probe_embedder = server.probe_embedder
+# The function of chonks.embed.client, not the stub that conftest sets on chonks.serve.main.
+from chonks.embed.client import probe_embedder as _real_probe_embedder
 
 
 def test_probe_embedder_reports_connection_failure():

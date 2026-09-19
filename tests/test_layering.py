@@ -30,7 +30,7 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.repomap.refs": "index",
     "chonks.research": "retrieval",
     "chonks.searcher": "retrieval",
-    "chonks.server": "serve",
+    "chonks.server": "facade",
     "chonks.store": "facade",
     "chonks.summaries": "facade",
 }
