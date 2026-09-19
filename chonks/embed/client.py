@@ -237,3 +237,41 @@ def compress_for_embed(text: str, *, name: str | None = None, path: str | None =
     if parts:
         return " :: ".join(parts) + "\n" + compressed
     return compressed
+
+
+def probe_embedder(embedder: Embedder, timeout: float = 10.0) -> str | None:
+    """None on success, else a one-line failure reason. Stubbed in tests/conftest.py."""
+    try:
+        with httpx.Client() as client:
+            vecs = embedder.embed(["chonks startup probe"], client, timeout=timeout)
+    except Exception as e:  # noqa: BLE001, any failure is the same answer: not usable
+        return f"{type(e).__name__}: {e}"
+    if not vecs or len(vecs[0]) == 0:
+        return "endpoint answered but returned no embedding"
+    return None
+
+
+def ping_embedder(base_url: str, *, post_fn=None, timeout: float = 5.0,
+                  model: str = RECOMMENDED_EMBED_MODEL) -> dict:
+    """Live-check an embedding server. Never raises: failures (timeout,
+    4xx/5xx, malformed body) all collapse into {"reachable": False, "error":
+    <str>}. `post_fn` is injectable for tests."""
+    url = base_url.rstrip("/")
+    if not url.endswith("/v1/embeddings"):
+        url = url + "/v1/embeddings"
+
+    def _default_post(u, json_body, t):
+        with httpx.Client() as client:
+            return client.post(u, json=json_body, timeout=t)
+
+    post = post_fn or _default_post
+    body = {"model": model, "input": ["ping"]}
+    try:
+        resp = post(url, body, timeout)
+        resp.raise_for_status()
+        data = resp.json()["data"]
+        emb = data[0]["embedding"]
+        dim = len(emb) if isinstance(emb, list) else None
+        return {"reachable": True, "dim": dim, "error": None}
+    except Exception as exc:  # noqa: BLE001, best-effort UX ping
+        return {"reachable": False, "dim": None, "error": str(exc)}

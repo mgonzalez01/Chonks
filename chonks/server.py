@@ -26,6 +26,7 @@ TOP_K_MAX = 200
 
 from chonks.chunker import index_paths
 from chonks.chunking import CODE_LANGUAGES
+from chonks.embed.client import probe_embedder
 from chonks.embedder import (
     DEFAULT_EMBED_MODEL,
     DEFAULT_EMBED_URL,
@@ -720,18 +721,6 @@ def _resolve_codebase(codebase: str | None, explicit_config: bool) -> Path | Non
         )
         return None
     return p.resolve()
-
-
-def probe_embedder(embedder: Embedder, timeout: float = 10.0) -> str | None:
-    """None on success, else a one-line failure reason. Stubbed in tests/conftest.py."""
-    try:
-        with httpx.Client() as client:
-            vecs = embedder.embed(["chonks startup probe"], client, timeout=timeout)
-    except Exception as e:  # noqa: BLE001, any failure is the same answer: not usable
-        return f"{type(e).__name__}: {e}"
-    if not vecs or len(vecs[0]) == 0:
-        return "endpoint answered but returned no embedding"
-    return None
 
 
 def main(argv=None) -> None:

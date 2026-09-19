@@ -14,9 +14,8 @@ import shutil
 import sys
 from pathlib import Path
 
-import httpx
-
 from chonks.chunker import DEFAULT_FALLBACK_EXTENSIONS
+from chonks.embed.client import ping_embedder
 from chonks.embedder import RECOMMENDED_EMBED_MODEL
 
 DEFAULT_EMBED_URL = "http://localhost:11437"
@@ -194,32 +193,6 @@ def gpu_install_hint(*, which_fn=shutil.which, cupy_importable: bool | None = No
     return ("NVIDIA GPU detected but the CUDA k-NN extra is not installed. Run "
             "`uv sync --extra cuda`; the graph build then uses the GPU automatically "
             "(tens of minutes down to seconds on a large corpus).")
-
-
-def ping_embedder(base_url: str, *, post_fn=None, timeout: float = 5.0,
-                  model: str = RECOMMENDED_EMBED_MODEL) -> dict:
-    """Live-check an embedding server. Never raises: failures (timeout,
-    4xx/5xx, malformed body) all collapse into {"reachable": False, "error":
-    <str>}. `post_fn` is injectable for tests."""
-    url = base_url.rstrip("/")
-    if not url.endswith("/v1/embeddings"):
-        url = url + "/v1/embeddings"
-
-    def _default_post(u, json_body, t):
-        with httpx.Client() as client:
-            return client.post(u, json=json_body, timeout=t)
-
-    post = post_fn or _default_post
-    body = {"model": model, "input": ["ping"]}
-    try:
-        resp = post(url, body, timeout)
-        resp.raise_for_status()
-        data = resp.json()["data"]
-        emb = data[0]["embedding"]
-        dim = len(emb) if isinstance(emb, list) else None
-        return {"reachable": True, "dim": dim, "error": None}
-    except Exception as exc:  # noqa: BLE001, best-effort UX ping
-        return {"reachable": False, "dim": None, "error": str(exc)}
 
 
 # --------------------------------------------------------------------------
