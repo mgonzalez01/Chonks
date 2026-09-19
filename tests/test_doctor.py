@@ -134,6 +134,19 @@ def test_table_sizes_section(tmp_path):
     assert "chunk_neighbors: 2 rows" in report
 
 
+def test_table_sizes_section_lists_the_schema_tables(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    sizes = report.split("== Table sizes ==")[1].split("\n== ")[0]
+    for table in ("chunk_pagerank", "chunk_indegree", "graph_nodes", "graph_edges", "chunk_literals"):
+        assert f"\n{table}: " in sizes
+    assert "_fts" not in sizes
+    assert "chunk_vecs" not in sizes
+    assert "table not present" not in sizes
+
+
 def test_staleness_stale_when_disk_newer(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()

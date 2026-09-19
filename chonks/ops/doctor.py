@@ -7,6 +7,7 @@ exists to report. Talks to the DB directly over a read-only connection.
 import argparse
 import json
 import os
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -21,15 +22,12 @@ from chonks.ops.diagnostics import (
     family_breakdown,
 )
 from chonks.storage.readonly import _connect_readonly, set_embedding_model
+from chonks.storage.schema import SCHEMA_DDL
 from chonks.store import SCHEMA_VERSION
 
-# Tables doctor knows about from store.py's schema (kept as a literal list,
-# not introspected, so a table rename/removal there is a visible diff here
-# too rather than doctor silently going quiet on it).
-_KNOWN_TABLES = [
-    "meta", "files", "chunks", "chunk_refs", "chunk_neighbors",
-    "folder_summaries", "symbols",
-]
+# The tables of the schema that are not virtual, in schema order. An fts5 table
+# and chunk_vecs have no dbstat row under their own name, so they are not here.
+_KNOWN_TABLES = re.findall(r"^\s*CREATE TABLE IF NOT EXISTS (\w+)", SCHEMA_DDL, re.M)
 
 
 def _load_config(path: str | None) -> dict:
