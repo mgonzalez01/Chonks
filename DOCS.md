@@ -177,7 +177,7 @@ Merge-time comparisons are in UTF-8 bytes, since `_Segment.size()` and `_Synthet
 2. **Partial** (`root_node.has_error` after the heal loop), which ticks `parse_error` in the summary. Boundaries come from what parsed cleanly and the gap-fill backstop captures the error regions as `module` or `block` chunks, so the content stays searchable while symbols, typed edges, `find_symbol`, `find_usages`, and `trace_path` thin out there. `parse_error_files` and `chonks doctor` name the candidates.
 3. **Clean**, no errors and full structure.
 
-**Macro self-heal (C++ only).** Annotation macros such as `GDCLASS` or `UCLASS` make tree-sitter-cpp set `has_error`, so self-heal finds their names structurally, blanks them, reparses, and keeps a candidate only when the error count dropped. A macro that heals at least two distinct files in a run is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it.
+**Macro self-heal (C and C++).** Annotation macros such as `GDCLASS` or `UCLASS` make tree-sitter-cpp set `has_error`, so self-heal finds their names structurally, blanks them, reparses, and keeps a candidate only when the error count dropped. A macro that heals at least two distinct files in a run is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it.
 
 **Dominance warning.** `chonks doctor` groups chunks into path families by top-level path segment (root files as `(root)`), reporting per family the chunk count, corpus share, file count, chunks per file, and docs share, where docs means "not one of `chonks.chunking.CODE_LANGUAGES`", the split `chunk_kind` also uses. `chonks index` prints a one-line warning at the end of a run when one family is both mostly docs (80% or more within it) and large (40% or more of the corpus), or when corpus-wide docs chunks reach 50%; it names the family and prints a ready-to-paste `exclude` snippet, changing nothing itself.
 
@@ -219,23 +219,25 @@ Lua is a best-effort tier: its grammar comes from the `tree-sitter-language-pack
 
 Two tiers, and the first needs no new dependency: `tree-sitter-language-pack` (1.4.1) lists 248 grammars and downloads each into a per-user cache on first use, so Go, Rust, Java, Kotlin, Ruby, Swift, PHP, Zig, Scala, Dart, Elixir, and OCaml already load with `get_parser(name)`. An air-gapped machine needs that cache populated in advance, once per language.
 
-**Tier 1, best-effort**, which is what Lua received in 28 lines of `chunking.py` plus tests:
+**Tier 1, best-effort**, which is what Lua has. It is one new file, `chonks/languages/<name>.py`, that holds one `LanguageSpec` in a module-level `LANGUAGES` tuple. The registry finds the module by itself, so there is no registry line to add.
 
-1. `_EXT_TO_LANG` maps the extensions to the grammar name. Use the pack's name; if it differs from the internal one, add the pair to `_LANG_PACK_NAME` in `segment_file`, the way `c_sharp` maps to `csharp`.
-2. `_BOUNDARY_NODES` lists the node types that become chunks. Find them with a parse probe, since grammars differ (`function_declaration` against `function_definition`, `method_definition` against `method_declaration`).
-3. `_CONTAINER_NODES` lists the node types to recurse through for inner boundaries, such as namespaces and declaration lists; an empty set is acceptable.
-4. `_SALVAGE_ELIGIBLE_BOUNDARY_TYPES` lists the boundary types salvageable out of an error-recovery node, usually the function type.
-5. If the grammar's name field is not a plain identifier, add a branch to the chunk-naming function next to the Lua one, since Lua's `name` can be a `dot_index_expression` for `function M.foo()`.
+1. `name`, `grammar`, and `extensions`. `grammar` is the pack's name for the grammar, which can differ from `name`, the way `c_sharp` uses `csharp`. Extensions are lower-case with a leading dot, and each extension belongs to one language.
+2. `boundary_nodes` lists the node types that become chunks. Find them with a parse probe, since grammars differ (`function_declaration` against `function_definition`, `method_definition` against `method_declaration`).
+3. `kind_labels` gives each boundary type the label that the map prints. `display_name` is the name that the tables here and `chonks doctor` print.
+4. `container_nodes` lists the node types to recurse through for inner boundaries, such as namespaces and declaration lists; the default is empty. `salvage_nodes` lists the boundary types salvageable out of an error-recovery node, usually the function type.
+5. If the grammar's name field is not a plain identifier, add a `NameRule` to `name_rules`, the way `lua.py` does, since Lua's `name` can be a `dot_index_expression` for `function M.foo()`.
 
-This tier gives chunks, symbols, search, `mentions` edges, PageRank, and the repomap. Finish by bumping `CHUNKER_VERSION`, updating the docstring at the top of `chunking.py` and the two language tables here, and adding three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error.
+Every other field has a default, and the defaults give no typed edges, no literals, and C-style comments. This tier gives chunks, symbols, search, `mentions` edges, PageRank, and the repomap.
 
-**Tier 2, full fidelity**, three more tables, each independent:
+Then run `uv run pytest -q`. The registry refuses the module at import when a boundary type has no label, when another language owns the extension, or when a label conflicts with another language's label for the same node type. Run `uv run python scripts/gen_language_tables.py` to rewrite the language tables here and in README.md; a test fails while they are stale. Add three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error. Bump `CHUNKER_VERSION` only when an existing corpus would chunk differently. A new extension causes that only when the text fallback indexed it before.
 
-- `LANG_REFS_SPECS` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`_Field`, `_FieldChildren`, or `_Children`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
-- `_LITERAL_SPECS` gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
-- `_DEF_SIGNATURE_KEYWORD` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+**Tier 2, full fidelity**, three more fields on the same spec, each independent:
 
-`_NODE_TYPE_PREFIX` in `repomap/render.py` maps node types to display labels for the map, and unknown types render with the name only, so it is cosmetic. Nothing outside `chunking.py` and `repomap/` carries a language list, because `CODE_LANGUAGES` derives from `_EXT_TO_LANG`.
+- `refs_spec` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`Field`, `FieldChildren`, or `Children` from `chonks/languages/spec.py`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
+- `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
+- `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+
+Nothing outside `chonks/languages/` carries a language list. `chunking.py`, `repomap/`, `store.py`, and `chonks doctor` read the registry.
 
 #### Typed edges (calls, imports, inherits)
 
