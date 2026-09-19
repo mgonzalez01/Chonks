@@ -786,6 +786,7 @@ def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatc
     """edge_type_weights must reach persist_pagerank, not be dropped on the
     floor - the plumbing chunker.py's CLI/config path relies on."""
     import chonks.chunker as chunker_mod
+    import chonks.index.postindex as postindex_mod
     from chonks.store import Store
 
     class _FakeEmbedder:
@@ -797,11 +798,11 @@ def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatc
             return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
 
     captured = {}
-    real_persist_pagerank = chunker_mod.persist_pagerank
+    real_persist_pagerank = postindex_mod.persist_pagerank
     def _spy_persist_pagerank(store, **kwargs):
         captured.update(kwargs)
         return real_persist_pagerank(store, **kwargs)
-    monkeypatch.setattr(chunker_mod, "persist_pagerank", _spy_persist_pagerank)
+    monkeypatch.setattr(postindex_mod, "persist_pagerank", _spy_persist_pagerank)
 
     (tmp_path / "a.cpp").write_text(
         "void helper() {}\nvoid driver() { helper(); }\n"
@@ -822,6 +823,7 @@ def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatc
 def test_index_paths_forwards_cap_mentions_fanout_to_build_refs(tmp_path, monkeypatch):
     """Same plumbing shape as edge_type_weights above, for cap_mentions_fanout."""
     import chonks.chunker as chunker_mod
+    import chonks.index.postindex as postindex_mod
     from chonks.store import Store
 
     class _FakeEmbedder:
@@ -833,11 +835,11 @@ def test_index_paths_forwards_cap_mentions_fanout_to_build_refs(tmp_path, monkey
             return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
 
     captured = {}
-    real_build_refs = chunker_mod.build_refs
+    real_build_refs = postindex_mod.build_refs
     def _spy_build_refs(store, **kwargs):
         captured.update(kwargs)
         return real_build_refs(store, **kwargs)
-    monkeypatch.setattr(chunker_mod, "build_refs", _spy_build_refs)
+    monkeypatch.setattr(postindex_mod, "build_refs", _spy_build_refs)
 
     (tmp_path / "a.cpp").write_text(
         "void helper() {}\nvoid driver() { helper(); }\n"
@@ -857,6 +859,7 @@ def test_index_paths_forwards_cap_mentions_fanout_to_build_refs(tmp_path, monkey
 def test_index_paths_forwards_associated_top_frac_to_build_refs(tmp_path, monkeypatch):
     """Same plumbing shape as cap_mentions_fanout above, for associated_top_frac."""
     import chonks.chunker as chunker_mod
+    import chonks.index.postindex as postindex_mod
     from chonks.store import Store
 
     class _FakeEmbedder:
@@ -868,11 +871,11 @@ def test_index_paths_forwards_associated_top_frac_to_build_refs(tmp_path, monkey
             return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
 
     captured = {}
-    real_build_refs = chunker_mod.build_refs
+    real_build_refs = postindex_mod.build_refs
     def _spy_build_refs(store, **kwargs):
         captured.update(kwargs)
         return real_build_refs(store, **kwargs)
-    monkeypatch.setattr(chunker_mod, "build_refs", _spy_build_refs)
+    monkeypatch.setattr(postindex_mod, "build_refs", _spy_build_refs)
 
     (tmp_path / "a.cpp").write_text(
         "void helper() {}\nvoid driver() { helper(); }\n"
