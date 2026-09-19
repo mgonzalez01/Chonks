@@ -16,9 +16,6 @@ from tqdm import tqdm
 
 from chonks.chunking import dominance_warning, family_breakdown
 from chonks.core.paths import (
-    _to_stored_path,
-    _normalize_prefixes,
-    _path_allowed,
     _dir_should_prune,
     _dotdir_prefix,
 )

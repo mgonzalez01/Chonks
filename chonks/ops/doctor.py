@@ -11,8 +11,8 @@ import sqlite3
 import time
 from pathlib import Path
 
-from chonks.chunker import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.chunking import CHUNKER_VERSION
+from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.languages import describe as _describe_languages
 from chonks.ops.diagnostics import (
     dominance_warning,
