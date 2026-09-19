@@ -36,7 +36,7 @@ _LAYER_MAP: dict[str, str] = {
 }
 
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
-    "ops":       {"facade", "serve", "retrieval", "index", "storage", "embed", "languages"},
+    "ops":       {"facade", "serve", "retrieval", "index", "storage", "embed", "languages", "core"},
     "serve":     {"facade", "retrieval", "index", "storage", "embed"},
     "retrieval": {"facade", "storage", "embed", "languages", "core"},
     "index":     {"facade", "storage", "embed", "languages", "core"},
