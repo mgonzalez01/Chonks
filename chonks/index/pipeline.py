@@ -3,9 +3,30 @@
 import queue
 import threading
 from concurrent.futures import Future
+from dataclasses import dataclass
 
 
 _SENTINEL = object()  # pipeline end-of-stream marker
+
+
+@dataclass
+class RunState:
+    """State shared by the threads of one index_paths run."""
+
+    state: dict
+    lock: threading.Lock
+    done_event: threading.Event
+    file_symbols: dict[str, list[dict]]
+    worker_exc: list[Exception | None]
+    changed_chunk_ids: set[str]
+    deleted_chunk_ids: set[str]
+    deleted_chunk_names: set[str]
+    parse_q: queue.Queue
+    embed_q: queue.Queue
+    macro_file_counts: dict[str, int]
+    unhealable_hashes: set[str]
+    unhealable_order: list[str]
+    new_unhealable: bool
 
 
 class _DaemonPool:
