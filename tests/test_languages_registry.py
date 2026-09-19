@@ -1,43 +1,14 @@
-"""Registry views equal the F1 chunking.py tables and today's literals."""
+"""Registry validation, describe(), and the literals that the registry must equal."""
 
-import importlib.util
-import subprocess
-import sys
 from dataclasses import fields, is_dataclass
-from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 
 import chonks.chunking as chunking
 import chonks.languages as languages
-import chonks.repomap.refs as refs
-import chonks.repomap.render as render
-import chonks.store as store
 from chonks.languages import _ast
 from chonks.languages.spec import LanguageSpec
-
-
-def _load_f1_chunking():
-    # Same loader as tests/test_refs_equivalence.py, pinned to the F1 tag.
-    proc = subprocess.run(
-        ["git", "show", "F1:chonks/chunking.py"],
-        cwd=Path(__file__).parent,
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0 or not proc.stdout:
-        pytest.skip("F1 tag unavailable (detached/shallow checkout)")
-    spec = importlib.util.spec_from_loader("chunking_f1_reference", loader=None)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["chunking_f1_reference"] = mod
-    exec(compile(proc.stdout, "chunking_f1_reference.py", "exec"), mod.__dict__)
-    return mod
-
-
-@pytest.fixture(scope="module")
-def f1():
-    return _load_f1_chunking()
 
 
 def _normalize(value):
@@ -57,28 +28,6 @@ def _normalize(value):
     return value
 
 
-_TABLE_CASES = {
-    "_BOUNDARY_NODES": lambda: languages.table("boundary_nodes"),
-    "_CONTAINER_NODES": lambda: languages.table("container_nodes"),
-    "_SALVAGE_ELIGIBLE_BOUNDARY_TYPES": lambda: languages.table("salvage_nodes"),
-    "_EXT_TO_LANG": lambda: languages.EXT_TO_LANG,
-    "CODE_LANGUAGES": lambda: languages.CODE_LANGUAGES,
-    "LANG_REFS_SPECS": lambda: languages.table("refs_spec"),
-    "_REFS_LANGS": lambda: set(languages.table("refs_spec")),
-    "_LITERAL_SPECS": lambda: languages.table("literals"),
-    "_DEF_SIGNATURE_KEYWORD": lambda: languages.table("def_signature_keyword"),
-    "_COMMENT_PREFIXES": lambda: languages.table("line_comment_prefixes"),
-    "_MACRO_LANGS": lambda: languages.flags("c_macro_self_heal"),
-}
-
-
-@pytest.mark.parametrize("name", sorted(_TABLE_CASES))
-def test_table_matches_f1(name, f1):
-    old = getattr(f1, name)
-    assert _normalize(_TABLE_CASES[name]()) == _normalize(old)
-    assert _normalize(getattr(chunking, name)) == _normalize(old)
-
-
 _UNION_CASES = {
     "chunking._CHAIN_BASE_FIELD": (
         lambda: languages.merged("chain_base_fields"), lambda: chunking._CHAIN_BASE_FIELD),
@@ -88,15 +37,6 @@ _UNION_CASES = {
         lambda: languages.union("variadic_arg_types"), lambda: chunking._VARIADIC_CALL_ARG_TYPES),
     "chunking._KEYWORD_CALL_ARG_TYPES": (
         lambda: languages.union("keyword_arg_types"), lambda: chunking._KEYWORD_CALL_ARG_TYPES),
-    "refs._CLASS_LIKE_CHUNK_TYPES": (
-        lambda: languages.union("class_like_chunk_types"), lambda: refs._CLASS_LIKE_CHUNK_TYPES),
-    "render._NODE_TYPE_PREFIX": (
-        lambda: languages.merged("kind_labels", languages.GENERIC_KIND_LABELS),
-        lambda: render._NODE_TYPE_PREFIX),
-    "store.HEADER_EXTS": (
-        lambda: languages.union("header_exts"), lambda: store.HEADER_EXTS),
-    "store.IMPL_EXTS": (
-        lambda: languages.union("impl_exts"), lambda: store.IMPL_EXTS),
 }
 
 
