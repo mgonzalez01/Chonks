@@ -1,6 +1,10 @@
 """Batch size, timeout and retry policy for the indexer's embedding calls."""
 
+import logging
+
 import httpx
+
+logger = logging.getLogger("chonks.chunker")
 
 
 # ---------------------------------------------------------------------------
@@ -48,3 +52,76 @@ def _should_truncate_and_retry(exc: BaseException) -> bool:
     if isinstance(exc, httpx.HTTPStatusError):
         return 400 <= exc.response.status_code < 500
     return False
+
+
+def _chunk_path(chunk) -> str:
+    """Path for logging. Works for both chunk dicts and sqlite3.Row."""
+    try:
+        return chunk["path"]
+    except (KeyError, IndexError, TypeError):
+        return "?"
+
+
+def _embed_one_isolating(chunk, text, embed_docs):
+    """Halves toward EMBED_MIN_CHARS only on a 4xx (oversize); a transient/5xx
+    error is not truncated, since sending less won't help. Returns the
+    embedded chunk or the failure with its exception."""
+    full = len(text)
+    limit = full
+    last_exc: Exception | None = None
+    while True:
+        try:
+            emb = embed_docs([text[:limit]])
+            if limit < full:
+                logger.warning("EMBED oversize chunk %s truncated %d->%d chars",
+                               _chunk_path(chunk), full, limit)
+            return [chunk], [emb[0]], (1 if limit < full else 0), []
+        except Exception as exc:
+            last_exc = exc
+            if not _should_truncate_and_retry(exc):
+                break
+            nxt = limit // 2
+            if nxt < EMBED_MIN_CHARS:   # don't embed from a meaningless fragment
+                break
+            limit = nxt
+    return [], [], 0, [(chunk, last_exc)]
+
+
+def _batch_label(chunks) -> str:
+    """Compact descriptor of a batch's source files for the watchdog's abort
+    diagnostic: name the first and count the rest rather than dumping every
+    path into a terminal message."""
+    paths = sorted({c.get("path") or "?" for c in chunks})
+    if not paths:
+        return "empty batch"
+    extra = f" +{len(paths) - 1} more" if len(paths) > 1 else ""
+    return f"{paths[0]}{extra}"
+
+
+def _embed_isolating(chunks, texts, embed_docs):
+    """Recovers a failed batch by bisecting into halves and retrying each at
+    full length, instead of truncating everything. Call only after `chunks`
+    already failed as one request."""
+    if not chunks:
+        return [], [], 0, []
+    if len(chunks) == 1:
+        return _embed_one_isolating(chunks[0], texts[0], embed_docs)
+    mid = len(chunks) // 2
+    ok_c: list = []
+    ok_e: list = []
+    trunc = 0
+    errs: list = []
+    for cs, ts in ((chunks[:mid], texts[:mid]), (chunks[mid:], texts[mid:])):
+        if not cs:
+            continue
+        try:
+            embs = embed_docs(ts)            # retry this half at FULL length
+            ok_c += list(cs)
+            ok_e += embs
+        except Exception:
+            c2, e2, t2, er2 = _embed_isolating(cs, ts, embed_docs)
+            ok_c += c2
+            ok_e += e2
+            trunc += t2
+            errs += er2
+    return ok_c, ok_e, trunc, errs
