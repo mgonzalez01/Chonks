@@ -15,7 +15,7 @@ _LAYER_PACKAGE_NAMES = (
 
 _LAYER_MAP: dict[str, str] = {
     "chonks": "core",
-    "chonks.chunker": "index",
+    "chonks.chunker": "facade",
     "chonks.chunking": "index",
     "chonks.cli": "ops",
     "chonks.doctor": "ops",

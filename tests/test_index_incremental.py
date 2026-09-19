@@ -158,7 +158,7 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     # Regression: the old gate was `indexed > 0 or pruned > 0`, which is False
     # when a file's old chunks are deleted but 0 files complete this run, so
     # graph-maintenance never ran and old edges dangled forever.
-    import chonks.chunker as chunker_mod
+    import chonks.index.pipeline as pipeline_mod
     from chonks.chunker import index_paths
 
     (tmp_path / "callee.py").write_text(
@@ -196,14 +196,14 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     (tmp_path / "callee.py").write_text(
         "def target_function(x):\n    return x + 999\n"
     )
-    real_segment_file = chunker_mod.segment_file
+    real_segment_file = pipeline_mod.segment_file
 
     def failing_segment_file(src, lang, *, path=None, **kw):
         if path == "callee.py":
             raise RuntimeError("simulated parser crash")
         return real_segment_file(src, lang, path=path, **kw)
 
-    with patch.object(chunker_mod, "segment_file", side_effect=failing_segment_file):
+    with patch.object(pipeline_mod, "segment_file", side_effect=failing_segment_file):
         second = index_paths([str(tmp_path)], store, embedder, root=tmp_path)
 
     assert second["indexed"] == 0, (
