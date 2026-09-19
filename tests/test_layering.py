@@ -1,5 +1,7 @@
 """Guards the plan's layer boundaries over today's flat chonks/ layout."""
 import ast
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,19 +33,20 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.research": "retrieval",
     "chonks.searcher": "retrieval",
     "chonks.server": "serve",
-    "chonks.store": "storage",
+    "chonks.store": "facade",
     "chonks.summaries": "index",
 }
 
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
-    "ops":       {"serve", "retrieval", "index", "storage", "embed", "languages"},
-    "serve":     {"retrieval", "index", "storage", "embed"},
-    "retrieval": {"storage", "embed", "languages", "core"},
-    "index":     {"storage", "embed", "languages", "core"},
+    "ops":       {"facade", "serve", "retrieval", "index", "storage", "embed", "languages"},
+    "serve":     {"facade", "retrieval", "index", "storage", "embed"},
+    "retrieval": {"facade", "storage", "embed", "languages", "core"},
+    "index":     {"facade", "storage", "embed", "languages", "core"},
     "storage":   {"languages", "core"},
     "embed":     {"core"},
     "languages": {"core"},
     "core":      set(),
+    "facade":    {"facade", "ops", "serve", "retrieval", "index", "storage", "embed", "languages", "core"},
 }
 
 _KNOWN_INVERSIONS: set[tuple[str, str]] = {
@@ -52,7 +55,6 @@ _KNOWN_INVERSIONS: set[tuple[str, str]] = {
     ("chonks.repomap", "chonks.repomap.trace"),
     ("chonks.repomap.render", "chonks.repomap.pagerank"),
     ("chonks.research", "chonks.repomap"),
-    ("chonks.store", "chonks.repomap"),
 }
 
 
@@ -142,3 +144,13 @@ def test_import_direction_is_allowed_or_known(importer, imported):
     if imported_layer in _ALLOWED_DIRECTIONS.get(importer_layer, set()):
         return
     assert (importer, imported) in _KNOWN_INVERSIONS
+
+
+@pytest.mark.parametrize("module", ["chonks.storage.store", "chonks.store"])
+def test_storage_import_is_light(module):
+    code = (
+        f"import sys, {module}; "
+        "print(sorted({'networkx', 'tqdm', 'tree_sitter'} & set(sys.modules)))"
+    )
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "[]"
