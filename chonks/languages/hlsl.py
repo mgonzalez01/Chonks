@@ -43,7 +43,7 @@ HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
     extensions=frozenset({".hlsl", ".fx", ".fxh"}),
-    # cbuffer/tbuffer are detected via _is_cbuffer() because tree-sitter-hlsl
+    # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.
     boundary_nodes=frozenset({"function_definition", "struct_specifier"}),
     salvage_nodes=frozenset({"function_definition"}),  # cbuffer/tbuffer: see the salvage_extra field below

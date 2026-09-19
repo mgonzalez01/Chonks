@@ -16,26 +16,20 @@ from tree_sitter_language_pack import get_parser
 from chonks.languages import (
     EXT_TO_LANG as _EXT_TO_LANG,
     flags as _lang_flags,
+    get_or_none as _lang_spec,
     table as _lang_table,
 )
 from chonks.languages._ast import (
-    last_identifier as _last_identifier,
-    TERMINAL_IDENTIFIER_TYPES as _TERMINAL_IDENTIFIER_TYPES,
     terminal_identifier as _terminal_identifier,
-    name_text as _name_text,
-    name_last_or_text as _name_last_or_text,
-    name_call_target as _name_call_target,
-    name_strip_angle_brackets as _name_strip_angle_brackets,
 )
+from chonks.languages._naming import extract_name as _extract_name_by_rules
 from chonks.languages.spec import (
-    NameFn as _NameFn,
-    NestedSpec as _NestedSpec,
-    ChildSpec as _ChildSpec,
     FieldChildren as _FieldChildren,
     Field as _Field,
     Children as _Children,
     NodeRule as _NodeRule,
     LiteralSpec as _LiteralSpec,
+    NOT_HANDLED as _NOT_HANDLED,
 )
 
 logger = logging.getLogger("chunking")
@@ -64,8 +58,6 @@ PARSE_TIMEOUT_MICROS = 30_000_000  # 30 seconds
 # file extension -> (tree-sitter language, structural node types that
 # become chunk boundaries).
 _BOUNDARY_NODES = _lang_table("boundary_nodes")
-
-_JS_TS_LANGS = {"javascript", "typescript", "tsx"}
 
 # Container nodes: recurse through them to find inner boundaries.
 # If a container yields no inner boundaries, fall back to treating it as one chunk.
@@ -217,50 +209,17 @@ def dotdir_total_share(stats: list[DotDirStats], total_chunks: int) -> float:
 # AST helpers
 # ---------------------------------------------------------------------------
 
-def _is_cbuffer(node: Node, src: bytes) -> bool:
-    """tree-sitter-hlsl parses `cbuffer Foo {...}` as a plain `declaration`
-    node (type_identifier "cbuffer"/"tbuffer" + identifier), not its own type."""
-    if node.type != "declaration":
-        return False
-    for child in node.children:
-        if child.type == "type_identifier":
-            text = src[child.start_byte:child.end_byte].decode(errors="replace")
-            return text in ("cbuffer", "tbuffer")
-    return False
-
-
-def _is_arrow_var_decl(node: Node) -> bool:
-    """True for `const NAME = (...) => ...;` style declarations: JS/TS has no
-    dedicated node type for a named function assigned to a variable."""
-    if node.type not in ("lexical_declaration", "variable_declaration"):
-        return False
-    for child in node.children:
-        if child.type == "variable_declarator":
-            value = child.child_by_field_name("value")
-            if value is not None and value.type in ("arrow_function", "function_expression"):
-                return True
-    return False
-
-
-# A bare tag reference/forward decl shares this node type with a real
-# definition; without the body check below it spawns a spurious chunk.
-_C_TAG_TYPES = {"struct_specifier", "union_specifier", "enum_specifier"}
-
-
-def _is_c_tag_definition(node: Node) -> bool:
-    return node.type in _C_TAG_TYPES and node.child_by_field_name("body") is not None
-
-
 def _is_boundary(node: Node, lang: str, src: bytes) -> bool:
     boundaries = _BOUNDARY_NODES.get(lang, set())
+    spec = _lang_spec(lang)
     if node.type in boundaries:
-        if lang == "c" and node.type in _C_TAG_TYPES:
-            return _is_c_tag_definition(node)
+        if spec is not None:
+            node_filter = spec.boundary_filters.get(node.type)
+            if node_filter is not None:
+                return node_filter(node, src)
         return True
-    if lang == "hlsl" and _is_cbuffer(node, src):
-        return True
-    if lang in _JS_TS_LANGS and _is_arrow_var_decl(node):
-        return True
+    if spec is not None and spec.extra_boundary is not None:
+        return spec.extra_boundary(node, src)
     return False
 
 
@@ -274,7 +233,8 @@ def _is_salvage_eligible(node: Node, lang: str, src: bytes) -> bool:
     """True for a has_error boundary type safe to recurse into (see module
     comment above). cbuffer/tbuffer qualify too: their body holds only
     simple fields, never nested boundary types."""
-    if lang == "hlsl" and _is_cbuffer(node, src):
+    spec = _lang_spec(lang)
+    if spec is not None and spec.salvage_extra is not None and spec.salvage_extra(node, src):
         return True
     return node.type in _SALVAGE_ELIGIBLE_BOUNDARY_TYPES.get(lang, set())
 
@@ -302,137 +262,10 @@ def _salvage_errored_boundary(node: Node, lang: str, src: bytes,
 
 def _extract_name(node: Node, lang: str, src: bytes) -> str | None:
     """Primary symbol name from a boundary node, or None if not found."""
-
-    def text(n: Node) -> str:
-        return src[n.start_byte:n.end_byte].decode(errors="replace")
-
-    if lang == "hlsl" and _is_cbuffer(node, src):
-        # declaration → identifier child
-        for child in node.children:
-            if child.type == "identifier":
-                return text(child)
+    spec = _lang_spec(lang)
+    if spec is None:
         return None
-
-    t = node.type
-
-    # C++ / HLSL function_definition: type declarator body
-    # declarator field holds function_declarator → look for identifier/field_identifier
-    if t == "function_definition":
-        decl = node.child_by_field_name("declarator")
-        if decl is None:
-            # fallback: find first function_declarator among children
-            for c in node.children:
-                if c.type == "function_declarator":
-                    decl = c
-                    break
-        if decl is not None:
-            # function_declarator → declarator field is the name
-            name_node = decl.child_by_field_name("declarator")
-            if name_node is None:
-                # try first named child (identifier, qualified_identifier, field_identifier…)
-                named = [c for c in decl.children if c.is_named]
-                name_node = named[0] if named else None
-            if name_node is not None:
-                # For qualified names like ShadowMap::Render, return the full qualified text
-                return text(name_node)
-
-    # C++: class_specifier, struct_specifier, namespace_definition
-    # C: struct_specifier, union_specifier, enum_specifier (only ever reach
-    # here as a real definition, see _is_boundary's body-field guard)
-    if t in ("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"):
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-        # fallback: first type_identifier child
-        for c in node.children:
-            if c.type == "type_identifier":
-                return text(c)
-
-    # C typedef: walk down through pointer/array/function-pointer layers to
-    # the type_identifier leaf, don't assume it's the direct child.
-    if t == "type_definition":
-        n = node.child_by_field_name("declarator")
-        seen = 0
-        while n is not None and n.type != "type_identifier" and seen < 8:
-            nxt = n.child_by_field_name("declarator")
-            if nxt is None:
-                named = [c for c in n.children if c.is_named]
-                nxt = named[0] if len(named) == 1 else None
-            n = nxt
-            seen += 1
-        if n is not None:
-            return text(n)
-
-    if t == "namespace_definition":
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-        for c in node.children:
-            if c.type in ("namespace_identifier", "identifier"):
-                return text(c)
-
-    # Python
-    if t in ("function_definition", "async_function_def", "class_definition"):
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-
-    if t == "decorated_definition":
-        # decorated_definition → definition child
-        defn = node.child_by_field_name("definition")
-        if defn:
-            return _extract_name(defn, lang, src)
-
-    # C#: all declaration types have a 'name' field
-    if t in (
-        "method_declaration", "constructor_declaration", "destructor_declaration",
-        "property_declaration", "class_declaration", "struct_declaration",
-        "interface_declaration", "enum_declaration",
-        "operator_declaration", "conversion_operator_declaration",
-    ):
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-
-    # Lua's 'name' field is an identifier, or a dot_index_expression for the
-    # `M.foo` module-table idiom; text() handles both.
-    if lang == "lua" and t == "function_declaration":
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-
-    # C++ template_declaration: recurse into the inner declaration
-    if t == "template_declaration":
-        for c in node.children:
-            if c.type in ("function_definition", "class_specifier", "struct_specifier"):
-                return _extract_name(c, lang, src)
-
-    # JS/TS/TSX: function/class/method and TS-only declarations all expose
-    # their name via the 'name' field.
-    if lang in _JS_TS_LANGS and t in (
-        "function_declaration", "generator_function_declaration",
-        "class_declaration", "method_definition",
-        "interface_declaration", "enum_declaration",
-        "type_alias_declaration", "abstract_class_declaration",
-        "internal_module", "module",
-    ):
-        n = node.child_by_field_name("name")
-        if n:
-            return text(n)
-
-    # Boundary is the whole declaration statement (_is_arrow_var_decl); name
-    # lives on the variable_declarator whose value is the function.
-    if lang in _JS_TS_LANGS and t in ("lexical_declaration", "variable_declaration"):
-        for c in node.children:
-            if c.type == "variable_declarator":
-                value = c.child_by_field_name("value")
-                if value is not None and value.type in ("arrow_function", "function_expression"):
-                    n = c.child_by_field_name("name")
-                    if n:
-                        return text(n)
-        return None
-
-    return None
+    return _extract_name_by_rules(spec, node, src)
 
 
 # Typed reference extraction (calls/imports/inherits): implemented for cpp,
@@ -462,45 +295,22 @@ _CHAIN_BASE_FIELD: dict[str, str] = {
 }
 
 
-def _cpp_qualified_immediate_receiver(n: Node, src: bytes) -> str | None:
-    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls'. Right-recursive
-    grammar: follow 'name' down to the deepest qualified_identifier, then
-    read its 'scope'."""
-    cur = n
-    while True:
-        nxt = cur.child_by_field_name("name")
-        if nxt is not None and nxt.type == "qualified_identifier":
-            cur = nxt
-        else:
-            break
-    return _terminal_identifier(cur.child_by_field_name("scope"), src)
-
-
 def _call_receiver(callee: Node, src: bytes) -> str | None:
     """The immediate receiver of a call's callee expression (see the chain
     rule in this section's header comment). None for a bare/free callee."""
-    if callee.type == "qualified_identifier":
-        return _cpp_qualified_immediate_receiver(callee, src)
     base_field = _CHAIN_BASE_FIELD.get(callee.type)
     if base_field is None:
         return None
     return _terminal_identifier(callee.child_by_field_name(base_field), src)
 
 
-def _gdscript_call_receiver(call_node: Node, src: bytes) -> str | None:
-    """gdscript's 'a.b.c()' is one flat 'attribute' node, not a nested
-    chain, so the receiver is the last named sibling before `call_node`."""
-    parent = call_node.parent
-    if parent is None or parent.type != "attribute":
-        return None
-    prev: "Node | None" = None
-    for c in parent.children:
-        # tree-sitter Node identity isn't stable under `is`; compare `.id`.
-        if c.id == call_node.id:
-            break
-        if c.is_named:
-            prev = c
-    return _terminal_identifier(prev, src)
+def _receiver(call_node: Node, callee: Node, src: bytes, lang: str) -> str | None:
+    spec = _lang_spec(lang)
+    if spec is not None and spec.call_receiver is not None:
+        result = spec.call_receiver(call_node, callee, src)
+        if result is not _NOT_HANDLED:
+            return result
+    return _call_receiver(callee, src)
 
 
 # A spread/pack/varargs marker makes the positional count meaningless.
@@ -588,7 +398,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
             if rule.bucket == "calls":
                 add_call(
                     rule.name_fn(target, src),
-                    _call_receiver(target, src),
+                    _receiver(n, target, src, lang),
                     _call_arity(n.child_by_field_name("arguments")),
                 )
             else:
@@ -614,8 +424,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                 elif spec.bucket == "calls":
                     # gdscript's chain is flat, so `c` itself carries no
                     # receiver; use the sibling-scan helper instead.
-                    receiver = (_gdscript_call_receiver(n, src) if lang == "gdscript"
-                                else _call_receiver(c, src))
+                    receiver = _receiver(n, c, src, lang)
                     add_call(
                         spec.name_fn(c, src),
                         receiver,
@@ -638,9 +447,6 @@ _HAS_ALPHA_RE = re.compile(r"[A-Za-z]")
 # (python f"/r", cpp L"/u8", c_sharp $"/@") without a per-language table.
 _LITERAL_PREFIX_RE = re.compile(r"^[A-Za-z&]{0,3}")
 _LITERAL_QUOTES = ('"""', "'''", '"', "'", "`")
-# lua long-bracket [[...]]/[=[...]=]: tree-sitter-lua parses these as
-# ordinary "string" nodes, not a distinct leaf type.
-_LUA_LONG_BRACKET_RE = re.compile(r"^\[(=*)\[")
 
 # Unrecognized escapes (\d, \uXXXX, ...) are left as written.
 _ESCAPE_MAP = {"n": "\n", "t": "\t", "r": "\r", '"': '"', "'": "'", "\\": "\\", "0": "\0"}
@@ -662,13 +468,11 @@ def _strip_literal_wrapper(raw: str, lang: str) -> tuple[str, str]:
     """Returns (text, mode): 'normal' decodes escapes, 'raw' never does
     (python r"...", lua [[...]], or an unrecognized wrapper), 'verbatim'
     (C# @"...") only decodes "" -> "."""
-    if lang == "lua":
-        m = _LUA_LONG_BRACKET_RE.match(raw)
-        if m:
-            close = "]" + m.group(1) + "]"
-            if raw.endswith(close) and len(raw) >= m.end() + len(close):
-                return raw[m.end():-len(close)], "raw"
-            return raw, "raw"
+    spec = _lang_spec(lang)
+    if spec is not None and spec.literal_wrapper is not None:
+        result = spec.literal_wrapper(raw)
+        if result is not _NOT_HANDLED:
+            return result
 
     m = _LITERAL_PREFIX_RE.match(raw)
     idx = m.end() if m else 0
@@ -681,7 +485,7 @@ def _strip_literal_wrapper(raw: str, lang: str) -> tuple[str, str]:
     for q in _LITERAL_QUOTES:
         if rest.startswith(q) and rest.endswith(q) and len(rest) >= 2 * len(q):
             text = rest[len(q):-len(q)]
-            if lang == "python" and "r" in prefix.lower():
+            if spec is not None and spec.raw_string_prefix is not None and spec.raw_string_prefix(prefix):
                 return text, "raw"
             return text, ("verbatim" if verbatim else "normal")
     return raw, "raw"
@@ -905,31 +709,14 @@ def _split_top_level_params(text: str) -> list[str]:
     return [p for p in parts if p]
 
 
-_PYTHON_SELF_NAMES = {"self", "cls", "__self", "__cls"}
-
-
-def _strip_python_self(parts: list[str]) -> list[str]:
-    """Drops an implicit 'self'/'cls'/'__self' first param: a bound call
-    site never spells it out, so counting it undercounts every call by one."""
-    if not parts:
-        return parts
-    bare = parts[0].split(":", 1)[0].strip()
-    if bare in _PYTHON_SELF_NAMES:
-        return parts[1:]
-    return parts
-
-
 def _classify_param(part: str, lang: str) -> str:
     """One parameter's role: 'marker' (not a real param, e.g. python's
     '/'), 'variadic', 'default', or 'required'."""
-    if lang == "python" and part == "/":
-        return "marker"
-    if lang == "python" and part.startswith("*"):
-        return "variadic"
-    if lang in ("cpp", "c") and (part == "..." or part.endswith("...")):
-        return "variadic"
-    if lang == "c_sharp" and part.startswith("params "):
-        return "variadic"
+    spec = _lang_spec(lang)
+    if spec is not None and spec.classify_param is not None:
+        result = spec.classify_param(part)
+        if result is not _NOT_HANDLED:
+            return result
     if "=" in part:
         return "default"
     return "required"
@@ -941,14 +728,15 @@ def _definer_param_arity(content: str, name: str, lang: str) -> "tuple[int, int,
     params_texts = _find_signature_param_texts(content, name, lang)
     if not params_texts:
         return None
+    spec = _lang_spec(lang)
     combined_min: int | None = None
     combined_max = 0
     combined_variadic = False
     for params_text in params_texts:
         parts = _split_top_level_params(params_text)
-        if lang == "python":
-            parts = _strip_python_self(parts)
-        elif lang in ("cpp", "c") and parts == ["void"]:
+        if spec is not None and spec.strip_implicit_params is not None:
+            parts = spec.strip_implicit_params(parts)
+        elif spec is not None and len(parts) == 1 and parts[0] in spec.empty_param_spellings:
             # c/cpp's explicit zero-args spelling ('int f(void)') is the
             # same as an empty parameter list, not a param named 'void'.
             parts = []
@@ -1011,7 +799,13 @@ class _Segment:
         self.end_byte   = node.end_byte
         self.start_line = node.start_point[0] + 1
         self.end_line   = node.end_point[0] + 1
-        self.chunk_type = node.type if not _is_cbuffer(node, src) else "cbuffer"
+        spec = _lang_spec(lang)
+        synthetic = (spec.synthetic_chunk_type(node, src)
+                     if spec is not None and spec.synthetic_chunk_type is not None else None)
+        # F1 ran the cbuffer check for every language. This gives the same
+        # result, because no other language uses "declaration" as a
+        # boundary or a container type.
+        self.chunk_type = synthetic if synthetic is not None else node.type
         self.name       = _extract_name(node, lang, src)
         self.refs       = _extract_refs(node, lang, src)
 
@@ -1220,7 +1014,9 @@ def _is_identity_free(text: str, lang: str) -> bool:
     a comment, or a bare container opening. Deliberately NOT #include/
     #define/#pragma: false positives fold real identity into a neighbour."""
     prefixes = _COMMENT_PREFIXES.get(lang, _COMMENT_PREFIXES_DEFAULT)
-    body = text if lang == "python" else re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    spec = _lang_spec(lang)
+    body = text if spec is not None and not spec.block_comments \
+        else re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     saw_line = False
     for raw_line in body.splitlines():
         s = raw_line.strip()
@@ -1424,17 +1220,6 @@ def _finalize(segs: list, src: bytes, path: str | None = None,
     ]
 
 
-def _is_main_block(node: Node, src: bytes) -> bool:
-    """True for a Python `if __name__ == "__main__":` top-level block."""
-    if node.type != "if_statement":
-        return False
-    cond = node.child_by_field_name("condition")
-    if cond is None:
-        return False
-    text = src[cond.start_byte:cond.end_byte].decode(errors="replace")
-    return "__name__" in text and "__main__" in text
-
-
 def _line_slice_oversized(content: str, start_line: int, name: str | None,
                           refs: dict[str, list[str]], chunk_type: str = "module") -> list:
     """Line-slices an oversized residue/header span with REAL per-piece
@@ -1489,13 +1274,15 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
                     chunk_type="module", name="<module>", refs=refs))
         run.clear()
 
+    spec = _lang_spec(lang)
     for child in root.children:
         if not child.is_named:
             continue
         if _collect_boundaries(child, lang, src):
             flush()
             continue
-        if lang == "python" and _is_main_block(child, src):
+        if spec is not None and spec.module_residue_split is not None \
+                and spec.module_residue_split(child, src):
             flush()
             content = _node_text(child, src)
             if content.strip():
@@ -1792,7 +1579,8 @@ _DIVIDER_RE = re.compile(r"[/*#=\-_~<>|+.\s]")
 def _is_comment_only(text: str, lang: str) -> bool:
     """True if every non-blank line is a comment or a pure-punctuation divider."""
     prefixes = _COMMENT_PREFIXES.get(lang, _COMMENT_PREFIXES_DEFAULT)
-    if lang != "python":
+    spec = _lang_spec(lang)
+    if spec is None or spec.block_comments:
         text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)  # strip block comments
     for line in text.splitlines():
         s = line.strip()

@@ -43,7 +43,7 @@ def cpp_function_declarator_name(node: Node, src: bytes) -> str | None:
 
 # C++: class_specifier, struct_specifier, namespace_definition
 # C: struct_specifier, union_specifier, enum_specifier (only ever reach
-# here as a real definition, see _is_boundary's body-field guard)
+# here as a real definition, see c's `is_tag_definition` boundary_filters entry)
 def tag_specifier_name(node: Node, src: bytes) -> str | None:
     n = node.child_by_field_name("name")
     if n:
@@ -104,7 +104,7 @@ def template_inner_name(node: Node, src: bytes) -> str | None:
 
 
 def arrow_var_name(node: Node, src: bytes) -> str | None:
-    # Boundary is the whole declaration statement (_is_arrow_var_decl); name
+    # Boundary is the whole declaration statement (`is_arrow_var_decl`); name
     # lives on the variable_declarator whose value is the function.
     for c in node.children:
         if c.type == "variable_declarator":

@@ -66,6 +66,9 @@ class Registry:
     def get(self, name: str) -> LanguageSpec:
         return self.by_name[name]
 
+    def get_or_none(self, name: str) -> "LanguageSpec | None":
+        return self.by_name.get(name)
+
     def table(self, attr: str) -> Mapping[str, object]:
         return MappingProxyType({
             spec.name: value for spec in self.specs
@@ -113,6 +116,10 @@ CODE_LANGUAGES = REGISTRY.code_languages
 
 def get(name: str) -> LanguageSpec:
     return REGISTRY.get(name)
+
+
+def get_or_none(name: str) -> "LanguageSpec | None":
+    return REGISTRY.get_or_none(name)
 
 
 def table(attr: str) -> Mapping[str, object]:
