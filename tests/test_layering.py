@@ -20,7 +20,7 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.cli": "ops",
     "chonks.doctor": "facade",
     "chonks.embedder": "facade",
-    "chonks.init": "ops",
+    "chonks.init": "facade",
     "chonks.query_reformulate": "facade",
     "chonks.report": "facade",
     "chonks.repomap": "facade",
