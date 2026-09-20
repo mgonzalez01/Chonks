@@ -4,6 +4,7 @@ import re
 
 from tree_sitter import Node
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table
 from chonks.languages._ast import terminal_identifier as _terminal_identifier
 from chonks.languages.spec import (
@@ -256,6 +257,16 @@ def _leaf_literal_text(n: Node, src: bytes, lang: str) -> str:
 
 
 _LITERAL_SPECS = _lang_table("literals")
+
+
+def _refresh_from_registry() -> None:
+    global LANG_REFS_SPECS, _REFS_LANGS, _LITERAL_SPECS
+    LANG_REFS_SPECS = _lang_table("refs_spec")
+    _REFS_LANGS = set(LANG_REFS_SPECS)
+    _LITERAL_SPECS = _lang_table("literals")
+
+
+register_refresh(_refresh_from_registry)
 
 
 def _plus_chain_pieces(n: Node, spec: _LiteralSpec, src: bytes, lang: str) -> list[str] | None:

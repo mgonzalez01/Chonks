@@ -5,6 +5,7 @@ import re
 
 from tree_sitter import Node
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import flags as _lang_flags
 
 # Macro self-heal: tree-sitter-cpp can't parse engine macros (UCLASS/
@@ -12,6 +13,15 @@ from chonks.languages import flags as _lang_flags
 # (no hardcoded names), so C's own annotation macros benefit too.
 
 _MACRO_LANGS = _lang_flags("c_macro_self_heal")
+
+
+def _refresh_from_registry() -> None:
+    global _MACRO_LANGS
+    _MACRO_LANGS = _lang_flags("c_macro_self_heal")
+
+
+register_refresh(_refresh_from_registry)
+
 _MAX_MACRO_CANDIDATES = 48  # cap trial-reparses per pass on pathological files
 # A leading macro (UCLASS) only surfaces once the export macro beside the
 # class name is blanked, so healing needs multiple passes.

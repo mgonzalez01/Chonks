@@ -9,6 +9,7 @@ from typing import Any
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
+from chonks.core.refresh import register_refresh
 from chonks.index.macro_heal import (
     _MACRO_LANGS,
     _MAX_MACRO_CANDIDATES,
@@ -730,6 +731,23 @@ _COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
 _COMMENT_PREFIXES_DEFAULT = ("//", "/*", "*/", "*")  # every language without its own prefixes
 # Divider/comment punctuation: a span of only these (+ whitespace) has no text.
 _DIVIDER_RE = re.compile(r"[/*#=\-_~<>|+.\s]")
+
+
+def _refresh_from_registry() -> None:
+    global _EXT_TO_LANG, _BOUNDARY_NODES, _CONTAINER_NODES, CODE_LANGUAGES
+    global _SALVAGE_ELIGIBLE_BOUNDARY_TYPES, _COMMENT_PREFIXES, _MACRO_LANGS
+    import chonks.languages as _languages
+    import chonks.index.macro_heal as _macro_heal
+    _EXT_TO_LANG = _languages.EXT_TO_LANG
+    _BOUNDARY_NODES = _lang_table("boundary_nodes")
+    _CONTAINER_NODES = _lang_table("container_nodes")
+    CODE_LANGUAGES = frozenset(_EXT_TO_LANG.values())
+    _SALVAGE_ELIGIBLE_BOUNDARY_TYPES = _lang_table("salvage_nodes")
+    _COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
+    _MACRO_LANGS = _macro_heal._MACRO_LANGS
+
+
+register_refresh(_refresh_from_registry)
 
 
 def _is_comment_only(text: str, lang: str) -> bool:

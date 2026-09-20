@@ -15,10 +15,20 @@ import numpy as np
 import sqlite_vec
 
 from chonks.core.batching import batched
+from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
+
+
+def _refresh_from_registry() -> None:
+    global CODE_LANGUAGES
+    import chonks.languages as _languages
+    CODE_LANGUAGES = _languages.CODE_LANGUAGES
+
+
+register_refresh(_refresh_from_registry)
 
 # sqlite-vec's hard limit on k for a vec0 KNN query ("k value in knn query too large").
 _VEC_KNN_MAX_K = 4096

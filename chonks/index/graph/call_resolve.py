@@ -2,6 +2,7 @@
 
 import re
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table, union as _lang_union
 from chonks.languages.spec import NOT_HANDLED as _NOT_HANDLED
 
@@ -116,6 +117,15 @@ def _discriminate_definers(
 # Keyword right before a definition's name (skippable past an unrelated
 # same-named call); empty string for languages without one.
 _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
+
+
+def _refresh_from_registry() -> None:
+    global _CLASS_LIKE_CHUNK_TYPES, _DEF_SIGNATURE_KEYWORD
+    _CLASS_LIKE_CHUNK_TYPES = _lang_union("class_like_chunk_types")
+    _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
+
+
+register_refresh(_refresh_from_registry)
 
 
 def _find_signature_param_texts(content: str, name: str, lang: str) -> list[str]:

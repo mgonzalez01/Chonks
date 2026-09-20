@@ -3,8 +3,17 @@
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import CODE_LANGUAGES
 
+
+def _refresh_from_registry() -> None:
+    global CODE_LANGUAGES
+    import chonks.languages as _languages
+    CODE_LANGUAGES = _languages.CODE_LANGUAGES
+
+
+register_refresh(_refresh_from_registry)
 
 # A healthy repo can be 90%+ one family; only warn when ALSO docs-kind.
 FAMILY_DOCS_SHARE_WARN = 0.80    # (a) docs-share *within* the dominant family

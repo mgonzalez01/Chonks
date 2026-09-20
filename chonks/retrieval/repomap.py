@@ -8,12 +8,21 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
 
 _NODE_TYPE_PREFIX = _lang_merged("kind_labels", GENERIC_KIND_LABELS)
+
+
+def _refresh_from_registry() -> None:
+    global _NODE_TYPE_PREFIX
+    _NODE_TYPE_PREFIX = _lang_merged("kind_labels", GENERIC_KIND_LABELS)
+
+
+register_refresh(_refresh_from_registry)
 
 _CHARS_PER_TOKEN = 4
 

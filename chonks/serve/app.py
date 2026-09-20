@@ -8,6 +8,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
+from chonks.core.refresh import register_refresh
 from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
@@ -37,6 +38,14 @@ from chonks.serve.projects import (
     _projects,
     lifespan,
 )
+
+def _refresh_from_registry() -> None:
+    global CODE_LANGUAGES
+    import chonks.index.segment as _segment
+    CODE_LANGUAGES = _segment.CODE_LANGUAGES
+
+
+register_refresh(_refresh_from_registry)
 
 logger = logging.getLogger("chonks.server")
 

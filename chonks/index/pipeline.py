@@ -22,6 +22,7 @@ from chonks.core.paths import (
     _dotdir_prefix,
     _stored_dirname,
 )
+from chonks.core.refresh import register_refresh
 from chonks.index.embed_retry import (
     EMBED_BATCH,
     EMBED_INFLIGHT,
@@ -54,6 +55,15 @@ from chonks.index.text_segment import segment_text_file
 from chonks.languages import EXT_TO_LANG as _EXT_TO_LANG
 from chonks.languages import language_set as _language_set
 from chonks.storage.store import Store
+
+
+def _refresh_from_registry() -> None:
+    global _EXT_TO_LANG
+    import chonks.languages as _languages
+    _EXT_TO_LANG = _languages.EXT_TO_LANG
+
+
+register_refresh(_refresh_from_registry)
 
 logger = logging.getLogger("chonks.chunker")
 

@@ -3,12 +3,22 @@
 import posixpath
 from collections import defaultdict
 
+from chonks.core.refresh import register_refresh
 from chonks.languages import union as _lang_union
 
 # Header/impl pairing (rebuild_hierarchy) is same-dir only; cross-dir layouts
 # (include/src) are not paired. Extension matching is case-insensitive.
 HEADER_EXTS = _lang_union("header_exts")
 IMPL_EXTS = _lang_union("impl_exts")
+
+
+def _refresh_from_registry() -> None:
+    global HEADER_EXTS, IMPL_EXTS
+    HEADER_EXTS = _lang_union("header_exts")
+    IMPL_EXTS = _lang_union("impl_exts")
+
+
+register_refresh(_refresh_from_registry)
 
 
 def rebuild_hierarchy(store) -> dict[str, int]:
