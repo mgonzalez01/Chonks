@@ -256,8 +256,9 @@ def test_module_residue_does_not_demote_real_name():
 
 def test_coverage_completeness_wrapper_body_captured():
     """A top-level wrapper containing a boundary (an if-__name__ block holding a
-    nested class) must not drop its own body. Regression: chunker.py's real
-    `if __name__` block holds a nested _TqdmHandler and was dropping its CLI."""
+    nested class) must not drop its own body. Regression: a CLI whose `if __name__`
+    block held a nested _TqdmHandler was dropping that CLI; the handler now sits
+    inside `chonks/ops/index_cmd.py`'s `main`."""
     src = (
         "import sys\n\n"
         'if __name__ == "__main__":\n'
@@ -504,7 +505,7 @@ def test_collect_symbols_after_macro_heal():
 
 def test_macro_self_heal_unhealable_counter_set_when_nothing_admitted():
     """When the heal sweep runs to completion but admits nothing, the
-    heal_unhealable counter flags it so chunker.py can persist the content hash and
+    heal_unhealable counter flags it so chonks/index/pipeline.py can persist the content hash and
     skip the sweep on future runs. A genuinely-broken file with no macro-shaped
     tokens near the error has nothing for the sweep to admit."""
     src = (
@@ -522,7 +523,7 @@ def test_macro_self_heal_unhealable_counter_set_when_nothing_admitted():
 
 def test_macro_self_heal_healed_file_does_not_set_unhealable_counter():
     """The flip side: a file the heal sweep DOES fix must never set
-    heal_unhealable, since chunker.py would otherwise wrongly memoize it and skip
+    heal_unhealable, since chonks/index/pipeline.py would otherwise wrongly memoize it and skip
     self-heal on a later run where it's actually needed again."""
     src = (
         "UCLASS()\n"
@@ -1004,7 +1005,7 @@ def test_extract_refs_cap_is_on_distinct_names_not_raw_entries():
 # ---------------------------------------------------------------------------
 # Chain rule: the receiver is the IMMEDIATE token adjacent to the called
 # name, 'a.b.c.d()' -> 'c', not 'a' or 'a.b.c'. A definer's own qualifier
-# splits the same way (repomap._definer_qualifiers).
+# splits the same way (chonks.index.graph.call_resolve._definer_qualifiers).
 
 def test_call_receiver_is_immediate_not_root_cpp():
     src = b'''
@@ -1224,7 +1225,7 @@ def test_find_signature_param_texts_unbalanced_match_is_skipped_not_scan_ending(
 def test_calls_entries_are_dicts_not_backward_compat_strings():
     """Fresh extraction always produces the fingerprint dict shape. Backward
     compat for legacy plain-string entries is a repomap-side READ concern
-    (see repomap._call_entry_fields), not something the extractor re-creates."""
+    (see chonks.index.graph.call_resolve._call_entry_fields), not something the extractor re-creates."""
     src = b"def driver():\n    helper()\n"
     segs = segment_file(src, "python", path="t.py")
     refs = _refs(segs, "driver")

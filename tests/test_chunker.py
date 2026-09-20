@@ -998,7 +998,7 @@ class _AlwaysOkEmbedder:
 
 
 def test_dropped_chunk_still_completes_file(tmp_path):
-    """Regression (chunker.py commit_phase): a file with one chunk that
+    """Regression (chonks/index/pipeline.py's commit_phase): a file with one chunk that
     permanently fails to embed and one that succeeds must still get a
     completed `files` row, so a later edit's delete actually fires instead
     of leaving the surviving chunk orphaned forever."""

@@ -66,7 +66,7 @@ def _dir_should_prune(dir_stored_path: str, excludes: list[str], includes: list[
 
 def _dotdir_prefix(stored_dir_path: str) -> str | None:
     """First two segments of a dot-directory path; ".git" doesn't count (VCS,
-    not pollution). Grouping must match chunking.dotdir_breakdown so this and
+    not pollution). Grouping must match chonks.ops.diagnostics.dotdir_breakdown so this and
     doctor's report describe the same bucket."""
     parts = [p for p in stored_dir_path.split("/") if p]
     if not parts or not parts[0].startswith(".") or parts[0] == ".git":

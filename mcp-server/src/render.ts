@@ -24,7 +24,7 @@ export type Chunk = {
 };
 
 // Typed edge among two RETURNED /research chunks. See
-// chonks/research.py's _result_connections.
+// chonks/retrieval/research.py's _result_connections.
 type Connection = { from_id: string; to_id: string; edge_type: string; provenance: string };
 
 // Cheap path heuristic, not a content sniff. Same classifier
@@ -89,7 +89,7 @@ export function formatFilesLine(files: FileRank[], cap = 6): string {
   return `files: ${parts.join(" · ")}${tail}`;
 }
 
-// Must mirror chonks/searcher.py's rank_files ordering exactly (score DESC,
+// Must mirror chonks/retrieval/results.py's rank_files ordering exactly (score DESC,
 // first-appearance ASC tiebreak), since this recomputes it client-side for
 // the merged multi-@subsystem case that has no single backend `files` field.
 export function rankFilesFromChunks(chunks: Chunk[]): FileRank[] {

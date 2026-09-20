@@ -870,7 +870,7 @@ class Store:
         return {r["language"]: r["n"] for r in rows}
 
     def path_family_rows(self) -> list[tuple[str, str | None]]:
-        """(path, language) for every chunk; feeds chunking.family_breakdown
+        """(path, language) for every chunk; feeds chonks.ops.diagnostics.family_breakdown
         for the dominance warning."""
         with self._lock:
             rows = self._conn.execute("SELECT path, language FROM chunks").fetchall()

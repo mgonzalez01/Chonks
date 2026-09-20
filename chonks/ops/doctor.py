@@ -232,7 +232,7 @@ _DOTDIR_TOP_N = 5  # display cap; remainder rolls into a single "and N more" lin
 def _dotdir_section(conn: sqlite3.Connection) -> str:
     """% of the index under dot-directories, plus top offenders by chunk
     count. Visibility only; never changes what gets indexed. Grouping rule:
-    chunking.dotdir_breakdown."""
+    chonks.ops.diagnostics.dotdir_breakdown."""
     rows = conn.execute("SELECT path, language FROM chunks").fetchall()
     total = len(rows)
     lines = ["== Dot-directories =="]
