@@ -34,7 +34,7 @@ def call_receiver(call_node: Node, callee: Node, src: bytes) -> str | None:
 GDSCRIPT = LanguageSpec(
     name="gdscript",
     grammar="gdscript",
-    version="1",
+    version="2",
     extensions=frozenset({".gd"}),
     boundary_nodes=frozenset({"function_definition", "class_definition"}),
     salvage_nodes=frozenset({"function_definition"}),
@@ -50,9 +50,8 @@ GDSCRIPT = LanguageSpec(
         )),
     },
     identifier_leaf_types=frozenset({"identifier"}),
-    # BUG preserved: '#' comments fall to the C-style default prefixes.
-    # A fix moves chunk boundaries and needs a CHUNKER_VERSION bump.
-    line_comment_prefixes=None,
+    line_comment_prefixes=("#",),
+    block_comments=False,
     def_signature_keyword=r"\bfunc\s+",
     class_like_chunk_types=frozenset({"class_definition"}),
     kind_labels={"function_definition": "function", "class_definition": "class"},

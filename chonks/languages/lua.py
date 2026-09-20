@@ -24,7 +24,7 @@ def literal_wrapper(raw: str) -> "tuple[str, str] | object":
 LUA = LanguageSpec(
     name="lua",
     grammar="lua",
-    version="1",
+    version="2",
     # Best-effort tier; unmapped, cross-language C++/Lua binding surfaces
     # (e.g. cocos2d-x) go invisible to co-change pairing.
     extensions=frozenset({".lua"}),
@@ -38,9 +38,8 @@ LUA = LanguageSpec(
     name_rules=(
         NameRule(("function_declaration",), name_field),
     ),
-    # BUG preserved: '--' comments fall to the C-style default prefixes.
-    # A fix moves chunk boundaries and needs a CHUNKER_VERSION bump.
-    line_comment_prefixes=None,
+    line_comment_prefixes=("--",),
+    block_comments=False,
     kind_labels={"function_declaration": "function"},
     literal_wrapper=literal_wrapper,
     literals=LiteralSpec(leaf_types=("string",), plus_type="binary_expression", plus_op=".."),

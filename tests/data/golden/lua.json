@@ -48,6 +48,50 @@
       "counters": {
         "symbols": [
           {
+            "end_line": 17,
+            "kind": "function_declaration",
+            "language": "lua",
+            "name": "run_pipeline",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "-- The leading note this fixture exists to exercise.\nfunction run_pipeline()\n    local step_0 = compute_step(0, \"phase-0\")\n    local step_1 = compute_step(1, \"phase-1\")\n    local step_2 = compute_step(2, \"phase-2\")\n    local step_3 = compute_step(3, \"phase-3\")\n    local step_4 = compute_step(4, \"phase-4\")\n    local step_5 = compute_step(5, \"phase-5\")\n    local step_6 = compute_step(6, \"phase-6\")\n    local step_7 = compute_step(7, \"phase-7\")\n    local step_8 = compute_step(8, \"phase-8\")\n    local step_9 = compute_step(9, \"phase-9\")\n    local step_10 = compute_step(10, \"phase-10\")\n    local step_11 = compute_step(11, \"phase-11\")\n    local step_12 = compute_step(12, \"phase-12\")\n    local step_13 = compute_step(13, \"phase-13\")\nend",
+          "end_line": 17,
+          "literals": [],
+          "name": "run_pipeline",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 17,
+          "kind": "function_declaration",
+          "language": "lua",
+          "name": "run_pipeline",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "lua_comment_only_span_above_merge_min",
+    "language": "lua",
+    "source": "-- The leading note this fixture exists to exercise.\nfunction run_pipeline()\n    local step_0 = compute_step(0, \"phase-0\")\n    local step_1 = compute_step(1, \"phase-1\")\n    local step_2 = compute_step(2, \"phase-2\")\n    local step_3 = compute_step(3, \"phase-3\")\n    local step_4 = compute_step(4, \"phase-4\")\n    local step_5 = compute_step(5, \"phase-5\")\n    local step_6 = compute_step(6, \"phase-6\")\n    local step_7 = compute_step(7, \"phase-7\")\n    local step_8 = compute_step(8, \"phase-8\")\n    local step_9 = compute_step(9, \"phase-9\")\n    local step_10 = compute_step(10, \"phase-10\")\n    local step_11 = compute_step(11, \"phase-11\")\n    local step_12 = compute_step(12, \"phase-12\")\n    local step_13 = compute_step(13, \"phase-13\")\nend\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
             "end_line": 4,
             "kind": "function_declaration",
             "language": "lua",
