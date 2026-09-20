@@ -2,7 +2,7 @@
 import json
 
 from chonks.index.segment import segment_file
-from chonks.searcher import Searcher
+from chonks.retrieval.searcher import Searcher
 from chonks.store import Store
 
 import chonks.server as server

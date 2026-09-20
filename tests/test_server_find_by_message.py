@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 import chonks.server as server
-from chonks.searcher import Searcher
+from chonks.retrieval.searcher import Searcher
 from chonks.store import Store
 
 

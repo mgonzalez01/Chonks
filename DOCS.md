@@ -70,8 +70,8 @@ CUDA (`.cu`/`.cuh`) and Objective-C++/Metal (`.mm`/`.metal`) are parsed best-eff
 flowchart TD
     CC["Claude Code / any MCP client"] -->|"MCP: JSON-RPC over stdio"| PROXY["mcp-server (Node/TypeScript)&#10;codebase_search &middot; codebase_research &middot; codebase_map&#10;codebase_status &middot; find_symbol &middot; find_usages &middot; investigate &middot; trace_path &middot; find_by_message"]
     PROXY -->|"HTTP :11438, loopback"| API["chonks/serve/ (FastAPI) &mdash; chonks serve&#10;/search /research /repomap /symbol /usages /outgoing /investigate /trace&#10;/index /status /find_by_message /impact /hubs"]
-    API --> SEARCHER["chonks/searcher.py&#10;search API"]
-    API --> RESEARCH["chonks/research.py&#10;candidate collection"]
+    API --> SEARCHER["chonks/retrieval/searcher.py&#10;search API"]
+    API --> RESEARCH["chonks/retrieval/research.py&#10;candidate collection"]
     API --> REPOMAP["chonks/index/graph/&#10;symbol graph + persisted PageRank"]
     API --> CHUNKER["chonks/index/&#10;indexing &mdash; chonks index"]
     CHUNKER --> SUMM["chonks/index/summaries.py&#10;folder summaries"]
@@ -498,7 +498,7 @@ Response: `{ chunks: [...], formatted: "...", count: N, docs_in_results: N, near
 
 `docs_in_results` counts how many returned chunks are text-fallback chunks (docs) rather than AST-tier chunks (code), which lets a caller detect a result set where docs drown out code and retry with `chunk_kind: "code"`.
 
-`files` is a file-level ranking of the returned chunks, produced by `rank_files` in `chonks/searcher.py`, with one `{path, score, n_chunks, best_rank}` entry per distinct file, ordered by best-chunk score descending and then by first appearance ascending. A file's own top-scoring chunk stands in for the whole file.
+`files` is a file-level ranking of the returned chunks, produced by `rank_files` in `chonks/retrieval/results.py`, with one `{path, score, n_chunks, best_rank}` entry per distinct file, ordered by best-chunk score descending and then by first appearance ascending. A file's own top-scoring chunk stands in for the whole file.
 
 `near_dup` flags a near-duplicate wall in the returned set. It is `null` when fewer than 5 vector-bearing chunks are available to evaluate, that is `chunks.length < 5` or too few with a `chunk_vecs` row, and otherwise `{ wall_share: float, wall_size: int, tau: float }`, where `wall_share` is the share of the evaluated chunks held by the largest connected component in a graph with edges at pairwise cosine at or above `tau` (`NEAR_DUP_TAU`, 0.85, with `NEAR_DUP_WALL_SHARE_THRESHOLD` at 0.6). It is an observation only, never changes the ranking, and is capped at the first 50 returned chunks.
 

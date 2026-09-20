@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 import chonks.server as server
-from chonks.searcher import Searcher
+from chonks.retrieval.searcher import Searcher
 from chonks.store import Store
 
 
@@ -240,7 +240,7 @@ def test_search_endpoint_near_dup_fires_on_identical_vectors(monkeypatch, tmp_pa
     assert body["near_dup"] is not None
     assert body["near_dup"]["wall_share"] == 1.0
     assert body["near_dup"]["wall_size"] == 5
-    from chonks.searcher import NEAR_DUP_TAU
+    from chonks.retrieval.results import NEAR_DUP_TAU
     assert body["near_dup"]["tau"] == NEAR_DUP_TAU
 
 

@@ -10,10 +10,10 @@ from typing import Any
 import numpy as np
 
 from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, edge_provenance
-from chonks.searcher import Searcher
+from chonks.retrieval.searcher import Searcher
 from chonks.store import Store
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("chonks.research")
 
 # ---------------------------------------------------------------------------
 # Defaults

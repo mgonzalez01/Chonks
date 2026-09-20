@@ -22,8 +22,6 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.init": "facade",
     "chonks.query_reformulate": "facade",
     "chonks.report": "facade",
-    "chonks.research": "retrieval",
-    "chonks.searcher": "retrieval",
     "chonks.server": "facade",
     "chonks.store": "facade",
     "chonks.summaries": "facade",

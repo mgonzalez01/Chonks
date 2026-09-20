@@ -12,10 +12,11 @@ from chonks.chunker import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
 from chonks.retrieval.trace import trace_path
-from chonks.research import deep_research
+from chonks.retrieval.research import deep_research
 from chonks.retrieval import graph_queries, message_match
+from chonks.retrieval.results import detect_near_dup_wall, format_results, rank_files
 from chonks.retrieval.source import _attach_definition_source
-from chonks.searcher import DEFAULT_BLEND_ALPHA, DEFAULT_BLEND_BETA, DEFAULT_FILE_CAP, rank_files
+from chonks.retrieval.searcher import DEFAULT_BLEND_ALPHA, DEFAULT_BLEND_BETA, DEFAULT_FILE_CAP
 from chonks.serve.models import (
     FindByMessageRequest,
     HubsRequest,
@@ -121,12 +122,12 @@ def search(req: SearchRequest) -> JSONResponse:
     # Counts only the returned (post top_k) chunks, for the MCP layer's docs-drown-code nudge.
     docs_in_results = sum(1 for c in chunks if c.get("language") not in CODE_LANGUAGES)
 
-    # None means too few vector chunks to evaluate; see Searcher.detect_near_dup_wall.
-    near_dup = searcher.detect_near_dup_wall(chunks)
+    # None means too few vector chunks to evaluate; see retrieval.results.
+    near_dup = detect_near_dup_wall(searcher.store, chunks)
 
     return JSONResponse({
         "chunks":           chunks,
-        "formatted":        searcher.format_results(chunks),
+        "formatted":        format_results(chunks),
         "count":            len(chunks),
         "docs_in_results":  docs_in_results,
         "near_dup":         near_dup,
