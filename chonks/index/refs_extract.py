@@ -72,6 +72,7 @@ def _call_arity(args_node: "Node | None", lang: str) -> int | None:
     spec = _lang_spec(lang)
     variadic_types = spec.variadic_arg_types if spec is not None else frozenset()
     keyword_types = spec.keyword_arg_types if spec is not None else frozenset()
+    is_keyword_arg = spec.is_keyword_arg if spec is not None else None
     count = 0
     saw_keyword = False
     for c in args_node.children:
@@ -81,7 +82,7 @@ def _call_arity(args_node: "Node | None", lang: str) -> int | None:
             continue
         if c.type in variadic_types:
             return None
-        if c.type in keyword_types:
+        if c.type in keyword_types or (is_keyword_arg is not None and is_keyword_arg(c)):
             saw_keyword = True
             continue
         count += 1
