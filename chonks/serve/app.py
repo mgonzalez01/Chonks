@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 
 from chonks.chunker import index_paths
 from chonks.index.segment import CODE_LANGUAGES
-from chonks.repomap import build_repomap, trace_path
+from chonks.retrieval.repomap import build_repomap
+from chonks.retrieval.trace import trace_path
 from chonks.research import deep_research
 from chonks.retrieval import graph_queries, message_match
 from chonks.retrieval.source import _attach_definition_source

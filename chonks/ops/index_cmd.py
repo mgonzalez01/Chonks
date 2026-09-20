@@ -20,7 +20,9 @@ from chonks.embedder import (
 )
 from chonks.index.pipeline import index_paths, reembed_all
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
-from chonks.repomap import build_neighbors, build_refs, persist_pagerank
+from chonks.index.graph.knn import build_neighbors
+from chonks.index.graph.refs import build_refs
+from chonks.index.graph.pagerank import persist_pagerank
 from chonks.store import Store
 from chonks.summaries import build_folder_summaries
 

@@ -11,7 +11,7 @@ import posixpath
 from collections import defaultdict
 from typing import TYPE_CHECKING, Callable
 
-from chonks.repomap import compute_pagerank_global
+from chonks.index.graph.pagerank import compute_pagerank_global
 
 if TYPE_CHECKING:
     from chonks.store import Store

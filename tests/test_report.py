@@ -32,7 +32,7 @@ def _build_synthetic_store(tmp_path) -> Store:
         ("engine", "helper", "calls"),      # same subsystem (core -> core)
         ("engine", "shader", "calls"),      # cross-subsystem (core -> render)
         ("bridge", "shader", "xlang"),      # cross-language, both legs (as
-        ("shader", "bridge", "xlang"),      # repomap._build_graph writes xlang symmetrically)
+        ("shader", "bridge", "xlang"),      # index.graph.refs._build_graph writes xlang symmetrically)
         ("shader", "pass_",  "mentions"),   # same subsystem, mentions-only (should be excluded)
         ("helper", "shader", "associated"), # cross-subsystem, PMI-associated (should be excluded)
     ])

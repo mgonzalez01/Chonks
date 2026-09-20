@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chonks.repomap import build_neighbors
+from chonks.index.graph.knn import build_neighbors
 from chonks.store import Store
 
 
@@ -53,13 +53,13 @@ def test_build_neighbors_empty_corpus_returns_zero_edges():
 # --- matmul block auto-sizing (use available RAM) -------------------------
 
 def test_neighbor_block_rows_override():
-    from chonks.repomap import _neighbor_block_rows
+    from chonks.index.graph.knn import _neighbor_block_rows
     assert _neighbor_block_rows(10000, override=2048) == 2048
     assert _neighbor_block_rows(500, override=4096) == 500  # capped at N
 
 
 def test_neighbor_block_rows_autoscale(monkeypatch):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: 64 * 10**9)
     n = 100_000
     got = repomap._neighbor_block_rows(n)
@@ -74,7 +74,7 @@ def test_neighbor_block_rows_autoscale(monkeypatch):
 
 
 def test_neighbor_block_rows_fallback_and_cap(monkeypatch):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     # RAM unknown -> fixed floor (capped at N)
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: None)
     assert repomap._neighbor_block_rows(100_000) == repomap._NEIGHBOR_MATMUL_BLOCK
@@ -345,7 +345,7 @@ def test_incremental_falls_back_to_full_rebuild_over_threshold():
     """A batch that's a large fraction of the corpus should not take the
     incremental path; verify by monkeypatching the incremental helper and
     asserting it's never called."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     store = _make_store(n_chunks=50)
     build_neighbors(store)
 
@@ -370,7 +370,7 @@ def test_incremental_bails_mid_flight_on_high_fanout(monkeypatch, caplog):
     the displacement matmul. Over budget, the incremental path must return
     None and fall back to a full rebuild that still produces the exact graph."""
     import logging
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
 
     rng = np.random.default_rng(7)
     n, dim, k = 20, 8, 10
@@ -415,7 +415,7 @@ def test_incremental_bails_mid_flight_on_high_fanout(monkeypatch, caplog):
 # fast) so both are exercised regardless of how big the test corpus is.
 
 def _force_mode(monkeypatch, exact: bool):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(
         repomap, "_NEIGHBOR_FULL_F32_MAX_BYTES", 0 if exact else 10**18,
     )
@@ -426,7 +426,7 @@ def test_corpus_sims_block_exact_matches_fast_on_random_data():
     random int8 data across several seeds/dims; the ranking-affecting case
     (large magnitude, dim large enough to overflow float32's mantissa) is
     covered separately below since it needs adversarial vectors to surface."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     for seed, dim, n in [(0, 8, 50), (1, 64, 30), (2, 300, 20), (3, 1, 40)]:
         rng = np.random.default_rng(seed)
         m8 = rng.integers(-127, 128, size=(n, dim), dtype=np.int8)
@@ -452,7 +452,7 @@ def test_corpus_exact_mode_correct_where_float32_would_round():
     """Adversarial max-magnitude vectors at dim=2560 push the true dot
     product above float32's 24-bit-mantissa exact-integer ceiling, so sgemm
     rounds to the wrong integer. 'exact' mode must still match int64 arithmetic."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     dim = 2560
     n = 40
     m8 = np.full((n, dim), 127, dtype=np.int8)
@@ -493,7 +493,7 @@ def test_corpus_dim_safe_selects_fast_regardless_of_ram_threshold(monkeypatch):
     """A dim-safe corpus (dim=64, well under the ~1040 cutoff) must select
     'fast' mode even when the RAM-aware threshold is forced to say the corpus
     is 'too big': the dim rule short-circuits before RAM is considered."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     # Force the old-style threshold (and a starved RAM probe) to look like
     # they'd pick "exact": the dim rule must still win.
     monkeypatch.setattr(repomap, "_NEIGHBOR_FULL_F32_MAX_BYTES", 0)
@@ -511,7 +511,7 @@ def test_corpus_dim_safe_selects_fast_regardless_of_ram_threshold(monkeypatch):
 def test_corpus_dim_safe_at_jina_896_selects_fast(monkeypatch):
     """dim=896 (jina) is the motivating case; must select
     'fast' even under a starved RAM budget."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: 1)
     dim = 896
     assert dim * 127 * 127 < repomap._NEIGHBOR_DIM_SAFE_DOT_PRODUCT_MAX
@@ -528,7 +528,7 @@ def test_corpus_dim_unsafe_small_corpus_selects_fast_when_ram_plentiful(monkeypa
     still select 'fast' when free RAM comfortably covers the full float32
     residency; Tier 2 must not force 'exact' just because dim crossed the
     Tier-1 cutoff."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: 64 * 10**9)  # 64 GB free
     dim = 2560
     assert dim * 127 * 127 >= repomap._NEIGHBOR_DIM_SAFE_DOT_PRODUCT_MAX
@@ -543,7 +543,7 @@ def test_corpus_dim_unsafe_small_corpus_selects_fast_when_ram_plentiful(monkeypa
 def test_corpus_dim_unsafe_tiny_ram_budget_selects_exact(monkeypatch):
     """A dim-unsafe corpus under a mocked tiny RAM budget must fall back to
     'exact' mode: Tier 2's RAM-aware threshold in action."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: 1024)  # 1 KB free
     dim = 2560
     n = 20
@@ -558,7 +558,7 @@ def test_corpus_dim_unsafe_no_ram_probe_falls_back_to_fixed_threshold(monkeypatc
     """When free RAM can't be measured at all, Tier 2 falls back to the fixed
     `_NEIGHBOR_FULL_F32_MAX_BYTES` byte threshold (same escape hatch role the
     fixed floor plays in `_neighbor_block_rows`)."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_available_ram_bytes", lambda: None)
     dim = 2560
     n = 4  # tiny corpus: n*dim*4 well under the fixed 512MB threshold
@@ -661,7 +661,7 @@ def test_damaged_row_repair_when_deleted_chunk_had_many_incoming_edges():
 def _force_ram_mode(monkeypatch, exact: bool) -> None:
     """Force _Corpus's Tier-2 RAM-aware threshold at a dim-unsafe dimension by
     mocking the RAM probe (tiny -> 'exact', plentiful -> 'fast')."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(
         repomap, "_available_ram_bytes", lambda: 1024 if exact else 64 * 10**9,
     )
@@ -671,7 +671,7 @@ def test_build_neighbors_exact_mode_matches_fast_mode_dim_unsafe(monkeypatch):
     """End-to-end equivalence at dim=2560 (dim-unsafe): forcing 'exact' mode
     via a starved RAM probe must produce the identical neighbor graph as
     'fast' mode forced via a plentiful RAM probe."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     dim = 2560
     assert dim * 127 * 127 >= repomap._NEIGHBOR_DIM_SAFE_DOT_PRODUCT_MAX
     store = _make_store(n_chunks=200, dim=dim)
@@ -719,7 +719,7 @@ def test_mlx_backend_activates_only_dim_safe(monkeypatch):
     dim-unsafe corpora in 'fast' mode have inexact float32 sims where MLX and
     BLAS accumulation order can disagree, breaking numpy-path determinism."""
     pytest.importorskip("mlx.core")
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "mlx")
     rng = np.random.default_rng(0)
@@ -730,7 +730,7 @@ def test_mlx_backend_activates_only_dim_safe(monkeypatch):
     assert corpus._mx is not None
 
     blob = rng.integers(-127, 128, size=(50, 2560), dtype=np.int8).tobytes()
-    monkeypatch.setattr("chonks.repomap.knn._available_ram_bytes", lambda: 64 * 10**9)
+    monkeypatch.setattr("chonks.index.graph.knn._available_ram_bytes", lambda: 64 * 10**9)
     corpus = _Corpus([f"c{i}" for i in range(50)], blob, 2560)
     assert not corpus.exact  # tier 2 picked 'fast', the case the gate targets
     assert corpus._mx is None
@@ -764,7 +764,7 @@ def test_mlx_subsliced_topk_identical_to_numpy(monkeypatch):
     is still row-for-row identical to numpy, catching any stitching/offset
     bug in the sub-slice loop."""
     pytest.importorskip("mlx.core")
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
 
     monkeypatch.delenv("CHONKS_KNN_BACKEND", raising=False)
     store_np = _make_store(n_chunks=300, dim=4)
@@ -878,7 +878,7 @@ def test_cuda_backend_missing_cupy_raises_clear_error(monkeypatch):
     """CHONKS_KNN_BACKEND=cuda is a hard request (unlike mlx's graceful
     fallback): cupy import failure must raise a clear, actionable error
     instead of silently degrading to numpy."""
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     monkeypatch.setitem(sys.modules, "cupy", None)
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
@@ -891,7 +891,7 @@ def test_cuda_backend_missing_cupy_raises_clear_error(monkeypatch):
 def test_cuda_backend_no_device_raises_clear_error(monkeypatch):
     """cupy importable but zero CUDA devices detected must also raise
     clearly, not silently fall back."""
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     monkeypatch.setitem(sys.modules, "cupy", _fake_cupy_module(device_count=0))
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
@@ -904,7 +904,7 @@ def test_cuda_backend_no_device_raises_clear_error(monkeypatch):
 def test_cuda_backend_device_query_failure_raises_clear_error(monkeypatch):
     """A device-count query that raises (no driver at all) must also surface
     as a clear RuntimeError, not an unhandled cupy exception."""
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     fake = _fake_cupy_module()
     def _boom():
@@ -925,7 +925,7 @@ def test_cuda_backend_activates_only_dim_safe(monkeypatch):
     'fast' mode (tier 2, RAM-based) must NOT arm the backend, even though
     CHONKS_KNN_BACKEND=cuda is set; it falls back to numpy silently, same as
     MLX would."""
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     monkeypatch.setitem(sys.modules, "cupy", _fake_cupy_module())
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
@@ -937,7 +937,7 @@ def test_cuda_backend_activates_only_dim_safe(monkeypatch):
     assert corpus._cp is not None
 
     blob = rng.integers(-127, 128, size=(50, 2560), dtype=np.int8).tobytes()
-    monkeypatch.setattr("chonks.repomap.knn._available_ram_bytes", lambda: 64 * 10**9)
+    monkeypatch.setattr("chonks.index.graph.knn._available_ram_bytes", lambda: 64 * 10**9)
     corpus = _Corpus([f"c{i}" for i in range(50)], blob, 2560)
     assert not corpus.exact  # tier 2 picked 'fast', the case the gate targets
     assert corpus._cp is None
@@ -969,7 +969,7 @@ def test_cuda_subsliced_topk_identical_to_numpy(monkeypatch):
     result is still row-for-row identical to numpy (catches any
     stitching/offset bug in the sub-slice loop, mirrors the MLX cliff-cap
     test even though cupy has no known corruption cliff of its own)."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
 
     monkeypatch.delenv("CHONKS_KNN_BACKEND", raising=False)
     store_np = _make_store(n_chunks=300, dim=4)
@@ -1051,11 +1051,11 @@ def test_cuda_dim_unsafe_backend_falls_back_silently_no_error(monkeypatch, caplo
     declines the device backend (same as MLX), it does not treat this as a
     forced-backend failure. An info-level log line notes why."""
     import logging
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
 
     monkeypatch.setitem(sys.modules, "cupy", _fake_cupy_module())
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
-    monkeypatch.setattr("chonks.repomap.knn._available_ram_bytes", lambda: 64 * 10**9)
+    monkeypatch.setattr("chonks.index.graph.knn._available_ram_bytes", lambda: 64 * 10**9)
     rng = np.random.default_rng(0)
     blob = rng.integers(-127, 128, size=(50, 2560), dtype=np.int8).tobytes()
     with caplog.at_level(logging.INFO, logger="repomap"):
@@ -1101,7 +1101,7 @@ def test_cuda_incremental_matches_full_rebuild_real_gpu(monkeypatch):
 
 def test_incremental_progress_logs_entry_and_phase_lines(monkeypatch, caplog):
     import logging
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
 
     monkeypatch.setattr(repomap, "_NEIGHBOR_PROGRESS_INTERVAL_S", 0.0)
     rng = np.random.default_rng(9)
@@ -1140,7 +1140,7 @@ def test_incremental_progress_logs_entry_and_phase_lines(monkeypatch, caplog):
 # when a device backend is armed.
 
 def test_device_backend_armed_false_without_env(monkeypatch):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.delenv("CHONKS_KNN_BACKEND", raising=False)
     assert repomap._device_backend_armed(dim=8) is False
 
@@ -1148,21 +1148,21 @@ def test_device_backend_armed_false_without_env(monkeypatch):
 def test_device_backend_armed_false_dim_unsafe(monkeypatch):
     """Even with CHONKS_KNN_BACKEND=cuda set and cupy importable, a dim-unsafe
     dim must not arm the device path, mirroring _Corpus's own gate."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setitem(sys.modules, "cupy", _fake_cupy_module())
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
     assert repomap._device_backend_armed(dim=2560) is False
 
 
 def test_device_backend_armed_true_for_cuda_dim_safe(monkeypatch):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setitem(sys.modules, "cupy", _fake_cupy_module())
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
     assert repomap._device_backend_armed(dim=8) is True
 
 
 def test_device_backend_armed_false_cupy_not_importable(monkeypatch):
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setitem(sys.modules, "cupy", None)  # forces ImportError
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "cuda")
     assert repomap._device_backend_armed(dim=8) is False
@@ -1172,7 +1172,7 @@ def test_gate_uses_device_threshold_when_backend_armed(monkeypatch):
     """A batch over the device fraction but under the numpy fraction must
     fall back to a full rebuild when a device backend is armed, and must
     take the incremental path when it isn't, on the same store and batch."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
 
     def _run(armed: bool) -> bool:
         monkeypatch.setattr(repomap, "_device_backend_armed", lambda dim: armed)
@@ -1200,7 +1200,7 @@ def test_gate_uses_device_threshold_when_backend_armed(monkeypatch):
 def test_gate_device_threshold_boundary_value(monkeypatch):
     """Right at the device fraction boundary the batch still qualifies
     (`<=`, matching the numpy gate's own boundary convention)."""
-    import chonks.repomap.knn as repomap
+    import chonks.index.graph.knn as repomap
     monkeypatch.setattr(repomap, "_device_backend_armed", lambda dim: True)
     store = _make_store(n_chunks=1000, dim=8)
     build_neighbors(store)
@@ -1224,14 +1224,14 @@ def test_gate_device_threshold_boundary_value(monkeypatch):
 
 def _tiny_corpus():
     import numpy as np
-    from chonks.repomap import _Corpus
+    from chonks.index.graph.knn import _Corpus
     ids = ["a", "b", "c"]
     blob = np.zeros((3, 8), dtype=np.int8).tobytes()
     return _Corpus(ids, blob, 8)
 
 
 def test_auto_backend_falls_to_numpy_without_gpu_libs(monkeypatch):
-    import chonks.repomap.knn as rm
+    import chonks.index.graph.knn as rm
     monkeypatch.delenv("CHONKS_KNN_BACKEND", raising=False)
     monkeypatch.setattr(rm, "_detect_knn_backend", lambda: "numpy")
     c = _tiny_corpus()
@@ -1240,7 +1240,7 @@ def test_auto_backend_falls_to_numpy_without_gpu_libs(monkeypatch):
 
 def test_cpu_hint_names_the_cuda_extra_for_large_corpora(monkeypatch, caplog):
     import logging
-    import chonks.repomap.knn as rm
+    import chonks.index.graph.knn as rm
     monkeypatch.delenv("CHONKS_KNN_BACKEND", raising=False)
     monkeypatch.setattr(rm, "_detect_knn_backend", lambda: "numpy")
     monkeypatch.setattr(rm, "_KNN_CPU_HINT_MIN_N", 1)
@@ -1251,7 +1251,7 @@ def test_cpu_hint_names_the_cuda_extra_for_large_corpora(monkeypatch, caplog):
 
 def test_explicit_numpy_suppresses_cpu_hint(monkeypatch, caplog):
     import logging
-    import chonks.repomap.knn as rm
+    import chonks.index.graph.knn as rm
     monkeypatch.setenv("CHONKS_KNN_BACKEND", "numpy")
     monkeypatch.setattr(rm, "_KNN_CPU_HINT_MIN_N", 1)
     with caplog.at_level(logging.WARNING, logger="repomap"):

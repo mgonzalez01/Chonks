@@ -1,6 +1,6 @@
 """Tests for repomap symbol-type prefix rendering."""
 import pytest
-from chonks.repomap import _format_map
+from chonks.retrieval.repomap import _format_map
 
 
 def _chunk(chunk_type: str, name: str, path: str = "src/foo.py", start_line: int = 1) -> dict:
@@ -21,7 +21,7 @@ def _scores(chunks: list[dict]) -> dict[str, float]:
 def test_build_graph_expands_refs_from_symbol_index():
     """applyStep is folded into Sim's chunk and isn't a chunk name on its
     own, so it only resolves to an edge via the symbol index."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
          "content": "void driver() { applyStep(x); }"},
@@ -40,7 +40,7 @@ def test_build_graph_expands_refs_from_symbol_index():
 def test_build_graph_qualified_definer_reachable_via_bare_alias():
     """A chunk whose only symbol is qualified ("Widget::applyStep") is still
     reachable from a bare content token ("applyStep()")."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
          "content": "void driver() { applyStep(); }"},
@@ -55,7 +55,8 @@ def test_build_graph_qualified_definer_reachable_via_bare_alias():
 def test_build_graph_bare_alias_respects_min_name_len():
     """A qualified name whose bare last component is under _MIN_NAME_LEN
     gets no alias at all."""
-    from chonks.repomap import _MIN_NAME_LEN, _build_graph
+    from chonks.core.edges import _MIN_NAME_LEN
+    from chonks.index.graph.refs import _build_graph
     assert _MIN_NAME_LEN == 3
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
@@ -72,7 +73,8 @@ def test_build_graph_bare_alias_ubiquity_cap_applies_post_aliasing():
     """Many distinct qualified definers that alias to the same bare name
     ("init") are aggregated before the ubiquity cap is checked, not
     evaluated per qualified name."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, _build_graph
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.index.graph.refs import _build_graph
 
     n_definers = _MAX_CROSS_LANG_OCCURRENCES + 1
     chunks = [
@@ -92,7 +94,7 @@ def test_build_graph_bare_alias_ubiquity_cap_applies_post_aliasing():
 def test_build_graph_bare_alias_no_duplicate_edge_when_both_forms_resolve():
     """A chunk whose own name and whose qualified symbol both alias to the
     same bare key must not be registered twice under that key."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
          "content": "void driver() { bsearch(); }"},
@@ -162,7 +164,7 @@ def test_build_repomap_lists_folded_class_methods(tmp_path):
     and aren't chunk names of their own, but they're in the symbol index and
     must still show up in the map."""
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     store.insert_symbols([
@@ -182,7 +184,7 @@ def test_build_repomap_empty_symbols_falls_back_to_chunks(tmp_path):
     """An old DB with no symbol table rows must still produce a map from
     chunk names rather than returning empty."""
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     with store._lock:
@@ -204,7 +206,7 @@ def test_node_type_prefix_covers_all_boundary_nodes():
     """Guards against _NODE_TYPE_PREFIX drifting from the chunker's
     _BOUNDARY_NODES, which was the root cause of the original bare renders."""
     from chonks.index.segment import _BOUNDARY_NODES
-    from chonks.repomap import _NODE_TYPE_PREFIX
+    from chonks.retrieval.repomap import _NODE_TYPE_PREFIX
 
     emitted = {nt for types in _BOUNDARY_NODES.values() for nt in types}
     emitted.add("cbuffer")  # HLSL cbuffer/tbuffer -> synthetic chunk_type (_is_cbuffer)
@@ -219,7 +221,7 @@ def test_node_type_prefix_covers_all_boundary_nodes():
 # ---------------------------------------------------------------------------
 
 def test_build_graph_emits_typed_edge_from_metadata():
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
          "content": "void driver() { helper(); }",
@@ -235,7 +237,7 @@ def test_build_graph_emits_typed_edge_from_metadata():
 def test_build_graph_emits_typed_edge_from_metadata_c_across_files():
     """Resolution is purely by name, not by shared file, so a caller and
     callee in different .c files still resolve to a typed edge."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "c", "path": "src/driver.c",
          "content": "int driver(void) { return helper(1); }",
@@ -251,7 +253,7 @@ def test_build_graph_emits_typed_edge_from_metadata_c_across_files():
 def test_typed_edge_supersedes_mentions():
     """The typed pass runs after the content-scan pass, so it wins when both
     produce an edge for the same (from_id, to_id) pair."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
          "content": "void driver() { helper(); }",  # content scan also sees "helper"
@@ -265,7 +267,7 @@ def test_typed_edge_supersedes_mentions():
 
 
 def test_build_graph_no_metadata_falls_back_to_mentions():
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
     chunks = [
         {"id": "a", "name": "driver", "language": "hlsl",
          "content": "void driver() { helper(); }"},
@@ -280,7 +282,8 @@ def test_cap_mentions_suppresses_edges_for_ubiquitous_name():
     """cap_mentions=True mirrors the xlang/typed passes' existing cap: a
     mentioned name over _MAX_CROSS_LANG_OCCURRENCES definers gets no
     mentions edges at all."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, _build_graph
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.index.graph.refs import _build_graph
 
     n_definers = _MAX_CROSS_LANG_OCCURRENCES + 1
     chunks = [
@@ -303,7 +306,8 @@ def test_cap_mentions_suppresses_edges_for_ubiquitous_name():
 
 def test_cap_mentions_still_edges_within_cap_name():
     """The cap is a ceiling, not a blanket suppression."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, _build_graph
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.index.graph.refs import _build_graph
 
     n_definers = _MAX_CROSS_LANG_OCCURRENCES
     chunks = [
@@ -322,7 +326,7 @@ def test_cap_mentions_still_edges_within_cap_name():
 
 def test_cap_mentions_does_not_affect_typed_edges():
     """Typed edges already have their own cap, independent of cap_mentions."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
@@ -346,7 +350,7 @@ def test_classify_mentions_promotes_top_pmi_pairs_deterministically():
     """All four (chunk, name) pairs have exactly equal PMI, so the promoted
     set is decided by the tie-break (-PMI, name, chunk id), not by dict/set
     iteration order: "www" and "xxx" sort first and win."""
-    from chonks.repomap import _classify_mentions
+    from chonks.index.graph.refs import _classify_mentions
 
     referenced_by_chunk = {
         "refZ": {"zzz"},
@@ -360,7 +364,7 @@ def test_classify_mentions_promotes_top_pmi_pairs_deterministically():
 
 
 def test_classify_mentions_zero_frac_promotes_nothing():
-    from chonks.repomap import _classify_mentions
+    from chonks.index.graph.refs import _classify_mentions
 
     referenced_by_chunk = {"a": {"only_name"}}
     name_to_ids = {"only_name": ["def"]}
@@ -371,7 +375,7 @@ def test_classify_mentions_excludes_self_only_pairs_from_population():
     """A (chunk, name) pair whose only definer is the referencing chunk
     itself can never emit an edge, so it must not enter the PMI population
     at all (checked here at frac=1.0, which promotes everything live)."""
-    from chonks.repomap import _classify_mentions
+    from chonks.index.graph.refs import _classify_mentions
 
     referenced_by_chunk = {
         "solo": {"selfName"},
@@ -385,7 +389,7 @@ def test_classify_mentions_excludes_self_only_pairs_from_population():
 def test_classify_mentions_is_deterministic_across_repeated_calls():
     """Same tie-heavy population as the promotion test above, called twice
     with fresh dicts: must be byte-identical."""
-    from chonks.repomap import _classify_mentions
+    from chonks.index.graph.refs import _classify_mentions
 
     def _pairs():
         return {"refW": {"www"}, "refX": {"xxx"}, "refY": {"yyy"}, "refZ": {"zzz"}}
@@ -399,7 +403,7 @@ def test_classify_mentions_is_deterministic_across_repeated_calls():
 def test_build_graph_associated_top_frac_zero_is_bit_identical_to_mentions():
     """frac=0 (the default) must reproduce pre-PMI chunk_refs exactly, even
     on a corpus that would promote a pair at any positive frac."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "def_rare", "name": "rareName", "language": "cpp",
@@ -421,7 +425,7 @@ def test_build_graph_promotes_rare_pair_leaves_common_pairs_as_mentions():
     """A pair with high PMI (df=1, referenced only by focus) is promoted;
     four pairs with low PMI (df=4) are not, at a frac admitting exactly one
     of the five total pairs."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "def_rare", "name": "rareName", "language": "cpp",
@@ -444,7 +448,8 @@ def test_build_graph_promotes_rare_pair_leaves_common_pairs_as_mentions():
 def test_build_graph_cap_mentions_excludes_capped_name_from_pmi_population():
     """cap_mentions applies before PMI classification: a name skipped by
     the fan-out cap can never be promoted, even at associated_top_frac=1.0."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, _build_graph
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.index.graph.refs import _build_graph
 
     n_definers = _MAX_CROSS_LANG_OCCURRENCES + 1
     chunks = [
@@ -463,7 +468,7 @@ def test_build_graph_cap_mentions_excludes_capped_name_from_pmi_population():
 def test_typed_edge_supersedes_associated():
     """The typed pass runs last, so it must overwrite 'associated' too, not
     just plain 'mentions'."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "a", "name": "driver", "language": "cpp",
@@ -482,7 +487,7 @@ def test_xlang_edge_supersedes_associated():
     """The xlang pass runs after the mentions/associated pass, so a pair
     that's both a cross-language same-name pairing and a content-scan hit
     must end up 'xlang', not 'associated'."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "a", "name": "Shared", "language": "cpp",
@@ -501,7 +506,7 @@ def test_build_graph_two_names_same_target_associated_wins_over_mentions():
     to have their (from, to) result decided by nondeterministic string-hash
     iteration order before the collision guard was added; the promoted
     classification must win regardless of emit order."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "B", "name": "aaaName", "language": "cpp", "content": "void aaaName(){}"},
@@ -521,7 +526,7 @@ def test_build_graph_promoted_name_sorting_first_survives_later_mentions_write()
     """Mirror of the collision case above with sort order flipped: the
     promoted name is written first, and the later 'mentions' write for the
     same key must be refused by the collision guard, not silently downgrade it."""
-    from chonks.repomap import _build_graph
+    from chonks.index.graph.refs import _build_graph
 
     chunks = [
         {"id": "B", "name": "zzzName", "language": "cpp", "content": "void zzzName(){}"},
@@ -539,7 +544,7 @@ def test_build_graph_promoted_name_sorting_first_survives_later_mentions_write()
 
 def test_build_refs_persists_typed_edges(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import build_refs
+    from chonks.index.graph.refs import build_refs
 
     store = Store(tmp_path / "t.db")
     with store._lock:
@@ -585,7 +590,8 @@ def _seed_two_named_chunks(store) -> None:
 
 def test_persist_pagerank_writes_scores(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import persist_pagerank, build_refs
+    from chonks.index.graph.pagerank import persist_pagerank
+    from chonks.index.graph.refs import build_refs
 
     store = Store(tmp_path / "t.db")
     _seed_two_named_chunks(store)
@@ -601,7 +607,8 @@ def test_persist_pagerank_writes_scores(tmp_path):
 
 def test_compute_pagerank_global_reads_persisted_scores_without_recompute(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import compute_pagerank_global, build_refs
+    from chonks.index.graph.pagerank import compute_pagerank_global
+    from chonks.index.graph.refs import build_refs
 
     store = Store(tmp_path / "t.db")
     _seed_two_named_chunks(store)
@@ -617,7 +624,8 @@ def test_compute_pagerank_global_reads_persisted_scores_without_recompute(tmp_pa
 
 def test_compute_pagerank_global_falls_back_to_live_compute_on_old_db(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import compute_pagerank_global, build_refs
+    from chonks.index.graph.pagerank import compute_pagerank_global
+    from chonks.index.graph.refs import build_refs
 
     store = Store(tmp_path / "t.db")
     _seed_two_named_chunks(store)
@@ -670,7 +678,9 @@ def test_persist_pagerank_skip_gate_is_cumulative(tmp_path):
     """Small batches skip the recompute, but skipped churn is banked in meta
     and eventually crosses the threshold, triggering a full refresh."""
     from chonks.store import Store
-    from chonks.repomap import persist_pagerank, build_refs, _PAGERANK_STALE_META_KEY
+    from chonks.index.graph.pagerank import persist_pagerank
+    from chonks.index.graph.refs import build_refs
+    from chonks.core.edges import _PAGERANK_STALE_META_KEY
 
     store = Store(tmp_path / "t.db")
     # 10 named chunks -> 20% threshold = 2: single-chunk batches skip twice,
@@ -724,7 +734,7 @@ def _seed_three_named_chunks(store) -> None:
 
 def test_pagerank_edge_type_weighting_changes_ranking(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import _compute_pagerank_live
+    from chonks.index.graph.pagerank import _compute_pagerank_live
 
     store = Store(tmp_path / "t.db")
     _seed_three_named_chunks(store)
@@ -749,7 +759,8 @@ def test_pagerank_default_weights_are_identical_to_pre_weighting_behaviour(tmp_p
     default) must reproduce the exact same scores as an explicit all-1.0
     weight map."""
     from chonks.store import Store
-    from chonks.repomap import _compute_pagerank_live, DEFAULT_EDGE_TYPE_WEIGHTS
+    from chonks.index.graph.pagerank import _compute_pagerank_live
+    from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS
 
     store = Store(tmp_path / "t.db")
     _seed_three_named_chunks(store)
@@ -767,7 +778,7 @@ def test_pagerank_default_weights_are_identical_to_pre_weighting_behaviour(tmp_p
 
 def test_persist_pagerank_threads_edge_type_weights(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import persist_pagerank, _compute_pagerank_live
+    from chonks.index.graph.pagerank import persist_pagerank, _compute_pagerank_live
 
     store = Store(tmp_path / "t.db")
     _seed_three_named_chunks(store)
@@ -952,7 +963,7 @@ def _seed_symbol(store, path, name, *, kind="function_definition", lang="python"
 
 def test_dir_overview_unscoped_map_has_correct_subtree_counts(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     files = ["core/a.py", "core/b.py", "core/sub/c.py", "docs/readme.py"]
@@ -979,7 +990,7 @@ def test_dir_overview_scoped_map_restricted_no_false_prefix_match(tmp_path):
     """path_prefix='core' must not naive-string-match 'core_x', and must not
     show core's own line."""
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     files = ["core/a.py", "core/sub/c.py", "core_x/d.py"]
@@ -1000,7 +1011,7 @@ def test_dir_overview_absent_without_hierarchy_rebuild(tmp_path):
     """A DB that never called rebuild_hierarchy() must produce the
     pre-hierarchy format, with no overview."""
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     _seed_symbol(store, "core/a.py", "fn_a")
@@ -1013,7 +1024,7 @@ def test_dir_overview_absent_without_hierarchy_rebuild(tmp_path):
 
 def test_dir_overview_tight_budget_stays_under_quarter_and_map_keeps_a_block(tmp_path):
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     files = [f"dir{i}/file{i}.py" for i in range(15)]
@@ -1081,7 +1092,7 @@ def test_dir_overview_depth_cap_excludes_level_3_but_rolls_up_count(tmp_path):
     """A dir 3 levels below the scope root isn't listed itself, but its
     files still count toward its level-2 ancestor's subtree total."""
     from chonks.store import Store
-    from chonks.repomap import build_repomap
+    from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
     files = ["a/b/c/d.py", "a/b/other.py"]

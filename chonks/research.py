@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from chonks.repomap import DEFAULT_EDGE_TYPE_WEIGHTS, edge_provenance
+from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, edge_provenance
 from chonks.searcher import Searcher
 from chonks.store import Store
 

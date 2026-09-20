@@ -11,7 +11,7 @@ from collections import Counter
 
 import pytest
 
-from chonks.repomap import build_refs
+from chonks.index.graph.refs import build_refs
 from chonks.store import Store
 
 

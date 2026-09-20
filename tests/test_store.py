@@ -601,10 +601,10 @@ def test_find_usages_qualified_miss_with_no_bare_match_is_generic(tmp_path):
 
 def test_find_usages_ubiquitous_name_above_cap_notes_and_falls_back_to_fts(tmp_path):
     """build_refs skips edge creation for a name above
-    _MAX_CROSS_LANG_OCCURRENCES (repomap/_shared.py), so find_usages resolves the
+    _MAX_CROSS_LANG_OCCURRENCES (chonks/core/edges.py), so find_usages resolves the
     symbol but walks chunk_refs into nothing. That must be disclosed, not
     indistinguishable from "no callers", and backed by a labeled FTS scan."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
     store = _make_store(tmp_path)
     n = _MAX_CROSS_LANG_OCCURRENCES + 1
     # Definer content deliberately omits "init" literally, so the FTS scan
@@ -632,7 +632,7 @@ def test_find_usages_ubiquitous_name_above_cap_notes_and_falls_back_to_fts(tmp_p
 
 def test_get_impact_ubiquitous_name_above_cap_gets_note(tmp_path):
     """Same disclosure as find_usages, on the aggregate path."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
     store = _make_store(tmp_path)
     n = _MAX_CROSS_LANG_OCCURRENCES + 1
     def_chunks = [
@@ -867,7 +867,7 @@ def test_get_impact_multiple_definitions_and_edge_types(tmp_path):
 def test_get_impact_by_provenance_sums_match_by_edge_type(tmp_path):
     """by_provenance's counts, summed, always equal by_edge_type's counts,
     summed: the rollup redistributes, never drops or double-counts."""
-    from chonks.repomap import edge_provenance
+    from chonks.core.edges import edge_provenance
     store = _make_store(tmp_path)
     store.insert_chunks(
         [_chunk("def", "widget.cpp", "Widget"),

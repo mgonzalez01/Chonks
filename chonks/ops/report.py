@@ -9,7 +9,7 @@ from collections import Counter
 from pathlib import Path
 
 from chonks.core.config import load_config
-from chonks.repomap import compute_pagerank_global
+from chonks.index.graph.pagerank import compute_pagerank_global
 from chonks.store import Store
 
 TOP_GOD_NODES_OVERALL   = 15
@@ -98,7 +98,7 @@ def _connections_section(chunks_by_id: dict[str, dict], typed_refs: list[tuple[s
         return pagerank.get(u, 0.0) + pagerank.get(v, 0.0)
 
     # Cross-language edges: 'xlang' is recorded symmetrically (u->v and v->u)
-    # by repomap._build_graph, so canonicalize on the sorted id pair to
+    # by index.graph.refs._build_graph, so canonicalize on the sorted id pair to
     # report each crossing once.
     xlang_pairs: dict[tuple[str, str], float] = {}
     for u, v, et in typed_refs:
@@ -120,7 +120,7 @@ def _connections_section(chunks_by_id: dict[str, dict], typed_refs: list[tuple[s
                          f"↔ **{b['name']}** (`{b['path']}`, {b['language'] or '?'}) — weight {w:.4f}")
 
     # Excludes 'mentions'/'associated' refs: those are still name
-    # co-occurrence, not a real dependency (see repomap.build_refs'
+    # co-occurrence, not a real dependency (see index.graph.refs.build_refs'
     # associated_top_frac).
     cross_group = []
     for u, v, et in typed_refs:

@@ -1,4 +1,4 @@
-from chonks.repomap import trace_path
+from chonks.retrieval.trace import trace_path
 from chonks.store import Store
 
 

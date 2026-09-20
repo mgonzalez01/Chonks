@@ -22,11 +22,6 @@ _LAYER_MAP: dict[str, str] = {
     "chonks.init": "facade",
     "chonks.query_reformulate": "facade",
     "chonks.report": "facade",
-    "chonks.repomap": "facade",
-    "chonks.repomap._shared": "core",
-    "chonks.repomap.knn": "index",
-    "chonks.repomap.pagerank": "index",
-    "chonks.repomap.refs": "index",
     "chonks.research": "retrieval",
     "chonks.searcher": "retrieval",
     "chonks.server": "facade",
@@ -47,7 +42,7 @@ _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
 }
 
 _KNOWN_INVERSIONS: set[tuple[str, str]] = {
-    ("chonks.retrieval.repomap", "chonks.repomap.pagerank"),
+    ("chonks.retrieval.repomap", "chonks.index.graph.pagerank"),
 }
 
 

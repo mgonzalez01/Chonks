@@ -78,7 +78,7 @@ def _write_initial_tree(tmp_path) -> None:
 
 
 def test_index_paths_incremental_wiring_matches_full_rebuild(tmp_path, caplog):
-    from chonks.repomap import build_neighbors
+    from chonks.index.graph.knn import build_neighbors
 
     _write_initial_tree(tmp_path)
     store = Store(tmp_path / "test.db")
@@ -120,7 +120,7 @@ def test_index_paths_incremental_wiring_matches_full_rebuild(tmp_path, caplog):
 def test_index_paths_orphan_prune_matches_full_rebuild(tmp_path, caplog):
     # Deleting a file with no other changes exercises the orphan-prune call
     # site, not the changed-file call site.
-    from chonks.repomap import build_neighbors
+    from chonks.index.graph.knn import build_neighbors
 
     _write_initial_tree(tmp_path)
     store = Store(tmp_path / "test.db")

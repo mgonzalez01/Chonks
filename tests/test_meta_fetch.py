@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from chonks.repomap import compute_pagerank_global
+from chonks.index.graph.pagerank import compute_pagerank_global
 from chonks.summaries import build_folder_summaries
 
 

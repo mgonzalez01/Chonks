@@ -14,8 +14,9 @@ from collections import Counter
 
 import pytest
 
-import chonks.repomap.refs as repomap
-from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, build_refs
+import chonks.index.graph.refs as repomap
+from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+from chonks.index.graph.refs import build_refs
 from chonks.store import Store
 
 

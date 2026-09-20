@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from ._shared import DEFAULT_EDGE_TYPE_WEIGHTS, _PAGERANK_STALE_META_KEY
+from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, _PAGERANK_STALE_META_KEY
 
 if TYPE_CHECKING:
     from chonks.store import Store

@@ -227,7 +227,7 @@ def build_repomap(
         scope = f"under '{path_prefix}'" if path_prefix else "in the index"
         return f"No named symbols found {scope}."
 
-    from chonks.repomap.pagerank import compute_pagerank_global
+    from chonks.index.graph.pagerank import compute_pagerank_global
     pr = compute_pagerank_global(store)
 
     # Per-file mean of known (covered-by-a-chunk) symbol scores, used as the
