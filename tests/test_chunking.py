@@ -1820,10 +1820,10 @@ return Methods
 def test_chunks_tile_files_no_overlap_over_corpus():
     """Adjacent chunks of the same file must never share a line: consumers
     like eval/scip_precision.py's ChunkMapper assume chunks tile the file.
-    Runs the real chunker over chonks/*.py as a live corpus sample."""
+    Runs the real chunker over chonks/**/*.py as a live corpus sample."""
     root = Path(__file__).resolve().parent.parent / "chonks"
-    py_files = sorted(root.glob("*.py"))
-    assert len(py_files) >= 10, f"corpus sample too small: {len(py_files)} files"
+    py_files = sorted(root.glob("**/*.py"))
+    assert len(py_files) >= 40, f"corpus sample too small: {len(py_files)} files"
 
     overlaps = []
     for path in py_files:

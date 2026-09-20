@@ -1,0 +1,5668 @@
+{
+ "cap_dedup": {
+  "calls": [
+   "fn_0",
+   "fn_1",
+   "fn_2",
+   "fn_3",
+   "fn_4",
+   "fn_5",
+   "fn_6",
+   "fn_7",
+   "fn_8",
+   "fn_9",
+   "fn_10",
+   "fn_11",
+   "fn_12",
+   "fn_13",
+   "fn_14",
+   "fn_15",
+   "fn_16",
+   "fn_17",
+   "fn_18",
+   "fn_19",
+   "fn_20",
+   "fn_21",
+   "fn_22",
+   "fn_23",
+   "fn_24",
+   "fn_25",
+   "fn_26",
+   "fn_27",
+   "fn_28",
+   "fn_29",
+   "fn_30",
+   "fn_31",
+   "fn_32",
+   "fn_33",
+   "fn_34",
+   "fn_35",
+   "fn_36",
+   "fn_37",
+   "fn_38",
+   "fn_39",
+   "fn_40",
+   "fn_41",
+   "fn_42",
+   "fn_43",
+   "fn_44",
+   "fn_45",
+   "fn_46",
+   "fn_47",
+   "fn_48",
+   "fn_49",
+   "fn_50",
+   "fn_51",
+   "fn_52",
+   "fn_53",
+   "fn_54",
+   "fn_55",
+   "fn_56",
+   "fn_57",
+   "fn_58",
+   "fn_59",
+   "fn_60",
+   "fn_61",
+   "fn_62",
+   "fn_63",
+   "fn_64",
+   "fn_65",
+   "fn_66",
+   "fn_67",
+   "fn_68",
+   "fn_69",
+   "fn_70",
+   "fn_71",
+   "fn_72",
+   "fn_73",
+   "fn_74",
+   "fn_75",
+   "fn_76",
+   "fn_77",
+   "fn_78",
+   "fn_79",
+   "fn_80",
+   "fn_81",
+   "fn_82",
+   "fn_83",
+   "fn_84",
+   "fn_85",
+   "fn_86",
+   "fn_87",
+   "fn_88",
+   "fn_89",
+   "fn_90",
+   "fn_91",
+   "fn_92",
+   "fn_93",
+   "fn_94",
+   "fn_95",
+   "fn_96",
+   "fn_97",
+   "fn_98",
+   "fn_99",
+   "fn_100",
+   "fn_101",
+   "fn_102",
+   "fn_103",
+   "fn_104",
+   "fn_105",
+   "fn_106",
+   "fn_107",
+   "fn_108",
+   "fn_109",
+   "fn_110",
+   "fn_111",
+   "fn_112",
+   "fn_113",
+   "fn_114",
+   "fn_115",
+   "fn_116",
+   "fn_117",
+   "fn_118",
+   "fn_119",
+   "fn_120",
+   "fn_121",
+   "fn_122",
+   "fn_123",
+   "fn_124",
+   "fn_125",
+   "fn_126",
+   "fn_127",
+   "fn_128",
+   "fn_129",
+   "fn_130",
+   "fn_131",
+   "fn_132",
+   "fn_133",
+   "fn_134",
+   "fn_135",
+   "fn_136",
+   "fn_137",
+   "fn_138",
+   "fn_139",
+   "fn_140",
+   "fn_141",
+   "fn_142",
+   "fn_143",
+   "fn_144",
+   "fn_145",
+   "fn_146",
+   "fn_147",
+   "fn_148",
+   "fn_149",
+   "fn_150",
+   "fn_151",
+   "fn_152",
+   "fn_153",
+   "fn_154",
+   "fn_155",
+   "fn_156",
+   "fn_157",
+   "fn_158",
+   "fn_159",
+   "fn_160",
+   "fn_161",
+   "fn_162",
+   "fn_163",
+   "fn_164",
+   "fn_165",
+   "fn_166",
+   "fn_167",
+   "fn_168",
+   "fn_169",
+   "fn_170",
+   "fn_171",
+   "fn_172",
+   "fn_173",
+   "fn_174",
+   "fn_175",
+   "fn_176",
+   "fn_177",
+   "fn_178",
+   "fn_179",
+   "fn_180",
+   "fn_181",
+   "fn_182",
+   "fn_183",
+   "fn_184",
+   "fn_185",
+   "fn_186",
+   "fn_187",
+   "fn_188",
+   "fn_189",
+   "fn_190",
+   "fn_191",
+   "fn_192",
+   "fn_193",
+   "fn_194",
+   "fn_195",
+   "fn_196",
+   "fn_197",
+   "fn_198",
+   "fn_199"
+  ],
+  "imports": [],
+  "inherits": []
+ },
+ "max_names": 200,
+ "nodes": {
+  "c_sharp": [
+   [
+    "compilation_unit",
+    1,
+    398,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [
+      "System",
+      "Generic",
+      "Godot"
+     ],
+     "inherits": [
+      "Base",
+      "IThing",
+      "SBase"
+     ]
+    }
+   ],
+   [
+    "using_directive",
+    1,
+    14,
+    {
+     "calls": [],
+     "imports": [
+      "System"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "using",
+    1,
+    6,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    7,
+    13,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    13,
+    14,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "using_directive",
+    15,
+    48,
+    {
+     "calls": [],
+     "imports": [
+      "Generic"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "using",
+    15,
+    20,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_name",
+    21,
+    47,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_name",
+    21,
+    39,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    21,
+    27,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    27,
+    28,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    28,
+    39,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    39,
+    40,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    40,
+    47,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    47,
+    48,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "using_directive",
+    49,
+    61,
+    {
+     "calls": [],
+     "imports": [
+      "Godot"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "using",
+    49,
+    54,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    55,
+    60,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    60,
+    61,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_declaration",
+    63,
+    397,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IThing",
+      "SBase"
+     ]
+    }
+   ],
+   [
+    "namespace",
+    63,
+    72,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    73,
+    76,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    77,
+    397,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IThing",
+      "SBase"
+     ]
+    }
+   ],
+   [
+    "{",
+    77,
+    78,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_declaration",
+    80,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class",
+    80,
+    85,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    86,
+    90,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    91,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    91,
+    92,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    92,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "interface_declaration",
+    94,
+    113,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "interface",
+    94,
+    103,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    104,
+    110,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    111,
+    113,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    111,
+    112,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    112,
+    113,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_declaration",
+    115,
+    320,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IThing"
+     ]
+    }
+   ],
+   [
+    "class",
+    115,
+    120,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    121,
+    124,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "base_list",
+    125,
+    139,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    125,
+    126,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    127,
+    131,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ",",
+    131,
+    132,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    133,
+    139,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    140,
+    320,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    140,
+    141,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "method_declaration",
+    146,
+    318,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "predefined_type",
+    146,
+    150,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    151,
+    154,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameter_list",
+    154,
+    156,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    154,
+    155,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    155,
+    156,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    157,
+    318,
+    {
+     "calls": [
+      "Helper",
+      "Call",
+      "Widget",
+      "List",
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    157,
+    158,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    167,
+    176,
+    {
+     "calls": [
+      "Helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "invocation_expression",
+    167,
+    175,
+    {
+     "calls": [
+      "Helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    167,
+    173,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    173,
+    175,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    173,
+    174,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    174,
+    175,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    175,
+    176,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    185,
+    194,
+    {
+     "calls": [
+      "Helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "invocation_expression",
+    185,
+    193,
+    {
+     "calls": [
+      "Helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    185,
+    191,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    191,
+    193,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    191,
+    192,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    192,
+    193,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    193,
+    194,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    203,
+    222,
+    {
+     "calls": [
+      "Call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "invocation_expression",
+    203,
+    221,
+    {
+     "calls": [
+      "Call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "member_access_expression",
+    203,
+    218,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "member_access_expression",
+    203,
+    213,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "this",
+    203,
+    207,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    207,
+    208,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    208,
+    213,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    213,
+    214,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    214,
+    218,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    218,
+    221,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    218,
+    219,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument",
+    219,
+    220,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    219,
+    220,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    220,
+    221,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    221,
+    222,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    231,
+    244,
+    {
+     "calls": [
+      "Widget"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "object_creation_expression",
+    231,
+    243,
+    {
+     "calls": [
+      "Widget"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "new",
+    231,
+    234,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    235,
+    241,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    241,
+    243,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    241,
+    242,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    242,
+    243,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    243,
+    244,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    253,
+    269,
+    {
+     "calls": [
+      "List"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "object_creation_expression",
+    253,
+    268,
+    {
+     "calls": [
+      "List"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "new",
+    253,
+    256,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "generic_name",
+    257,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    257,
+    261,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_argument_list",
+    261,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "<",
+    261,
+    262,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "predefined_type",
+    262,
+    265,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ">",
+    265,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    266,
+    268,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    266,
+    267,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    267,
+    268,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    268,
+    269,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "local_declaration_statement",
+    278,
+    312,
+    {
+     "calls": [
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "variable_declaration",
+    278,
+    311,
+    {
+     "calls": [
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "implicit_type",
+    278,
+    281,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "var",
+    278,
+    281,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "variable_declarator",
+    282,
+    311,
+    {
+     "calls": [
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    282,
+    283,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "=",
+    284,
+    285,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "object_creation_expression",
+    286,
+    311,
+    {
+     "calls": [
+      "Type"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "new",
+    286,
+    289,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_name",
+    290,
+    309,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_name",
+    290,
+    304,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    290,
+    294,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    294,
+    295,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    295,
+    304,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    304,
+    305,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    305,
+    309,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    309,
+    311,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    309,
+    310,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    310,
+    311,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    311,
+    312,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    317,
+    318,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    319,
+    320,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct_declaration",
+    322,
+    337,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct",
+    322,
+    328,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    329,
+    334,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    335,
+    337,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    335,
+    336,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    336,
+    337,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct_declaration",
+    338,
+    364,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": [
+      "SBase"
+     ]
+    }
+   ],
+   [
+    "struct",
+    338,
+    344,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    345,
+    353,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "base_list",
+    354,
+    361,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    354,
+    355,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    356,
+    361,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    362,
+    364,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    362,
+    363,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    363,
+    364,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "interface_declaration",
+    366,
+    394,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": [
+      "IThing"
+     ]
+    }
+   ],
+   [
+    "interface",
+    366,
+    375,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    376,
+    382,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "base_list",
+    383,
+    391,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    383,
+    384,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    385,
+    391,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    392,
+    394,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    392,
+    393,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    393,
+    394,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    396,
+    397,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ]
+  ],
+  "cpp": [
+   [
+    "translation_unit",
+    1,
+    388,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux",
+      "plain_call"
+     ],
+     "imports": [
+      "vector",
+      "foo/bar.h",
+      "local.h"
+     ],
+     "inherits": [
+      "Base",
+      "IOther"
+     ]
+    }
+   ],
+   [
+    "preproc_include",
+    1,
+    19,
+    {
+     "calls": [],
+     "imports": [
+      "vector"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "#include",
+    1,
+    9,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "system_lib_string",
+    10,
+    18,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "preproc_include",
+    19,
+    40,
+    {
+     "calls": [],
+     "imports": [
+      "foo/bar.h"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "#include",
+    19,
+    27,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "system_lib_string",
+    28,
+    39,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "preproc_include",
+    40,
+    59,
+    {
+     "calls": [],
+     "imports": [
+      "local.h"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "#include",
+    40,
+    48,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "string_literal",
+    49,
+    58,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    49,
+    50,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "string_content",
+    50,
+    57,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    57,
+    58,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "preproc_include",
+    59,
+    78,
+    {
+     "calls": [],
+     "imports": [
+      "local.h"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "#include",
+    59,
+    67,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "string_literal",
+    68,
+    77,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    68,
+    69,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "string_content",
+    69,
+    76,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    76,
+    77,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_definition",
+    79,
+    387,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux",
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IOther"
+     ]
+    }
+   ],
+   [
+    "namespace",
+    79,
+    88,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_identifier",
+    89,
+    91,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "declaration_list",
+    92,
+    387,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux",
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IOther"
+     ]
+    }
+   ],
+   [
+    "{",
+    92,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_specifier",
+    95,
+    108,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class",
+    95,
+    100,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    101,
+    105,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_declaration_list",
+    106,
+    108,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    106,
+    107,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    107,
+    108,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    108,
+    109,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct_specifier",
+    110,
+    126,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct",
+    110,
+    116,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    117,
+    123,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_declaration_list",
+    124,
+    126,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    124,
+    125,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    125,
+    126,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    126,
+    127,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_specifier",
+    129,
+    325,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base",
+      "IOther"
+     ]
+    }
+   ],
+   [
+    "class",
+    129,
+    134,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    135,
+    141,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "base_class_clause",
+    142,
+    177,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    142,
+    143,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "access_specifier",
+    144,
+    150,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "public",
+    144,
+    150,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    151,
+    155,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ",",
+    155,
+    156,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "access_specifier",
+    157,
+    166,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "protected",
+    157,
+    166,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_identifier",
+    167,
+    177,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_identifier",
+    167,
+    169,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "::",
+    169,
+    171,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    171,
+    177,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_declaration_list",
+    178,
+    325,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    178,
+    179,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "access_specifier",
+    180,
+    186,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "public",
+    180,
+    186,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    186,
+    187,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    192,
+    323,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "primitive_type",
+    192,
+    196,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_declarator",
+    197,
+    202,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_identifier",
+    197,
+    200,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameter_list",
+    200,
+    202,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    200,
+    201,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    201,
+    202,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "compound_statement",
+    203,
+    323,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "Static",
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    203,
+    204,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    213,
+    222,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    213,
+    221,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    213,
+    219,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    219,
+    221,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    219,
+    220,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    220,
+    221,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    221,
+    222,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    231,
+    240,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    231,
+    239,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    231,
+    237,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    237,
+    239,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    237,
+    238,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    238,
+    239,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    239,
+    240,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    249,
+    270,
+    {
+     "calls": [
+      "call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    249,
+    269,
+    {
+     "calls": [
+      "call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_expression",
+    249,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_expression",
+    249,
+    260,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "this",
+    249,
+    253,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "->",
+    253,
+    255,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_identifier",
+    255,
+    260,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "->",
+    260,
+    262,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_identifier",
+    262,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    266,
+    269,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    266,
+    267,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    267,
+    268,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    268,
+    269,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    269,
+    270,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    279,
+    292,
+    {
+     "calls": [
+      "Static"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    279,
+    291,
+    {
+     "calls": [
+      "Static"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_identifier",
+    279,
+    289,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_identifier",
+    279,
+    281,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "::",
+    281,
+    283,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    283,
+    289,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    289,
+    291,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    289,
+    290,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    290,
+    291,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    291,
+    292,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    301,
+    317,
+    {
+     "calls": [
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    301,
+    316,
+    {
+     "calls": [
+      "Qux"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_identifier",
+    301,
+    314,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_identifier",
+    301,
+    304,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "::",
+    304,
+    306,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "qualified_identifier",
+    306,
+    314,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "namespace_identifier",
+    306,
+    309,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "::",
+    309,
+    311,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    311,
+    314,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    314,
+    316,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    314,
+    315,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    315,
+    316,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    316,
+    317,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    322,
+    323,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    324,
+    325,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    325,
+    326,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "struct_specifier",
+    328,
+    383,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base"
+     ]
+    }
+   ],
+   [
+    "struct",
+    328,
+    334,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    335,
+    340,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "base_class_clause",
+    341,
+    347,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    341,
+    342,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type_identifier",
+    343,
+    347,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_declaration_list",
+    348,
+    383,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    348,
+    349,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    354,
+    381,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "primitive_type",
+    354,
+    358,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_declarator",
+    359,
+    363,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "field_identifier",
+    359,
+    361,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameter_list",
+    361,
+    363,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    361,
+    362,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    362,
+    363,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "compound_statement",
+    364,
+    381,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "{",
+    364,
+    365,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    366,
+    379,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call_expression",
+    366,
+    378,
+    {
+     "calls": [
+      "plain_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    366,
+    376,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    376,
+    378,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    376,
+    377,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    377,
+    378,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    378,
+    379,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    380,
+    381,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    382,
+    383,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ";",
+    383,
+    384,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "}",
+    386,
+    387,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ]
+  ],
+  "gdscript": [
+   [
+    "source",
+    1,
+    165,
+    {
+     "calls": [
+      "get_node",
+      "do_thing",
+      "chained_call",
+      "helper_fn"
+     ],
+     "imports": [],
+     "inherits": [
+      "Node2D"
+     ]
+    }
+   ],
+   [
+    "extends_statement",
+    1,
+    15,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": [
+      "Node2D"
+     ]
+    }
+   ],
+   [
+    "extends",
+    1,
+    8,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "type",
+    9,
+    15,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    9,
+    15,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    17,
+    125,
+    {
+     "calls": [
+      "get_node",
+      "do_thing",
+      "chained_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "func",
+    17,
+    21,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "name",
+    22,
+    28,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameters",
+    28,
+    30,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    28,
+    29,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    29,
+    30,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    30,
+    31,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "body",
+    31,
+    125,
+    {
+     "calls": [
+      "get_node",
+      "do_thing",
+      "chained_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "variable_statement",
+    36,
+    59,
+    {
+     "calls": [
+      "get_node"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "var",
+    36,
+    39,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "name",
+    40,
+    41,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "=",
+    42,
+    43,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    44,
+    59,
+    {
+     "calls": [
+      "get_node"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    44,
+    52,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "arguments",
+    52,
+    59,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    52,
+    53,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "string",
+    53,
+    58,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    53,
+    54,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "\"",
+    57,
+    58,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    58,
+    59,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    64,
+    76,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    64,
+    76,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    64,
+    65,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    65,
+    66,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute_call",
+    66,
+    76,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    66,
+    74,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "arguments",
+    74,
+    76,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    74,
+    75,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    75,
+    76,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    81,
+    93,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    81,
+    93,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    81,
+    82,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    82,
+    83,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute_call",
+    83,
+    93,
+    {
+     "calls": [
+      "do_thing"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    83,
+    91,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "arguments",
+    91,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    91,
+    92,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    92,
+    93,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    98,
+    125,
+    {
+     "calls": [
+      "chained_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    98,
+    125,
+    {
+     "calls": [
+      "chained_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    98,
+    103,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    103,
+    104,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    104,
+    110,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    110,
+    111,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute_call",
+    111,
+    125,
+    {
+     "calls": [
+      "chained_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    111,
+    123,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "arguments",
+    123,
+    125,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    123,
+    124,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    124,
+    125,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    127,
+    164,
+    {
+     "calls": [
+      "helper_fn"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "func",
+    127,
+    131,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "name",
+    132,
+    140,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameters",
+    140,
+    147,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    140,
+    141,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    141,
+    146,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    146,
+    147,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    147,
+    148,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "body",
+    148,
+    164,
+    {
+     "calls": [
+      "helper_fn"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "expression_statement",
+    153,
+    164,
+    {
+     "calls": [
+      "helper_fn"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    153,
+    164,
+    {
+     "calls": [
+      "helper_fn"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    153,
+    162,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "arguments",
+    162,
+    164,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    162,
+    163,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    163,
+    164,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ]
+  ],
+  "python": [
+   [
+    "module",
+    1,
+    379,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "deep_call",
+      "another"
+     ],
+     "imports": [
+      "os",
+      "os.path",
+      "collections",
+      "defaultdict",
+      "typing",
+      "Any",
+      "Optional",
+      "xml.etree.ElementTree",
+      "a.b",
+      "c",
+      "e"
+     ],
+     "inherits": [
+      "Base"
+     ]
+    }
+   ],
+   [
+    "import_statement",
+    1,
+    10,
+    {
+     "calls": [],
+     "imports": [
+      "os"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    1,
+    7,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    8,
+    10,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    8,
+    10,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import_statement",
+    11,
+    25,
+    {
+     "calls": [],
+     "imports": [
+      "os.path"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    11,
+    17,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    18,
+    25,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    18,
+    20,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    20,
+    21,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    21,
+    25,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import_from_statement",
+    26,
+    61,
+    {
+     "calls": [],
+     "imports": [
+      "collections",
+      "defaultdict"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "from",
+    26,
+    30,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    31,
+    42,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    31,
+    42,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    43,
+    49,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    50,
+    61,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    50,
+    61,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import_from_statement",
+    62,
+    94,
+    {
+     "calls": [],
+     "imports": [
+      "typing",
+      "Any",
+      "Optional"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "from",
+    62,
+    66,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    67,
+    73,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    67,
+    73,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    74,
+    80,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    81,
+    84,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    81,
+    84,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ",",
+    84,
+    85,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    86,
+    94,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    86,
+    94,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import_statement",
+    95,
+    129,
+    {
+     "calls": [],
+     "imports": [
+      "xml.etree.ElementTree"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    95,
+    101,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "aliased_import",
+    102,
+    129,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    102,
+    123,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    102,
+    105,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    105,
+    106,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    106,
+    111,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    111,
+    112,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    112,
+    123,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "as",
+    124,
+    126,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    127,
+    129,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import_from_statement",
+    130,
+    160,
+    {
+     "calls": [],
+     "imports": [
+      "a.b",
+      "c",
+      "e"
+     ],
+     "inherits": []
+    }
+   ],
+   [
+    "from",
+    130,
+    134,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    135,
+    138,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    135,
+    136,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    136,
+    137,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    137,
+    138,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "import",
+    139,
+    145,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "aliased_import",
+    146,
+    152,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    146,
+    147,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    146,
+    147,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "as",
+    148,
+    150,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    151,
+    152,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ",",
+    152,
+    153,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "aliased_import",
+    154,
+    160,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "dotted_name",
+    154,
+    155,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    154,
+    155,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "as",
+    156,
+    158,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    159,
+    160,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_definition",
+    162,
+    182,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class",
+    162,
+    167,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    168,
+    172,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    172,
+    173,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    178,
+    182,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "pass_statement",
+    178,
+    182,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "pass",
+    178,
+    182,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_definition",
+    184,
+    308,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "deep_call"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base"
+     ]
+    }
+   ],
+   [
+    "class",
+    184,
+    189,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    190,
+    193,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    193,
+    199,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    193,
+    194,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    194,
+    198,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    198,
+    199,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    199,
+    200,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    205,
+    308,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "deep_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    205,
+    308,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "deep_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "def",
+    205,
+    208,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    209,
+    212,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameters",
+    212,
+    218,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    212,
+    213,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    213,
+    217,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    217,
+    218,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    218,
+    219,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    228,
+    308,
+    {
+     "calls": [
+      "helper",
+      "call",
+      "deep_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    228,
+    236,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    228,
+    234,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    234,
+    236,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    234,
+    235,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    235,
+    236,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    245,
+    253,
+    {
+     "calls": [
+      "helper"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    245,
+    251,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    251,
+    253,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    251,
+    252,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    252,
+    253,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    262,
+    280,
+    {
+     "calls": [
+      "call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    262,
+    277,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    262,
+    272,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    262,
+    266,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    266,
+    267,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    267,
+    272,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    272,
+    273,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    273,
+    277,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    277,
+    280,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    277,
+    278,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    278,
+    279,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    279,
+    280,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    289,
+    308,
+    {
+     "calls": [
+      "deep_call"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    289,
+    306,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "attribute",
+    289,
+    296,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    289,
+    292,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    292,
+    293,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    293,
+    296,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ".",
+    296,
+    297,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    297,
+    306,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    306,
+    308,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    306,
+    307,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    307,
+    308,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "class_definition",
+    310,
+    378,
+    {
+     "calls": [
+      "another"
+     ],
+     "imports": [],
+     "inherits": [
+      "Base"
+     ]
+    }
+   ],
+   [
+    "class",
+    310,
+    315,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    316,
+    319,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    319,
+    341,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    319,
+    320,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    320,
+    324,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ",",
+    324,
+    325,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "keyword_argument",
+    326,
+    340,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    326,
+    335,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "=",
+    335,
+    336,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    336,
+    340,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    340,
+    341,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    341,
+    342,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    347,
+    378,
+    {
+     "calls": [
+      "another"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "function_definition",
+    347,
+    378,
+    {
+     "calls": [
+      "another"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "def",
+    347,
+    350,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    351,
+    353,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "parameters",
+    353,
+    359,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    353,
+    354,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    354,
+    358,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    358,
+    359,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ":",
+    359,
+    360,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "block",
+    369,
+    378,
+    {
+     "calls": [
+      "another"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "call",
+    369,
+    378,
+    {
+     "calls": [
+      "another"
+     ],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "identifier",
+    369,
+    376,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "argument_list",
+    376,
+    378,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    "(",
+    376,
+    377,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ],
+   [
+    ")",
+    377,
+    378,
+    {
+     "calls": [],
+     "imports": [],
+     "inherits": []
+    }
+   ]
+  ]
+ },
+ "reference": "5fa7debdac7b3a6b52f2817d03cde785a87def54",
+ "refs_langs": [
+  "c",
+  "c_sharp",
+  "cpp",
+  "gdscript",
+  "python"
+ ],
+ "unsupported_hlsl": {
+  "calls": [],
+  "imports": [],
+  "inherits": []
+ }
+}
