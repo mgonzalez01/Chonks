@@ -673,7 +673,7 @@ def test_chunker_version_stamped_clean_on_full_run(tmp_path):
     """A run that reprocesses every file (nothing skipped) is a clean stamp of
     the current code version, no matter what was there before."""
     from chonks.chunker import index_paths
-    from chonks.chunking import CHUNKER_VERSION
+    from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
     store = Store(tmp_path / "test.db")
@@ -688,7 +688,7 @@ def test_chunker_version_mixed_when_incremental_run_skips_files(tmp_path):
     silently overwrite a stale chunker_version with a clean match; some
     chunks in the DB still carry the old boundaries."""
     from chonks.chunker import index_paths
-    from chonks.chunking import CHUNKER_VERSION
+    from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
     (tmp_path / "b.py").write_text("def b():\n    return 2\n")
@@ -714,7 +714,7 @@ def test_chunker_version_self_heals_on_force_reindex(tmp_path):
     """A --force run always reprocesses every file, so it can always clean up
     a previously-mixed chunker_version stamp."""
     from chonks.chunker import index_paths
-    from chonks.chunking import CHUNKER_VERSION
+    from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
     store = Store(tmp_path / "test.db")

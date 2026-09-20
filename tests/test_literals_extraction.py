@@ -3,7 +3,7 @@
 Covers per-language string literal extraction: interpolation holes,
 adjacent-string concatenation, escape decoding, and the per-chunk cap."""
 
-from chonks.chunking import segment_file
+from chonks.index.segment import segment_file
 
 
 def _literals_by_name(segs: list[dict]) -> dict[str, list[tuple[str, int]]]:

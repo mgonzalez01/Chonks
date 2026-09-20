@@ -1,7 +1,7 @@
 """Tests for the /symbol and /usages endpoint miss diagnostics."""
 import json
 
-from chonks.chunking import segment_file
+from chonks.index.segment import segment_file
 from chonks.searcher import Searcher
 from chonks.store import Store
 

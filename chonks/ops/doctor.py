@@ -12,9 +12,9 @@ import sqlite3
 import time
 from pathlib import Path
 
-from chonks.chunking import CHUNKER_VERSION
 from chonks.core.config import load_config
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
+from chonks.index.segment import CHUNKER_VERSION
 from chonks.languages import describe as _describe_languages
 from chonks.ops.diagnostics import (
     dominance_warning,
@@ -187,7 +187,7 @@ _FAMILY_TOP_N = 10  # display cap; remainder rolls into a single "other" row
 
 def _path_family_section(conn: sqlite3.Connection) -> str:
     """Chunk-share by top-level path family. Warns if one family dominates
-    the index; see chonks.chunking.family_breakdown / dominance_warning for
+    the index; see chonks.ops.diagnostics.family_breakdown / dominance_warning for
     the threshold."""
     rows = conn.execute("SELECT path, language FROM chunks").fetchall()
     total = len(rows)

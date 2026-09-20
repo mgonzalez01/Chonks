@@ -4,8 +4,8 @@ import sqlite3
 import time
 from pathlib import Path
 
-from chonks.chunking import CHUNKER_VERSION
 from chonks.doctor import _connect_readonly, build_report
+from chonks.index.segment import CHUNKER_VERSION
 from chonks.store import SCHEMA_VERSION, Store
 
 

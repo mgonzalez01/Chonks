@@ -203,7 +203,7 @@ def test_build_repomap_empty_symbols_falls_back_to_chunks(tmp_path):
 def test_node_type_prefix_covers_all_boundary_nodes():
     """Guards against _NODE_TYPE_PREFIX drifting from the chunker's
     _BOUNDARY_NODES, which was the root cause of the original bare renders."""
-    from chonks.chunking import _BOUNDARY_NODES
+    from chonks.index.segment import _BOUNDARY_NODES
     from chonks.repomap import _NODE_TYPE_PREFIX
 
     emitted = {nt for types in _BOUNDARY_NODES.values() for nt in types}

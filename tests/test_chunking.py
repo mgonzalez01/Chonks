@@ -3,7 +3,8 @@ noise tables and giant single lines, and named-method preservation."""
 from pathlib import Path
 
 from chonks.chunker import _chunk_id
-from chonks.chunking import segment_file, CHUNK_MAX, _blank_macros
+from chonks.index.macro_heal import _blank_macros
+from chonks.index.segment import segment_file, CHUNK_MAX
 
 
 def _sizes(segs):
@@ -679,7 +680,7 @@ def test_enforce_ceiling_apportions_spans_not_duplicates():
     """_enforce_ceiling's byte-window hard-wrap used to stamp EVERY piece with
     the original segment's full line span. Must now apportion spans by
     counting newlines in each piece, so pieces get distinct starts."""
-    from chonks.chunking import _enforce_ceiling, _SyntheticSegment
+    from chonks.index.segment import _enforce_ceiling, _SyntheticSegment
 
     lines = [f"long_line_{i:03d} = " + "x" * 400 + "\n" for i in range(20)]
     text = "".join(lines)
@@ -748,7 +749,7 @@ def test_is_identity_free_does_not_misclassify_pointer_dereference():
     """Code-review follow-up: a pointer-dereference statement like '*ptr = val;'
     starts with the same '*' used to detect C-doc-comment continuation lines
     ('* blah'), but must not be classified identity-free."""
-    from chonks.chunking import _is_identity_free
+    from chonks.index.segment import _is_identity_free
 
     assert _is_identity_free("*ptr = 5;\n", "cpp") is False
     assert _is_identity_free("*out++ = value;\n", "cpp") is False
@@ -761,7 +762,7 @@ def test_enforce_ceiling_zero_newline_pieces_get_distinct_spans():
     """Code-review follow-up: a monster line with no newline at all must not
     degenerate into the original duplicate-span bug where every piece is
     stamped with the identical (line, line) span."""
-    from chonks.chunking import _enforce_ceiling, _SyntheticSegment
+    from chonks.index.segment import _enforce_ceiling, _SyntheticSegment
 
     text = "x = " + "a" * 20000 + ";"
     seg = _SyntheticSegment(text, start_line=50, end_line=50, chunk_type="block", name="blob")
@@ -777,7 +778,7 @@ def test_enforce_ceiling_no_off_by_one_boundary_overlap():
     """Code-review follow-up: apportioning spans by newline count must not
     double-count the boundary line when a piece ends exactly on '\\n', that
     used to make two consecutive pieces both claim the same line."""
-    from chonks.chunking import _enforce_ceiling, _SyntheticSegment
+    from chonks.index.segment import _enforce_ceiling, _SyntheticSegment
 
     text = ("x" * 50 + "\n") * 300
     seg = _SyntheticSegment(text, start_line=100, end_line=100 + 300, chunk_type="block", name="blob")
@@ -976,7 +977,7 @@ def test_extract_refs_capped_at_max_names():
     src = f"void driver() {{\n{calls}\n}}\n".encode()
     segs = segment_file(src, "cpp", path="t.cpp")
     refs = _refs(segs, "driver")
-    from chonks.chunking import _REFS_MAX_NAMES
+    from chonks.index.refs_extract import _REFS_MAX_NAMES
     assert len(refs["calls"]) <= _REFS_MAX_NAMES
 
 
@@ -984,7 +985,7 @@ def test_extract_refs_cap_is_on_distinct_names_not_raw_entries():
     """The "calls" cap must be on distinct call NAMES, not raw entry count.
     If it counted raw entries, 'hot' fanned out across 20 receivers would burn
     20 slots and push 20 of the 199 'other_*' names out entirely."""
-    from chonks.chunking import _REFS_MAX_NAMES, _REFS_MAX_CALL_VARIANTS_PER_NAME
+    from chonks.index.refs_extract import _REFS_MAX_NAMES, _REFS_MAX_CALL_VARIANTS_PER_NAME
     hot_calls = "\n".join(f"    r{i}.hot();" for i in range(20))
     other_calls = "\n".join(f"    other_{i}();" for i in range(199))
     src = f"void driver() {{\n{hot_calls}\n{other_calls}\n}}\n".encode()
@@ -1144,7 +1145,7 @@ func driver():
 
 
 def test_definer_param_arity_python():
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     # self isn't counted ("python self accounting").
     assert _definer_param_arity(
         "def f(self, a, b, *args, **kw):\n    pass", "f", "python") == (2, 2, True)
@@ -1158,7 +1159,7 @@ def test_definer_param_arity_python():
 
 
 def test_definer_param_arity_cpp_and_c_sharp():
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     assert _definer_param_arity("void f(int a, int b, ...) {}", "f", "cpp") == (2, 2, True)
     assert _definer_param_arity("void h(int a=1, int b=2) {}", "h", "cpp") == (0, 2, False)
     assert _definer_param_arity(
@@ -1168,7 +1169,7 @@ def test_definer_param_arity_cpp_and_c_sharp():
 def test_definer_param_arity_c_void_is_zero_params():
     """C/cpp's explicit zero-args spelling 'int f(void)' is not a required
     parameter literally named 'void'; it must parse the same as 'int f()'."""
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     assert _definer_param_arity("int f(void) {}", "f", "c") == (0, 0, False)
     assert _definer_param_arity("int f() {}", "f", "c") == (0, 0, False)
 
@@ -1177,7 +1178,7 @@ def test_definer_param_arity_python_self_annotated_and_dunder():
     """Python self-accounting must also strip an annotated 'self: Foo' and
     the positional-only '__self' spelling stdlib .pyi stubs use, not just
     the bare 'self'/'cls' literal."""
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     assert _definer_param_arity(
         "def m(self: Foo, a):\n    pass", "m", "python") == (1, 1, False)
     assert _definer_param_arity(
@@ -1188,7 +1189,7 @@ def test_definer_param_arity_python_multiple_overloads_widen_not_gate():
     """A chunk holding several @overload stubs above the real implementation
     must not let the FIRST stub's arity gate every call; the combined range
     is widened across every same-named signature found."""
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     content = (
         "@t.overload\n"
         "def f(self, a):\n    ...\n"
@@ -1205,7 +1206,7 @@ def test_definer_param_arity_python_positional_only_marker_not_counted():
     """The bare '/' positional-only-parameter divider (PEP 570) is a syntax
     marker, not a parameter; it must not inflate min/max the way a real
     required parameter would."""
-    from chonks.chunking import _definer_param_arity
+    from chonks.index.graph.call_resolve import _definer_param_arity
     assert _definer_param_arity(
         "def f(self, a, /, b):\n    pass", "f", "python") == (2, 2, False)
 
@@ -1214,7 +1215,7 @@ def test_find_signature_param_texts_unbalanced_match_is_skipped_not_scan_ending(
     """One match whose parens never balance (a truncated/oversize-split
     fragment) must not abort the whole scan; a later, complete same-named
     signature in the same content is still found and parsed."""
-    from chonks.chunking import _definer_param_arity, _find_signature_param_texts
+    from chonks.index.graph.call_resolve import _definer_param_arity, _find_signature_param_texts
     content = "def f(a, b\n\ndef f(c):\n    pass"
     assert _find_signature_param_texts(content, "f", "python") == ["c"]
     assert _definer_param_arity(content, "f", "python") == (1, 1, False)
@@ -1537,7 +1538,7 @@ void thirdFunction(int b, int c, int d) {{
 def _c_boundaries(src: bytes):
     """Low-level boundary walk (bypasses merge/split packing) so structural
     detection can be asserted independent of size-driven chunk packing."""
-    from chonks.chunking import _collect_boundaries, _extract_name
+    from chonks.index.segment import _collect_boundaries, _extract_name
     from tree_sitter_language_pack import get_parser
     root = get_parser("c").parse(src).root_node
     return [(n.type, _extract_name(n, "c", src)) for n in _collect_boundaries(root, "c", src)]
@@ -1609,7 +1610,7 @@ def test_c_bare_tag_reference_excluded_from_symbol_index():
     """Same guard, exercised through the decoupled symbol index (recurses INTO
     boundaries, unlike _collect_boundaries): a parameter/local variable using
     a named struct type must not spawn a spurious duplicate struct symbol."""
-    from chonks.chunking import _collect_symbols_from_root
+    from chonks.index.segment import _collect_symbols_from_root
     from tree_sitter_language_pack import get_parser
     src = b'''
 struct Point { int x; int y; };
@@ -1727,7 +1728,7 @@ static int MyType_new(MyType **out) {
 
 
 def test_cuda_and_stub_extensions_map_to_ast_languages():
-    from chonks.chunking import _lang_for_path
+    from chonks.index.segment import _lang_for_path
     from pathlib import Path
     assert _lang_for_path(Path("k.cu")) == "cpp"
     assert _lang_for_path(Path("k.cuh")) == "cpp"
@@ -1752,7 +1753,7 @@ def test_cuda_kernel_chunks_via_cpp_grammar():
 
 
 def test_lua_extension_maps_to_lua_grammar():
-    from chonks.chunking import _lang_for_path, CODE_LANGUAGES
+    from chonks.index.segment import _lang_for_path, CODE_LANGUAGES
     from pathlib import Path
     assert _lang_for_path(Path("init.lua")) == "lua"
     assert "lua" in CODE_LANGUAGES

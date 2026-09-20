@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from tree_sitter_language_pack import get_parser
 
-import chonks.chunking as new_chunking
+import chonks.index.refs_extract as new_chunking
 
 GOLDEN_PATH = Path(__file__).parent / "data" / "refs_equivalence_golden.json"
 

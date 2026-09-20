@@ -9,7 +9,6 @@ from pathlib import Path
 import httpx
 from tqdm import tqdm
 
-from chonks.chunking import dominance_warning, family_breakdown
 from chonks.core.config import load_config
 from chonks.embedder import (
     DEFAULT_EMBED_MODEL,
@@ -20,6 +19,7 @@ from chonks.embedder import (
     Embedder,
 )
 from chonks.index.pipeline import index_paths, reembed_all
+from chonks.ops.diagnostics import dominance_warning, family_breakdown
 from chonks.repomap import build_neighbors, build_refs, persist_pagerank
 from chonks.store import Store
 from chonks.summaries import build_folder_summaries

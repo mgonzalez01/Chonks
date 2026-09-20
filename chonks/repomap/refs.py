@@ -11,7 +11,7 @@ import time
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, Iterator
 
-from chonks.chunking import _call_entry_name
+from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers
 
 from ._shared import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN

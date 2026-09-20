@@ -1,7 +1,8 @@
 """For .md/.markdown, segment_text_file splits at ATX heading boundaries and
 names each chunk after its heading, instead of the nameless line-slicing the
 rest of the text fallback uses."""
-from chonks.chunking import CHUNK_MIN, CHUNK_TARGET, segment_text_file
+from chonks.index.segment import CHUNK_MIN, CHUNK_TARGET
+from chonks.index.text_segment import segment_text_file
 
 # Pushes each section past CHUNK_MIN so _merge_small doesn't fold adjacent
 # sections together (that's covered on its own below).

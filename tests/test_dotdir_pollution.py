@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from chonks.chunker import _dotdir_prefix, index_paths
-from chonks.chunking import dotdir_breakdown, dotdir_total_share
+from chonks.ops.diagnostics import dotdir_breakdown, dotdir_total_share
 from chonks.store import Store
 
 

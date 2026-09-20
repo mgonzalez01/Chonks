@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from tree_sitter_language_pack import get_parser
 
-from chonks.chunking import (
+from chonks.index.graph.call_resolve import _definer_param_arity
+from chonks.index.segment import (
     PARSE_TIMEOUT_MICROS,
     _collect_symbols_from_root,
-    _definer_param_arity,
     segment_file,
 )
 

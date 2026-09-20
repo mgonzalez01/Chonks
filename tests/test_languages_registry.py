@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
-import chonks.chunking as chunking
+import chonks.index.refs_extract as chunking
 import chonks.languages as languages
 from chonks.languages import _ast
 from chonks.languages.spec import LanguageSpec

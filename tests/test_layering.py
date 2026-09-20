@@ -16,7 +16,6 @@ _LAYER_PACKAGE_NAMES = (
 _LAYER_MAP: dict[str, str] = {
     "chonks": "core",
     "chonks.chunker": "facade",
-    "chonks.chunking": "index",
     "chonks.cli": "facade",
     "chonks.doctor": "facade",
     "chonks.embedder": "facade",
@@ -48,7 +47,6 @@ _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
 }
 
 _KNOWN_INVERSIONS: set[tuple[str, str]] = {
-    ("chonks.chunking", "chonks.ops.diagnostics"),
     ("chonks.retrieval.repomap", "chonks.repomap.pagerank"),
 }
 

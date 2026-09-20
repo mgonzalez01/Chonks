@@ -14,13 +14,6 @@ from pathlib import Path
 import httpx
 from tqdm import tqdm
 
-from chonks.chunking import (
-    CHUNKER_VERSION,
-    _EXT_TO_LANG,
-    _lang_for_path,
-    segment_file,
-    segment_text_file,
-)
 from chonks.core.paths import (
     _to_stored_path,
     _normalize_prefixes,
@@ -53,6 +46,13 @@ from chonks.index.rows import (
     _chunk_metadata,
     _file_metadata,
 )
+from chonks.index.segment import (
+    CHUNKER_VERSION,
+    _lang_for_path,
+    segment_file,
+)
+from chonks.index.text_segment import segment_text_file
+from chonks.languages import EXT_TO_LANG as _EXT_TO_LANG
 from chonks.store import Store
 
 logger = logging.getLogger("chonks.chunker")

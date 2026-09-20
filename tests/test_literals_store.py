@@ -609,7 +609,7 @@ def test_budgeted_walk_short_fragment_8_hole_real_extractor_stays_under_50ms(tmp
     genuinely combinatorial. _SKELETON_WORK_BUDGET must bound it regardless:
     well under 50ms with the honest budget-exhausted note."""
     import time
-    from chonks.chunking import segment_file
+    from chonks.index.segment import segment_file
 
     src = (
         b'void trace_all(int a) {\n'
@@ -647,7 +647,7 @@ def test_budgeted_walk_25_hole_real_extractor_stays_under_50ms(tmp_path):
     extraction pipeline produces that shape end-to-end and resolves
     near-instantly, not the >25s/>170s pre-fix hang."""
     import time
-    from chonks.chunking import segment_file
+    from chonks.index.segment import segment_file
 
     n = 25
     fmt = "expected %s, " * n + "ok"
