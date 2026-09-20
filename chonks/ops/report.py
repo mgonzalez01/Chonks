@@ -5,10 +5,10 @@ DB always produces byte-identical Markdown. `subsystems` in config.json
 unlocks named groups; without it, grouping falls back to top-level path.
 """
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
 
+from chonks.core.config import load_config
 from chonks.repomap import compute_pagerank_global
 from chonks.store import Store
 
@@ -20,19 +20,6 @@ NUM_QUESTIONS           = 5
 # roots, ...) excluded from question templating. Mirrors
 # eval/relational_sample.py's hub-indegree-max default.
 HUB_INDEGREE_MAX = 50
-
-
-def _load_config(path: str | None) -> dict:
-    """Load config.json; return {} on absence so the CLI stands alone.
-    Mirrors the same precedence used elsewhere: explicit path, then
-    ./config.json, then none."""
-    if path is None:
-        candidate = Path("config.json")
-        if candidate.exists():
-            path = str(candidate)
-    if path is None:
-        return {}
-    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def _subsystem_for_path(path: str, subsystems: dict[str, list[str]]) -> str | None:
@@ -258,11 +245,15 @@ def build_report(store: Store, config: dict, db_path: str) -> str:
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=None, help="Path to chunks DB (default: config.json's `db` key)")
-    ap.add_argument("--config", default=None, help="Path to config.json (default: ./config.json if present)")
+    ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
     ap.add_argument("-o", "--out", default="INDEX_REPORT.md", help="Output Markdown path")
     args = ap.parse_args(argv)
 
-    config = _load_config(args.config)
+    loaded = load_config(args.config)
+    if loaded.problems:
+        problem = loaded.problems[0]
+        ap.error(f"config not readable: {problem.path}: {problem.reason}")
+    config = loaded.data
     # CLI flag overrides config key, same precedence as chunker/serve.
     args.db = args.db or config.get("db")
     if not args.db:

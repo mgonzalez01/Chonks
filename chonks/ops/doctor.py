@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from chonks.chunking import CHUNKER_VERSION
+from chonks.core.config import load_config
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.languages import describe as _describe_languages
 from chonks.ops.diagnostics import (
@@ -28,17 +29,6 @@ from chonks.store import SCHEMA_VERSION
 # The tables of the schema that are not virtual, in schema order. An fts5 table
 # and chunk_vecs have no dbstat row under their own name, so they are not here.
 _KNOWN_TABLES = re.findall(r"^\s*CREATE TABLE IF NOT EXISTS (\w+)", SCHEMA_DDL, re.M)
-
-
-def _load_config(path: str | None) -> dict:
-    """Mirrors report.py's _load_config: explicit path, then ./config.json, else {}."""
-    if path is None:
-        candidate = Path("config.json")
-        if candidate.exists():
-            path = str(candidate)
-    if path is None:
-        return {}
-    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def _get_meta(conn: sqlite3.Connection, key: str) -> str | None:
@@ -397,7 +387,7 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=None, help="Path to chunks DB (default: config.json's `db` key)")
-    ap.add_argument("--config", default=None, help="Path to config.json (default: ./config.json if present)")
+    ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
     ap.add_argument(
         "--set-model", default=None, metavar="NAME",
         help="Rewrite the recorded embedding_model label to NAME and exit (no report). "
@@ -405,7 +395,11 @@ def main(argv=None) -> None:
     )
     args = ap.parse_args(argv)
 
-    config = _load_config(args.config)
+    loaded = load_config(args.config)
+    if loaded.problems:
+        problem = loaded.problems[0]
+        ap.error(f"config not readable: {problem.path}: {problem.reason}")
+    config = loaded.data
     # CLI flag overrides config key, same precedence as chunker/serve.
     args.db = args.db or config.get("db")
     if not args.db:

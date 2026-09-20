@@ -432,6 +432,8 @@ Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `inc
 
 **`--db` resolution order.** `chonks serve --db PATH` takes the config's `db` key when set, and the `--db` flag otherwise, which itself defaults to `.db/chonks.db`. `chonks index`, `chonks doctor`, and `chonks report` go the other way, taking an explicitly passed CLI flag first, then the config key, then the built-in default, since their own `--db` default is `None`. So `--db` is authoritative for `serve` only when the config has no `db` key, or no `--config` is passed.
 
+**Config discovery.** `chonks serve`, `chonks index`, `chonks doctor`, and `chonks report` share one search order when `--config` is absent: `config.json`, then `chonks/config.json`, then `.chonks.json`, all resolved against the working directory. Passing `--config` names one file and turns the search off. Among the search candidates, the first one that parses wins. `chonks doctor` and `chonks report` stop with an error when a config file cannot be read or parsed, while `chonks serve` and `chonks index` log a warning and go on to the next candidate, or to an empty config when there is none. The absolute-`codebase` guard described above applies to `chonks serve` only.
+
 **Team deployment.** `mcp.team.example.json`, a committed `.mcp.json` template using `${VAR}` placeholders, and `chonks-subsystems.example.json`, a shareable `subsystems` map, are the reference pattern for pointing several machines at one shared backend. See [DEPLOY.md](DEPLOY.md).
 
 ---

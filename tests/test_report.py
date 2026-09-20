@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -183,3 +184,32 @@ def test_cli_writes_report(tmp_path):
     text = out_path.read_text()
     assert text.startswith("# INDEX_REPORT:")
     assert "## Index vitals" in text
+
+
+def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch):
+    from chonks.report import main
+
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+    (tmp_path / ".chonks.json").write_text(json.dumps({"db": str(tmp_path / "test.db")}))
+    monkeypatch.chdir(tmp_path)
+
+    out_path = tmp_path / "R.md"
+    main(["-o", str(out_path)])
+    text = out_path.read_text()
+    assert text.startswith("# INDEX_REPORT:")
+    assert "## Index vitals" in text
+
+
+def test_main_unreadable_config_is_an_argparse_error(tmp_path, monkeypatch, capsys):
+    import pytest
+    from chonks.report import main
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text("{ broken")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([])
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "config not readable:" in err

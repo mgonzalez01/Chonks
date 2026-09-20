@@ -10,6 +10,7 @@ import httpx
 from tqdm import tqdm
 
 from chonks.chunking import dominance_warning, family_breakdown
+from chonks.core.config import load_config
 from chonks.embedder import (
     DEFAULT_EMBED_MODEL,
     DEFAULT_EMBED_URL,
@@ -151,24 +152,15 @@ def main(argv=None) -> None:
     logging.root.addHandler(handler)
 
     # ------------------------------------------------------------------ config
-    config: dict = {}
-    if args.config:
-        try:
-            with open(args.config, "r") as f:
-                config = json.load(f)
-        except Exception as e:
-            logger.warning("Failed to load %s: %s", args.config, e)
-    else:
-        # Auto-discover config.json in cwd
-        for candidate in ("config.json", ".chonks.json"):
-            if Path(candidate).exists():
-                try:
-                    with open(candidate, "r") as f:
-                        config = json.load(f)
-                    logger.info("Loaded config from %s", candidate)
-                    break
-                except Exception as e:
-                    logger.warning("Failed to parse %s: %s", candidate, e)
+    loaded = load_config(args.config)
+    config: dict = loaded.data
+    for problem in loaded.problems:
+        if args.config:
+            logger.warning("Failed to load %s: %s", problem.path, problem.reason)
+        else:
+            logger.warning("Failed to parse %s: %s", problem.path, problem.reason)
+    if loaded.path is not None and not args.config:
+        logger.info("Loaded config from %s", loaded.path)
 
     # Merge CLI excludes/includes with config (CLI appended, both honored)
     exclude_list: list[str] = list(config.get("exclude") or [])

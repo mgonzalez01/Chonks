@@ -507,3 +507,30 @@ def test_languages_section_lists_every_language(tmp_path):
         "refs: typed calls/imports/inherits edges. literals: find_by_message. "
         "macro: C macro self-heal. pairing: header/impl pairing.\n"
     )
+
+
+def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch, capsys):
+    from chonks.doctor import main
+
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+    (tmp_path / ".chonks.json").write_text(json.dumps({"db": str(tmp_path / "test.db")}))
+    monkeypatch.chdir(tmp_path)
+
+    main([])
+    out = capsys.readouterr().out
+    assert "== Vitals ==" in out
+
+
+def test_main_unreadable_config_is_an_argparse_error(tmp_path, monkeypatch, capsys):
+    import pytest
+    from chonks.doctor import main
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text("{ broken")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([])
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "config not readable:" in err

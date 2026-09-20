@@ -3,7 +3,6 @@
 No `projects` config map: `project` must be omitted or "default" for the legacy single-DB path."""
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -12,6 +11,7 @@ from pathlib import Path
 
 import uvicorn
 
+from chonks.core.config import load_config, resolve_codebase
 from chonks.embed.client import probe_embedder
 from chonks.embedder import (
     DEFAULT_EMBED_MODEL,
@@ -32,46 +32,6 @@ logger = logging.getLogger("chonks.server")
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
-
-_CONFIG_SEARCH_PATHS = [
-    Path("config.json"),
-    Path("chonks/config.json"),
-    Path(".chonks.json"),
-]
-
-
-def _load_config(explicit: str | None) -> dict:
-    """Load config from explicit path or auto-discovered locations."""
-    candidates = [Path(explicit)] if explicit else _CONFIG_SEARCH_PATHS
-    for p in candidates:
-        if p.exists():
-            try:
-                data = json.loads(p.read_text())
-                logger.info("Loaded config from %s", p)
-                return data
-            except Exception as e:
-                logger.warning("Failed to parse %s: %s", p, e)
-    if explicit:
-        logger.warning("Config file not found: %s", explicit)
-    else:
-        logger.warning("No config.json found — using defaults")
-    return {}
-
-
-def _resolve_codebase(codebase: str | None, explicit_config: bool) -> Path | None:
-    """Rejects an absolute `codebase` path from an auto-discovered config (silent-redirection risk)."""
-    if not codebase:
-        return None
-    p = Path(codebase)
-    if p.is_absolute() and not explicit_config:
-        logger.warning(
-            "Ignoring absolute 'codebase' path %r from auto-discovered "
-            "config; pass --config explicitly to use it.",
-            codebase,
-        )
-        return None
-    return p.resolve()
-
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Chonks server")
@@ -110,7 +70,17 @@ def main(argv=None) -> None:
             args.host,
         )
 
-    full = _load_config(args.config)
+    loaded = load_config(args.config)
+    for problem in loaded.problems:
+        if not problem.missing:
+            logger.warning("Failed to parse %s: %s", Path(problem.path), problem.reason)
+    if loaded.path is not None:
+        logger.info("Loaded config from %s", loaded.path)
+    elif args.config:
+        logger.warning("Config file not found: %s", args.config)
+    else:
+        logger.warning("No config.json found — using defaults")
+    full = loaded.data
     explicit_config = args.config is not None
 
     # ---- Default project (legacy single-DB shape) ----
@@ -122,7 +92,7 @@ def main(argv=None) -> None:
     default_edge_type_weights = full.get("edge_type_weights", {})
     default_exclude  = list(full.get("exclude") or [])
     default_include  = list(full.get("include") or [])
-    default_root     = _resolve_codebase(full.get("codebase"), explicit_config)
+    default_root     = resolve_codebase(full.get("codebase"), explicit_config, logger)
     default_db       = Path(full.get("db") or args.db)
     # Per-project so one deployment can mix a LAN GPU and a localhost embedder.
     default_embed_url   = full.get("embed_url",   DEFAULT_EMBED_URL)
