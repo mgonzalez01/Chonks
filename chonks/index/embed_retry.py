@@ -12,7 +12,7 @@ logger = logging.getLogger("chonks.chunker")
 # ---------------------------------------------------------------------------
 
 # Defaults for indexing concurrency. Both are overridable via config keys
-# (embed_batch / embed_inflight) or chunker.py flags (--embed-batch / --embed-inflight),
+# (embed_batch / embed_inflight) or chonks/ops/index_cmd.py flags (--embed-batch / --embed-inflight),
 # threaded into index_paths, so there's no module-level mutable state.
 EMBED_BATCH    = 128       # chunks per embedding API call (request size)
 EMBED_INFLIGHT = 2         # concurrent in-flight batches; too low starves a fast

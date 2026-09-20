@@ -1,4 +1,4 @@
-"""Literal & message index extraction tests (chunking.py side).
+"""Literal & message index extraction tests (chonks/index/refs_extract.py side).
 
 Covers per-language string literal extraction: interpolation holes,
 adjacent-string concatenation, escape decoding, and the per-chunk cap."""
@@ -87,7 +87,7 @@ void f() {
 
 def test_cpp_raw_string_literal_stripped_and_never_decoded():
     """R"(...)": the wrapper is stripped (grammar's own raw_string_content
-    child, see chunking.py's _leaf_literal_text) but the content is never
+    child, see chonks/index/refs_extract.py's _leaf_literal_text) but the content is never
     escape-decoded: a literal backslash-n here is two real characters, not
     a newline."""
     src = b'''

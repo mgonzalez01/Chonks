@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 
 def content_hash(content: str) -> str:
-    """Same style as chunker.py's chunk id hash, but content-only so it is
+    """Same style as chonks/index/rows.py's chunk id hash, but content-only so it is
     invariant to start_line drift and path (path is matched separately)."""
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 

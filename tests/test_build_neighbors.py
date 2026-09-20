@@ -184,7 +184,7 @@ def test_incremental_mixed_add_delete_matches_full_rebuild():
 
 def test_incremental_modify_matches_full_rebuild():
     """A 'modify' is delete-then-insert of the same logical file: same shape
-    of mutation as add+delete but exercised as the paired operation chunker.py
+    of mutation as add+delete but exercised as the paired operation chonks/index/pipeline.py
     actually performs on a changed file."""
     rng = np.random.default_rng(4)
     n = 250

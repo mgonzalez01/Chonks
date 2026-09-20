@@ -2,7 +2,7 @@
 
 Dispatches `chonks <subcommand> [args...]` to each module's own main(),
 argv unchanged. No flags were renamed, only the invocation
-(e.g. `chunker.py` -> `chonks index`).
+(e.g. `chonks/ops/index_cmd.py` -> `chonks index`).
 """
 from __future__ import annotations
 

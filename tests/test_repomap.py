@@ -796,7 +796,7 @@ def test_persist_pagerank_threads_edge_type_weights(tmp_path):
 
 def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatch):
     """edge_type_weights must reach persist_pagerank, not be dropped on the
-    floor - the plumbing chunker.py's CLI/config path relies on."""
+    floor - the plumbing chonks/ops/index_cmd.py's CLI/config path relies on."""
     import chonks.index.pipeline as chunker_mod
     import chonks.index.postindex as postindex_mod
     from chonks.storage.store import Store

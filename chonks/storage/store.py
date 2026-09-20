@@ -521,8 +521,8 @@ class Store:
                     )
 
             # Does NOT set _LITERAL_INDEX_META_KEY: this is one batch, not
-            # necessarily the whole DB. That flag is chunker.py's job, set
-            # once at the end of a full index_paths run.
+            # necessarily the whole DB. That flag is chonks/index/pipeline.py's
+            # job, set once at the end of a full index_paths run.
             self._conn.commit()
 
     def update_vectors(
@@ -884,7 +884,7 @@ class Store:
             ).fetchone()[0]
 
     def tracked_file_count(self) -> int:
-        """Row count in `files`. Used by chunker.py's literal-index
+        """Row count in `files`. Used by chonks/index/pipeline.py's literal-index
         completeness gate to distinguish "zero skips" from "covered every
         tracked file" (see _LITERAL_INDEX_META_KEY)."""
         with self._lock:

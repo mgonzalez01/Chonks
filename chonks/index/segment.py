@@ -867,7 +867,7 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
             counters.setdefault("discovered_macros", set()).update(healed)
             counters["macro_healed"] = 1
         elif not healed and counters is not None:
-            # Sweep found nothing to heal; chunker.py persists this by content
+            # Sweep found nothing to heal; chonks/index/pipeline.py persists this by content
             # hash so unchanged unhealable files skip the sweep next time.
             counters["heal_unhealable"] = 1
 

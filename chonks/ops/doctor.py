@@ -289,7 +289,7 @@ def _edges_section(conn: sqlite3.Connection) -> str:
 
 
 def _parse_health_section(conn: sqlite3.Connection) -> str:
-    """Parse-health diagnostics are computed per-run in chunker.py but not
+    """Parse-health diagnostics are computed per-run in chonks/index/pipeline.py but not
     persisted in the DB, so this reports what actually exists rather than
     inventing columns."""
     files_cols  = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}

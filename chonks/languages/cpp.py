@@ -50,7 +50,7 @@ CPP = LanguageSpec(
     grammar="cpp",
     display_name="C++",
     # .h stays on "cpp" not "c": remapping would churn boundaries across
-    # every existing C++ corpus (see chunker.py's content-hash skip).
+    # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
     # CUDA/Obj-C++/Metal ride the cpp grammar best-effort; unmapped, whole
     # GPU/macOS backends silently land in unsupported_ext_skipped.
     extensions=frozenset({

@@ -1,6 +1,6 @@
 """Integration test for index_paths -> build_neighbors wiring. The incremental
 k-NN path itself is unit tested in test_build_neighbors.py; what's untested
-there is the chunker.py plumbing that collects changed_ids/deleted_ids across
+there is the chonks/index/pipeline.py plumbing that collects changed_ids/deleted_ids across
 a real index run. Proves it's correct by cross-checking a real incremental
 run against a full rebuild's ground truth on the same corpus."""
 import hashlib

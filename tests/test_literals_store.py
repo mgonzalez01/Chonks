@@ -443,7 +443,7 @@ def test_boundary_split_chunks_do_not_duplicate_the_same_literal_hit(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: real indexer wiring (chunking.py -> chunker.py -> store.py)
+# End-to-end: real indexer wiring (chonks/index/refs_extract.py -> chonks/index/pipeline.py -> store.py)
 # ---------------------------------------------------------------------------
 
 class _FakeEmbedder:
@@ -759,7 +759,7 @@ def test_skeleton_verification_does_not_hold_the_store_lock(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_multiline_literal_matches_by_first_line(tmp_path):
-    """chunking.py keeps interior newlines in a decoded multi-line literal;
+    """chonks/index/refs_extract.py keeps interior newlines in a decoded multi-line literal;
     a pasted single-line log line only ever carries the first line."""
     store = _make_store(tmp_path)
     text = "first line of the message\nsecond line never gets pasted alone"
