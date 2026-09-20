@@ -7,6 +7,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer as createHttpServer } from "node:http";
+import { readFileSync } from "node:fs";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
@@ -31,11 +32,16 @@ import {
 // MCP server setup
 // ---------------------------------------------------------------------------
 
+// package.json is one level above dist/index.js.
+const VERSION: string = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).version;
+
 // HTTP mode builds one Server per request, so tool handlers must stay
 // free of per-connection state. They are.
 function buildServer(): Server {
   const server = new Server(
-    { name: "chonks", version: "0.1.0" },
+    { name: "chonks", version: VERSION },
     { capabilities: { tools: {} }, instructions: INSTRUCTIONS },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
