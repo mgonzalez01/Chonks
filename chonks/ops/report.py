@@ -10,6 +10,7 @@ from pathlib import Path
 
 from chonks.core.config import load_config
 from chonks.index.graph.pagerank import compute_pagerank_global
+from chonks.index.plugins import load_plugins
 from chonks.storage.store import Store
 
 TOP_GOD_NODES_OVERALL   = 15
@@ -254,6 +255,7 @@ def main(argv=None) -> None:
         problem = loaded.problems[0]
         ap.error(f"config not readable: {problem.path}: {problem.reason}")
     config = loaded.data
+    load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
     # CLI flag overrides config key, same precedence as chunker/serve.
     args.db = args.db or config.get("db")
     if not args.db:

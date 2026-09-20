@@ -14,6 +14,7 @@ from pathlib import Path
 
 from chonks.core.config import load_config
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
+from chonks.index.plugins import load_plugins
 from chonks.index.segment import CHUNKER_VERSION
 from chonks.languages import describe as _describe_languages
 from chonks.languages import language_set as _language_set
@@ -423,6 +424,7 @@ def main(argv=None) -> None:
         problem = loaded.problems[0]
         ap.error(f"config not readable: {problem.path}: {problem.reason}")
     config = loaded.data
+    load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
     # CLI flag overrides config key, same precedence as chunker/serve.
     args.db = args.db or config.get("db")
     if not args.db:

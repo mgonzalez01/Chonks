@@ -13,6 +13,7 @@ from chonks.core.config import load_config
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT, EMBED_WATCHDOG_SECS
 from chonks.index.pipeline import index_paths, reembed_all
+from chonks.index.plugins import load_plugins
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
 from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors
@@ -158,6 +159,8 @@ def main(argv=None) -> None:
             logger.warning("Failed to parse %s: %s", problem.path, problem.reason)
     if loaded.path is not None and not args.config:
         logger.info("Loaded config from %s", loaded.path)
+
+    load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
 
     # Merge CLI excludes/includes with config (CLI appended, both honored)
     exclude_list: list[str] = list(config.get("exclude") or [])

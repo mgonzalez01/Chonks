@@ -50,6 +50,18 @@ def test_named_project_can_override_top_level_edge_type_weights(monkeypatch, tmp
     assert serve_projects._projects["proj"]["edge_type_weights"] == override
 
 
+def test_project_language_plugins_is_refused(monkeypatch, tmp_path, capsys):
+    # main() reconfigures logging with force=True, which drops caplog's
+    # handler; the log stream is sys.stderr, which capsys owns.
+    db_path = tmp_path / "proj.db"
+    _run_main_with_config(monkeypatch, tmp_path, {
+        "projects": {"proj": {"db": str(db_path), "language_plugins": ["whatever"]}},
+    })
+    assert "proj" not in serve_projects._projects
+    err = capsys.readouterr().err
+    assert "language_plugins" in err and "proj" in err
+
+
 def test_research_endpoint_injects_edge_type_weights_into_cfg(monkeypatch, tmp_path):
     weights = {"calls": 7.0, "mentions": 0.3}
     _run_main_with_config(monkeypatch, tmp_path, {"edge_type_weights": weights})

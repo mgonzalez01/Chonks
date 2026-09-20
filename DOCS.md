@@ -241,6 +241,18 @@ Then run `uv run pytest -q`. The registry refuses the module at import when a bo
 
 Nothing outside `chonks/languages/` carries a language list. `chonks/index/`, `chonks/index/graph/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
 
+#### Loading a language as a plugin
+
+`language_plugins` in `config.json` is a flat list of importable dotted module names, default `[]`, each holding the same `LANGUAGES` tuple contract as a file in `chonks/languages/`. `chonks.index.plugins.load_plugins` imports each one, merges its specs into the registry, and rebuilds the nineteen registry-derived values, called once at the top of `chonks index`, `chonks serve`, `chonks doctor`, and `chonks report`, right after config loads. An empty list, the default, imports nothing and logs nothing.
+
+A plugin extension already claimed by one of the indexer's admission sets — `DEFAULT_FALLBACK_EXTENSIONS`, the effective `config["fallback_extensions"]`, `DATA_BLOB_EXTENSIONS`, `MINIFIED_GUARD_EXTENSIONS` (all `chonks/index/admission.py`), or `_MARKDOWN_EXTS` (`chonks/index/text_segment.py`) — is refused, with one allowlisted exception: `.js`/`.mjs`/`.cjs`, already owned by the built-in `javascript` spec and already in `MINIFIED_GUARD_EXTENSIONS`. `.css` is owned by no built-in language and is not on that allowlist; a plugin claiming it is refused. A module with no `LANGUAGES` attribute is refused by name, not a bare `AttributeError`. Every plugin in the list has to pass before any of them is loaded: one rejection leaves the process on its original, pre-plugin registry.
+
+`language_plugins` is top-level only; a `projects[name].language_plugins` entry is refused and logged, because the registry is one process-global object and `chonks serve` can hold several projects in one process (see [Multi-project mode](#chonksserve--fastapi-http-server)), so a per-project plugin set is not something the architecture can offer.
+
+`chonks init` does not offer this key. Loading a plugin is a trust decision, not a first-run default; see [DEPLOY.md](DEPLOY.md).
+
+`chain_base_fields`, `identifier_leaf_types`, `variadic_arg_types`, and `keyword_arg_types` on `LanguageSpec` are validated at registry-build time but never read by the chunking or refs-extraction code, built-in language or plugin alike (the engine uses literals instead, in `chonks/index/refs_extract.py` and `chonks/index/_ast.py`); a plugin can set them without any effect.
+
 #### Typed edges (calls, imports, inherits)
 
 At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, deduplicated on the full fingerprint and capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (HLSL, JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
@@ -430,7 +442,7 @@ It loads `exclude`, `include`, `subsystems`, `codebase`, `search`, `repomap`, an
 }
 ```
 
-Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard.
+Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard. `language_plugins` is not a per-project key at all: the language registry is one process-global object for the whole server, so a `projects[name].language_plugins` entry is refused and logged rather than applied to just that project.
 
 **`--db` resolution order.** `chonks serve --db PATH` takes the config's `db` key when set, and the `--db` flag otherwise, which itself defaults to `.db/chonks.db`. `chonks index`, `chonks doctor`, and `chonks report` go the other way, taking an explicitly passed CLI flag first, then the config key, then the built-in default, since their own `--db` default is `None`. So `--db` is authoritative for `serve` only when the config has no `db` key, or no `--config` is passed.
 
@@ -1024,6 +1036,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `subsystems` | `{}` | Named path sets referenced by `@subsystem` prefixes in the MCP server |
 | `macros` | `[]` | Seed C++ engine macro names to pre-blank before parsing (unioned with the auto-discovered, persisted vocabulary) |
 | `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chonks/languages/`'s `EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. |
+| `language_plugins` | `[]` | Dotted module names to import and merge into the language registry as third-party languages; see [Loading a language as a plugin](#loading-a-language-as-a-plugin). Top-level only — not read per-project. Importing a name here runs its module-level code in every `chonks` process that loads this config; see [DEPLOY.md](DEPLOY.md). |
 | `data_blob_size_limit` | `262144` (256KB) | Byte threshold above which a file is skipped instead of chunked. Two families share it: data files (`chonks.index.admission.DATA_BLOB_EXTENSIONS`, that is `.json`/`.yaml`/`.yml`/`.toml`/`.html`), skipped on size alone; and minified bundles (`chonks.index.admission.MINIFIED_GUARD_EXTENSIONS`, that is `.js`/`.mjs`/`.cjs`/`.css`), skipped only when oversize *and* line-density says minified. Counted in `data_blob_skipped`, logged at the end of every indexing run. `0` disables the guard. Prose fallback extensions (`.md`, `.markdown`, ...) are never affected. |
 | `edge_type_weights` | `{"calls": 1.0, "imports": 1.0, "inherits": 1.0, "xlang": 1.0, "associated": 1.0, "mentions": 1.0}` | Per-edge-type weight feeding index-time PageRank (`persist_pagerank`) and `research.py`'s graph expansion and structural boost. All-1.0 reproduces unweighted behaviour exactly; weighting an edge type ≤0 excludes it from research's graph expansion entirely. Overridable per-request on `POST /research`; the MCP `codebase_research` tool's `scope: "explore"` sends a typed-edge-heavy override. |
 | `cap_mentions_fanout` | `false` | When true, `build_refs`' mentions pass skips a referenced name with more than 8 definer chunks entirely, the same skip-the-whole-name rule the xlang and typed passes apply, instead of fanning out to every definer. Takes effect on the next full graph rebuild (`chonks index --rebuild-graphs`). |

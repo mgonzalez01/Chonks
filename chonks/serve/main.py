@@ -15,6 +15,7 @@ from chonks.core.config import load_config, resolve_codebase
 from chonks.embed.client import probe_embedder
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
+from chonks.index.plugins import load_plugins
 from chonks.serve.app import app
 from chonks.serve.projects import (
     DEFAULT_PROJECT,
@@ -78,6 +79,8 @@ def main(argv=None) -> None:
     full = loaded.data
     explicit_config = args.config is not None
 
+    load_plugins(full.get("language_plugins") or [], full.get("fallback_extensions"))
+
     # ---- Default project (legacy single-DB shape) ----
     # config's `projects["default"]`, if present, overrides this block entirely.
     default_research = full.get("research", {})
@@ -125,6 +128,15 @@ def main(argv=None) -> None:
     for name, pcfg in (full.get("projects") or {}).items():
         if not isinstance(pcfg, dict):
             logger.warning("Project %r config is not a dict; skipping.", name)
+            continue
+        if "language_plugins" in pcfg:
+            logger.error(
+                "Project %r sets 'language_plugins'; refused. The language "
+                "registry is one process-global object and this process can "
+                "hold several projects at once, so language_plugins is a "
+                "top-level-only config key, applying to every project. Move "
+                "it out of 'projects' into the top level of config.json. "
+                "Skipping project %r.", name, name)
             continue
         db = pcfg.get("db")
         if not db:

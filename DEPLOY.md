@@ -87,6 +87,12 @@ flowchart LR
 
 Where the network is not trusted, bind the proxy to a specific interface, add a firewall rule, or reach the host over a VPN such as Tailscale or WireGuard. Do not expose the port to the internet.
 
+**`config.json`'s `language_plugins` runs code, and it widens an existing surface rather than opening a new one.** Every name in that list is imported — `importlib.import_module`, module-level code and all — by every `chonks` process that reads the config it's in: `chonks index`, `chonks serve` (including the backend the MCP adapter spawns), `chonks doctor`, and `chonks report`. There is no sandbox and none is planned.
+
+Before `language_plugins` existed, config already led to code-adjacent trust decisions of its own: `db` names the sqlite file that gets written, `codebase` the directory that gets read and served, and `embed_url` the URL every chunk of the indexed source is POSTed to — data exfiltration, though not execution. And a `.py` file dropped into the installed `chonks/languages/` directory is already imported on the first `import chonks.languages`, no plugin mechanism involved; "no third-party loading" there has only ever been enforced by the filesystem, not by code. `language_plugins` is the first config key that leads to execution rather than to reads, writes, or POSTs, and the mechanism it uses — `importlib.import_module` on an attacker-controlled string — needs the module to already be importable; it does not let an attacker place a file, so the realistic threat is config plus a writable directory on `sys.path`, or config plus an already-installed malicious package.
+
+What's new is specifically this: a string in a JSON file now selects a module to import, so the config file itself has to be trusted at the level of `sys.path` and site-packages, not just as data. `chonks/core/config.py` auto-discovers `config.json`, `chonks/config.json`, and `.chonks.json` relative to the working directory for `serve`, `index`, `doctor`, and `report` alike; a `.chonks.json` left inside a cloned repository is picked up by any of the four run from that directory, and `language_plugins` has no guard against it (the absolute-`codebase` guard under [Failure modes](#8-failure-modes) is the closest existing precedent, and it does not cover this key).
+
 ## 2. One-time setup on the host machine
 
 The prerequisites on PATH are `uv`, `node` (18 or newer, from a system package, nvm, Volta, or fnm, since uv does not manage it), and llama-server if semantic search is wanted.
