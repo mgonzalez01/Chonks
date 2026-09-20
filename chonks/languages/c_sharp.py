@@ -20,6 +20,7 @@ C_SHARP = LanguageSpec(
     name="c_sharp",
     # tree-sitter-language-pack uses 'csharp' but we use 'c_sharp' internally
     grammar="csharp",
+    version="1",
     extensions=frozenset({".cs"}),
     boundary_nodes=frozenset({
         "method_declaration", "constructor_declaration", "destructor_declaration",

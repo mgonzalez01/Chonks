@@ -729,6 +729,22 @@ def test_chunker_version_self_heals_on_force_reindex(tmp_path):
     store.close()
 
 
+def test_language_set_stamped_and_parseable_after_index_run(tmp_path):
+    """The stamp is present and parses to the current registry's
+    {name: version} map after a full index run, mirroring the chunker_version
+    provenance stamp it sits beside."""
+    from chonks.index.pipeline import index_paths
+    from chonks.languages import language_set
+
+    (tmp_path / "a.py").write_text("def a():\n    return 1\n")
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    stamped = store.get_meta("language_set")
+    assert stamped is not None
+    assert json.loads(stamped) == language_set()
+    store.close()
+
+
 def test_literal_index_flag_set_clean_on_full_run(tmp_path):
     """A run that reprocesses every file (nothing skipped) sets the literal
     index completeness flag; mirrors test_chunker_version_stamped_clean_

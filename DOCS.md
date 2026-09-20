@@ -119,7 +119,7 @@ The tables:
 - `symbols`, the decoupled named-boundary index, since the chunker sometimes folds several named things into one `chunks` row while `find_symbol` and `find_usages` need every name individually addressable.
 - `chunk_literals`, mirrored into `literals_fts`, holding every decoded string literal a chunk contains plus a hole-collapsed skeleton, populated at parse time and consumed only by `find_by_message`.
 - `folder_summaries`, one row per folder with its summary text and embedding.
-- `meta`, key-value: `schema_version`, `chunker_version`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
+- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
 - `graph_nodes` and `graph_edges`, the directory and file containment hierarchy (`dir:` and `file:` nodes plus `contains` edges), kept separate from `chunks` and `chunk_refs`.
 
 ---
@@ -170,6 +170,8 @@ In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus 
 Merge-time comparisons are in UTF-8 bytes, since `_Segment.size()` and `_SyntheticSegment.size()` both return bytes. Line-fallback accumulation stops when the summed `len(line)`, a character count, reaches `CHUNK_TARGET`, so its segments can be slightly larger in bytes for multi-byte content.
 
 **Chunker versioning (`CHUNKER_VERSION = 3`).** `meta.chunker_version` records it and `chonks doctor` warns on a mixed-version DB. Version 3 absorbs identity-free trivia fragments into a neighbouring named chunk, line-slices oversized module residue with real per-piece line numbers through `_enforce_ceiling`, and salvages individually the intact boundaries a parse failure glued into an error-recovery node.
+
+**Language-set provenance (`meta.language_set`).** A `{name: version}` map of every registered language, written beside `chunker_version`. It makes a boundary change in one language visible even when `CHUNKER_VERSION` has not moved. `Store` logs one warning when a DB's recorded set differs from the code's; a DB indexed before the key existed records nothing and is not treated as a mismatch.
 
 **Parse failure is graded, not binary.** tree-sitter always returns a tree, and "failed" means one of three things:
 

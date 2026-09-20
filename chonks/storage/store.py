@@ -17,6 +17,7 @@ import sqlite_vec
 from chonks.core.batching import batched
 from chonks.core.skeleton import _compute_skeleton
 from chonks.languages import CODE_LANGUAGES
+from chonks.languages import language_set as _language_set
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
 
 # sqlite-vec's hard limit on k for a vec0 KNN query ("k value in knn query too large").
@@ -161,6 +162,35 @@ class Store:
                     f"DB schema version {stored_ver['value']} does not match code "
                     f"version {SCHEMA_VERSION}. Drop the DB file and re-index."
                 )
+
+            # A missing key means an unrecorded DB (pre-C2, or brand new) --
+            # unknown, not a mismatch, so say nothing. That is the common
+            # case: every pre-C2 corpus and every Store built in a test.
+            stored_language_set = self.get_meta("language_set")
+            if stored_language_set is not None:
+                current = _language_set()
+                if stored_language_set.startswith("mixed: "):
+                    recorded = None
+                else:
+                    try:
+                        recorded = json.loads(stored_language_set)
+                    except ValueError:
+                        recorded = None  # corrupt meta row: treat as differing, don't raise
+                if recorded != current:
+                    if isinstance(recorded, dict):
+                        changed = sorted(
+                            name for name in set(recorded) | set(current)
+                            if recorded.get(name) != current.get(name)
+                        )
+                    else:
+                        changed = sorted(current)
+                    logging.getLogger("chonks.store").warning(
+                        "language_set recorded in this DB differs from the code's "
+                        "current language set (%s changed); chunk boundaries may not "
+                        "match what a fresh index would produce -- re-index (or "
+                        "--force) to refresh.",
+                        ", ".join(changed) if changed else "unknown",
+                    )
 
             # Restore dim from meta if already set
             row = self._conn.execute(

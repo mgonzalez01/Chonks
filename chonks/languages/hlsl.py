@@ -42,6 +42,7 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
+    version="1",
     extensions=frozenset({".hlsl", ".fx", ".fxh"}),
     # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.

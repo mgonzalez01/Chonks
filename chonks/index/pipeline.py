@@ -52,6 +52,7 @@ from chonks.index.segment import (
 )
 from chonks.index.text_segment import segment_text_file
 from chonks.languages import EXT_TO_LANG as _EXT_TO_LANG
+from chonks.languages import language_set as _language_set
 from chonks.storage.store import Store
 
 logger = logging.getLogger("chonks.chunker")
@@ -919,6 +920,20 @@ def index_paths(
         store.set_meta(
             "chunker_version",
             f"mixed: {_prev_chunker_version}+{CHUNKER_VERSION} "
+            f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
+        )
+
+    # Same three-branch shape as chunker_version, and for the same reason:
+    # files skipped as unchanged were chunked by whatever language set was
+    # current when they were last indexed, not this run's.
+    _cur_language_set = json.dumps(_language_set(), sort_keys=True, separators=(",", ":"))
+    _prev_language_set = store.get_meta("language_set")
+    if _prev_language_set is None or state["skipped"] == 0:
+        store.set_meta("language_set", _cur_language_set)
+    elif _prev_language_set != _cur_language_set:
+        store.set_meta(
+            "language_set",
+            f"mixed: {_prev_language_set}+{_cur_language_set} "
             f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
         )
 

@@ -1,9 +1,11 @@
 """Tests for chunks_fts trigger-based alignment."""
+import json
+import logging
 import sqlite3
 
 import numpy as np
 import pytest
-from chonks.languages import CODE_LANGUAGES
+from chonks.languages import CODE_LANGUAGES, language_set
 from chonks.retrieval.graph_queries import find_outgoing, find_usages, get_hubs, get_impact
 from chonks.storage.store import Store, _chunk_kind_clause
 
@@ -1506,3 +1508,68 @@ def test_batched():
     assert list(batched([0, 1, 2, 3, 4], 2)) == [[0, 1], [2, 3], [4]]
     assert list(batched([0, 1, 2, 3], 2)) == [[0, 1], [2, 3]]
     assert list(batched([], 2)) == []
+
+
+def test_store_open_with_no_language_set_key_logs_nothing(tmp_path, caplog):
+    """Every pre-C2 DB, and every Store built directly as in this test suite,
+    has no language_set row. A missing key is unknown, not a mismatch, and
+    must not warn."""
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        _make_store(tmp_path)
+    assert caplog.records == []
+
+
+def test_store_open_with_matching_language_set_logs_nothing(tmp_path, caplog):
+    store = _make_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps(language_set(), sort_keys=True, separators=(",", ":")),
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert caplog.records == []
+
+
+def test_store_open_with_differing_language_set_logs_one_warning(tmp_path, caplog):
+    store = _make_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":")),
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
+    assert caplog.records[0].name == "chonks.store"
+    assert "language_set" in caplog.records[0].message
+
+
+def test_store_open_with_mixed_language_set_logs_one_warning(tmp_path, caplog):
+    """A `mixed:` value is not JSON and must not be parsed as JSON. It records a
+    DB whose files were chunked under two different language sets, so it is a
+    mismatch and warns."""
+    store = _make_store(tmp_path)
+    current = json.dumps(language_set(), sort_keys=True, separators=(",", ":"))
+    store.set_meta(
+        "language_set",
+        f'mixed: {json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":"))}'
+        f"+{current} (2 unchanged file(s) retain old chunk boundaries)",
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
+    assert caplog.records[0].name == "chonks.store"
+    assert "language_set" in caplog.records[0].message
+
+
+def test_store_open_with_unparseable_language_set_does_not_raise(tmp_path, caplog):
+    """A corrupt meta row must not stop a query: treat it as differing, warn,
+    but never raise."""
+    store = _make_store(tmp_path)
+    store.set_meta("language_set", "not valid json {{{")
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1

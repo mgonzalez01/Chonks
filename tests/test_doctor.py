@@ -7,6 +7,7 @@ from pathlib import Path
 from chonks.storage.readonly import _connect_readonly
 from chonks.ops.doctor import build_report
 from chonks.index.segment import CHUNKER_VERSION
+from chonks.languages import language_set
 from chonks.storage.schema import SCHEMA_VERSION
 from chonks.storage.store import Store
 
@@ -288,6 +289,54 @@ def test_chunker_version_mixed_reported(tmp_path):
 
     report = _report_for(tmp_path / "test.db")
     assert "mixed:" in report
+    assert "force re-index" in report
+
+
+def test_language_set_not_recorded(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "language_set: not recorded in this DB" in report
+
+
+def test_language_set_matches(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps(language_set(), sort_keys=True, separators=(",", ":")),
+    )
+    store.commit()
+    store.close()
+
+    current = json.dumps(language_set(), sort_keys=True, separators=(",", ":"))
+    report = _report_for(tmp_path / "test.db")
+    assert f"language_set: {current} (matches code)" in report
+
+
+def test_language_set_differs(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta("language_set", json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":")))
+    store.commit()
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert '{"python":"0"}' in report
+    assert "code is at" in report
+    assert "re-index to refresh" in report
+
+
+def test_language_set_mixed_reported(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        "mixed: {\"python\":\"0\"}+{\"python\":\"1\"} (1 unchanged file(s) retain old chunk boundaries)",
+    )
+    store.commit()
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "language_set: mixed:" in report
     assert "force re-index" in report
 
 

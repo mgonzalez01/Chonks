@@ -80,6 +80,9 @@ class LanguageSpec:
     # identity
     name: str  # never rename
     grammar: str
+    # kw_only: a defaulted field can't sit ahead of the required extensions/
+    # boundary_nodes fields in a dataclass's positional __init__ otherwise.
+    version: str = field(default="1", kw_only=True)
     extensions: frozenset[str]  # lower-case, leading dot; unique across registry
     # tier 1: segmentation
     boundary_nodes: frozenset[str]

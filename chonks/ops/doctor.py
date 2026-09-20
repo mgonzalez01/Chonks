@@ -16,6 +16,7 @@ from chonks.core.config import load_config
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.index.segment import CHUNKER_VERSION
 from chonks.languages import describe as _describe_languages
+from chonks.languages import language_set as _language_set
 from chonks.ops.diagnostics import (
     dominance_warning,
     dotdir_breakdown,
@@ -94,6 +95,28 @@ def _chunker_version_section(conn: sqlite3.Connection) -> str:
         )
     else:
         lines.append(f"chunker_version: {stored} (matches code)")
+
+    stored_language_set = _get_meta(conn, "language_set")
+    if stored_language_set is None:
+        lines.append(
+            "language_set: not recorded in this DB "
+            "(indexed before language_set provenance was added)"
+        )
+    elif stored_language_set.startswith("mixed: "):
+        lines.append(
+            f"language_set: {stored_language_set} — this DB has a mix of "
+            f"chunk-boundary conventions; a --force re-index will make it "
+            f"consistent again"
+        )
+    else:
+        current_language_set = json.dumps(_language_set(), sort_keys=True, separators=(",", ":"))
+        if stored_language_set != current_language_set:
+            lines.append(
+                f"language_set: {stored_language_set} (code is at {current_language_set} — "
+                f"chunk boundaries may differ from a fresh index; re-index to refresh)"
+            )
+        else:
+            lines.append(f"language_set: {stored_language_set} (matches code)")
     return "\n".join(lines)
 
 

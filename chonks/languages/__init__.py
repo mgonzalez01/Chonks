@@ -159,5 +159,10 @@ def describe() -> list[dict[str, object]]:
     return REGISTRY.describe()
 
 
+def language_set() -> dict[str, str]:
+    """`{spec.name: spec.version}` for every registered spec, built-ins included."""
+    return {spec.name: spec.version for spec in REGISTRY.specs}
+
+
 def lang_for_path(path: Path) -> str | None:
     return EXT_TO_LANG.get(path.suffix.lower())

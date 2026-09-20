@@ -81,6 +81,7 @@ IMPORT = Children((
 PYTHON = LanguageSpec(
     name="python",
     grammar="python",
+    version="1",
     # .pyi is Python's cross-language interface layer; dropping it starves
     # xlang pairing of its highest-precision anchor.
     extensions=frozenset({".py", ".pyi"}),

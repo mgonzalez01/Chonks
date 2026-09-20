@@ -34,6 +34,7 @@ def call_receiver(call_node: Node, callee: Node, src: bytes) -> str | None:
 GDSCRIPT = LanguageSpec(
     name="gdscript",
     grammar="gdscript",
+    version="1",
     extensions=frozenset({".gd"}),
     boundary_nodes=frozenset({"function_definition", "class_definition"}),
     salvage_nodes=frozenset({"function_definition"}),

@@ -22,6 +22,7 @@ def is_tag_definition(node: Node, src: bytes) -> bool:
 C = LanguageSpec(
     name="c",
     grammar="c",
+    version="1",
     extensions=frozenset({".c"}),
     # struct/union/enum_specifier also match bare tag refs and forward decls;
     # the boundary_filters entry requires a body to treat one as a real boundary.
