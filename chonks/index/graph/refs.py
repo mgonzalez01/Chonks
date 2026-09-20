@@ -17,7 +17,7 @@ from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_de
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 logger = logging.getLogger("repomap")
 

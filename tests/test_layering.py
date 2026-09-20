@@ -15,16 +15,7 @@ _LAYER_PACKAGE_NAMES = (
 
 _LAYER_MAP: dict[str, str] = {
     "chonks": "core",
-    "chonks.chunker": "facade",
-    "chonks.cli": "facade",
-    "chonks.doctor": "facade",
-    "chonks.embedder": "facade",
-    "chonks.init": "facade",
-    "chonks.query_reformulate": "facade",
-    "chonks.report": "facade",
     "chonks.server": "facade",
-    "chonks.store": "facade",
-    "chonks.summaries": "facade",
 }
 
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
@@ -132,7 +123,7 @@ def test_import_direction_is_allowed_or_known(importer, imported):
     assert (importer, imported) in _KNOWN_INVERSIONS
 
 
-@pytest.mark.parametrize("module", ["chonks.storage.store", "chonks.store"])
+@pytest.mark.parametrize("module", ["chonks.storage.store"])
 def test_storage_import_is_light(module):
     code = (
         f"import sys, {module}; "

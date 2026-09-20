@@ -11,7 +11,7 @@ import networkx as nx
 from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, _PAGERANK_STALE_META_KEY
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 logger = logging.getLogger("repomap")
 

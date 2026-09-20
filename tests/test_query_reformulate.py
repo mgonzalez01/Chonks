@@ -1,4 +1,4 @@
-from chonks.query_reformulate import (
+from chonks.retrieval.query_reformulate import (
     DEFAULT_REFORMULATE_QUERY,
     MAX_EXTRACTED_TERMS,
     augment_query,

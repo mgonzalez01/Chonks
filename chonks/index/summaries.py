@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable
 from chonks.index.graph.pagerank import compute_pagerank_global
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 logger = logging.getLogger("chonks.summaries")
 

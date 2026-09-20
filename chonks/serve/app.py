@@ -8,7 +8,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
-from chonks.chunker import index_paths
+from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
 from chonks.retrieval.trace import trace_path

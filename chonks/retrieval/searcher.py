@@ -12,14 +12,14 @@ from typing import Any
 import httpx
 import numpy as np
 
-from chonks.embedder import (
+from chonks.embed.client import (
     EMBED_QUERY_TOKEN_BUDGET,
     QUERY_CHARS_PER_TOKEN,
     Embedder,
     truncate_query_text,
 )
-from chonks.query_reformulate import DEFAULT_REFORMULATE_QUERY, augment_query
-from chonks.store import Store
+from chonks.retrieval.query_reformulate import DEFAULT_REFORMULATE_QUERY, augment_query
+from chonks.storage.store import Store
 
 # FTS5 treats punctuation and bare AND/OR/NOT as operators, so free text
 # raises a syntax error. hybrid() sanitises before querying FTS; raw fts()

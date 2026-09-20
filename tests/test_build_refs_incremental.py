@@ -17,7 +17,7 @@ import pytest
 import chonks.index.graph.refs as repomap
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
 from chonks.index.graph.refs import build_refs
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 @pytest.fixture(autouse=True)

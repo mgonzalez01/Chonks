@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 # 0.30 cosine distance is about 0.70 cosine similarity.
 DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD = 0.30

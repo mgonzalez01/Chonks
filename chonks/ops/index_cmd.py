@@ -10,22 +10,16 @@ import httpx
 from tqdm import tqdm
 
 from chonks.core.config import load_config
-from chonks.embedder import (
-    DEFAULT_EMBED_MODEL,
-    DEFAULT_EMBED_URL,
-    EMBED_BATCH,
-    EMBED_INFLIGHT,
-    EMBED_WATCHDOG_SECS,
-    Embedder,
-)
+from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
+from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT, EMBED_WATCHDOG_SECS
 from chonks.index.pipeline import index_paths, reembed_all
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
 from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors
 from chonks.index.graph.refs import build_refs
 from chonks.index.graph.pagerank import persist_pagerank
-from chonks.store import Store
-from chonks.summaries import build_folder_summaries
+from chonks.storage.store import Store
+from chonks.index.summaries import build_folder_summaries
 
 logger = logging.getLogger("chonks.chunker")
 
@@ -269,10 +263,7 @@ def main(argv=None) -> None:
         sys.exit(0)
 
     if args.suggest_subsystems:
-        from chonks.summaries import (
-            DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD,
-            suggest_subsystems,
-        )
+        from chonks.ops.subsystems import DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD, suggest_subsystems
         threshold = args.subsystem_threshold or DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD
         with Store(args.db) as store:
             clusters = suggest_subsystems(store, distance_threshold=threshold)

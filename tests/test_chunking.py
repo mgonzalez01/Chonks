@@ -2,7 +2,7 @@
 noise tables and giant single lines, and named-method preservation."""
 from pathlib import Path
 
-from chonks.chunker import _chunk_id
+from chonks.index.rows import _chunk_id
 from chonks.index.macro_heal import _blank_macros
 from chonks.index.segment import segment_file, CHUNK_MAX
 

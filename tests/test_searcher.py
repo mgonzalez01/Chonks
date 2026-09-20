@@ -9,7 +9,7 @@ from chonks.retrieval.results import (
     rank_files,
 )
 from chonks.retrieval.searcher import Searcher, _sanitize_fts_query
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 def test_plain_words_are_quoted():
@@ -64,7 +64,7 @@ def test_cjk_token_survives_sanitization():
 
 
 class _FakeEmbedder:
-    """Stand-in for chonks.embedder.Embedder: returns a fixed query vector,
+    """Stand-in for chonks.embed.client.Embedder: returns a fixed query vector,
     no network calls."""
 
     def __init__(self, vec):
@@ -628,7 +628,7 @@ def test_query_truncated_false_for_short_query(tmp_path):
 
 
 def test_query_truncated_true_for_over_budget_query(tmp_path):
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     embedder = Embedder("http://x/v1/embeddings", "qwen3-embedding", query_token_budget=3)
@@ -638,7 +638,7 @@ def test_query_truncated_true_for_over_budget_query(tmp_path):
 
 
 def test_query_truncated_uses_embedder_configured_budget(tmp_path):
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     embedder = Embedder("http://x/v1/embeddings", "qwen3-embedding", query_token_budget=1000)
@@ -752,7 +752,7 @@ def test_reformulate_survives_query_budget_truncation(tmp_path):
     """On a query long enough to hit the embed truncation cutoff, the
     appended identifier must still land in the embedded text, not get
     sliced off."""
-    from chonks.embedder import QUERY_CHARS_PER_TOKEN
+    from chonks.embed.client import QUERY_CHARS_PER_TOKEN
 
     store = Store(tmp_path / "test.db")
     budget_tokens = 50
@@ -774,7 +774,7 @@ def test_reformulate_survives_query_budget_truncation(tmp_path):
 def test_hybrid_fts_branch_sees_full_query_text_even_when_over_embed_budget(tmp_path):
     """Only the embed side truncates; the FTS branch must see the full
     query text (verified by spying on the fts() call)."""
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     store.insert_chunks(

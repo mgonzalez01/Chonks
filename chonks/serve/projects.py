@@ -5,9 +5,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
-from chonks.query_reformulate import DEFAULT_REFORMULATE_QUERY
+from chonks.retrieval.query_reformulate import DEFAULT_REFORMULATE_QUERY
 from chonks.retrieval.searcher import Searcher
-from chonks.store import Store
+from chonks.storage.store import Store
 
 # Project registry, populated from config.json at startup.
 # Built in two places (default project + multi-project loop in main()); a

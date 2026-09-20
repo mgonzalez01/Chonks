@@ -164,7 +164,7 @@ def test_build_repomap_lists_folded_class_methods(tmp_path):
     """Methods folded into a small whole-class chunk share that chunk's id
     and aren't chunk names of their own, but they're in the symbol index and
     must still show up in the map."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -184,7 +184,7 @@ def test_build_repomap_lists_folded_class_methods(tmp_path):
 def test_build_repomap_empty_symbols_falls_back_to_chunks(tmp_path):
     """An old DB with no symbol table rows must still produce a map from
     chunk names rather than returning empty."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -544,7 +544,7 @@ def test_build_graph_promoted_name_sorting_first_survives_later_mentions_write()
 
 
 def test_build_refs_persists_typed_edges(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.refs import build_refs
 
     store = Store(tmp_path / "t.db")
@@ -590,7 +590,7 @@ def _seed_two_named_chunks(store) -> None:
 
 
 def test_persist_pagerank_writes_scores(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import persist_pagerank
     from chonks.index.graph.refs import build_refs
 
@@ -607,7 +607,7 @@ def test_persist_pagerank_writes_scores(tmp_path):
 
 
 def test_compute_pagerank_global_reads_persisted_scores_without_recompute(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import compute_pagerank_global
     from chonks.index.graph.refs import build_refs
 
@@ -624,7 +624,7 @@ def test_compute_pagerank_global_reads_persisted_scores_without_recompute(tmp_pa
 
 
 def test_compute_pagerank_global_falls_back_to_live_compute_on_old_db(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import compute_pagerank_global
     from chonks.index.graph.refs import build_refs
 
@@ -640,8 +640,8 @@ def test_compute_pagerank_global_falls_back_to_live_compute_on_old_db(tmp_path):
 
 
 def test_persist_pagerank_end_to_end_via_index_pipeline(tmp_path):
-    from chonks.chunker import index_paths
-    from chonks.store import Store
+    from chonks.index.pipeline import index_paths
+    from chonks.storage.store import Store
 
     class _FakeEmbedder:
         model = "fake"
@@ -678,7 +678,7 @@ def test_persist_pagerank_end_to_end_via_index_pipeline(tmp_path):
 def test_persist_pagerank_skip_gate_is_cumulative(tmp_path):
     """Small batches skip the recompute, but skipped churn is banked in meta
     and eventually crosses the threshold, triggering a full refresh."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import persist_pagerank
     from chonks.index.graph.refs import build_refs
     from chonks.core.edges import _PAGERANK_STALE_META_KEY
@@ -734,7 +734,7 @@ def _seed_three_named_chunks(store) -> None:
 
 
 def test_pagerank_edge_type_weighting_changes_ranking(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import _compute_pagerank_live
 
     store = Store(tmp_path / "t.db")
@@ -759,7 +759,7 @@ def test_pagerank_default_weights_are_identical_to_pre_weighting_behaviour(tmp_p
     """Regression pin: edge_type_weights=None (every existing caller's
     default) must reproduce the exact same scores as an explicit all-1.0
     weight map."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import _compute_pagerank_live
     from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS
 
@@ -778,7 +778,7 @@ def test_pagerank_default_weights_are_identical_to_pre_weighting_behaviour(tmp_p
 
 
 def test_persist_pagerank_threads_edge_type_weights(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.index.graph.pagerank import persist_pagerank, _compute_pagerank_live
 
     store = Store(tmp_path / "t.db")
@@ -797,9 +797,9 @@ def test_persist_pagerank_threads_edge_type_weights(tmp_path):
 def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatch):
     """edge_type_weights must reach persist_pagerank, not be dropped on the
     floor - the plumbing chunker.py's CLI/config path relies on."""
-    import chonks.chunker as chunker_mod
+    import chonks.index.pipeline as chunker_mod
     import chonks.index.postindex as postindex_mod
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
     class _FakeEmbedder:
         model = "fake"
@@ -834,9 +834,9 @@ def test_index_paths_forwards_edge_type_weights_to_pagerank(tmp_path, monkeypatc
 
 def test_index_paths_forwards_cap_mentions_fanout_to_build_refs(tmp_path, monkeypatch):
     """Same plumbing shape as edge_type_weights above, for cap_mentions_fanout."""
-    import chonks.chunker as chunker_mod
+    import chonks.index.pipeline as chunker_mod
     import chonks.index.postindex as postindex_mod
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
     class _FakeEmbedder:
         model = "fake"
@@ -870,9 +870,9 @@ def test_index_paths_forwards_cap_mentions_fanout_to_build_refs(tmp_path, monkey
 
 def test_index_paths_forwards_associated_top_frac_to_build_refs(tmp_path, monkeypatch):
     """Same plumbing shape as cap_mentions_fanout above, for associated_top_frac."""
-    import chonks.chunker as chunker_mod
+    import chonks.index.pipeline as chunker_mod
     import chonks.index.postindex as postindex_mod
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
     class _FakeEmbedder:
         model = "fake"
@@ -927,8 +927,8 @@ def test_format_map_no_footer_when_everything_fits():
 
 
 def test_repomap_endpoint_applies_default_budget_to_scoped_calls(monkeypatch):
-    import chonks.server as server
     import chonks.serve.app as serve_app
+    import chonks.serve.models as serve_models
 
     captured = {}
     def fake_build_repomap(store, path_prefix=None, query=None, token_budget=None):
@@ -938,10 +938,10 @@ def test_repomap_endpoint_applies_default_budget_to_scoped_calls(monkeypatch):
     monkeypatch.setattr(serve_app, "_get_project",
                         lambda name: {"store": object(), "repomap_cfg": {}})
 
-    server.repomap(server.RepomapRequest(path_prefix="src/gfx/"))
+    serve_app.repomap(serve_models.RepomapRequest(path_prefix="src/gfx/"))
     assert captured["budget"] == 8000, "scoped call must not be unbudgeted"
 
-    server.repomap(server.RepomapRequest(path_prefix="src/gfx/", token_budget=123))
+    serve_app.repomap(serve_models.RepomapRequest(path_prefix="src/gfx/", token_budget=123))
     assert captured["budget"] == 123, "explicit request budget must override"
 
 
@@ -963,7 +963,7 @@ def _seed_symbol(store, path, name, *, kind="function_definition", lang="python"
 
 
 def test_dir_overview_unscoped_map_has_correct_subtree_counts(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -990,7 +990,7 @@ def test_dir_overview_unscoped_map_has_correct_subtree_counts(tmp_path):
 def test_dir_overview_scoped_map_restricted_no_false_prefix_match(tmp_path):
     """path_prefix='core' must not naive-string-match 'core_x', and must not
     show core's own line."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -1011,7 +1011,7 @@ def test_dir_overview_scoped_map_restricted_no_false_prefix_match(tmp_path):
 def test_dir_overview_absent_without_hierarchy_rebuild(tmp_path):
     """A DB that never called rebuild_hierarchy() must produce the
     pre-hierarchy format, with no overview."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -1024,7 +1024,7 @@ def test_dir_overview_absent_without_hierarchy_rebuild(tmp_path):
 
 
 def test_dir_overview_tight_budget_stays_under_quarter_and_map_keeps_a_block(tmp_path):
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")
@@ -1092,7 +1092,7 @@ def test_truncation_marker_groups_relative_to_common_scope():
 def test_dir_overview_depth_cap_excludes_level_3_but_rolls_up_count(tmp_path):
     """A dir 3 levels below the scope root isn't listed itself, but its
     files still count toward its level-2 ancestor's subtree total."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     from chonks.retrieval.repomap import build_repomap
 
     store = Store(tmp_path / "t.db")

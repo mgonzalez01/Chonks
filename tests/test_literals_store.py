@@ -6,7 +6,8 @@ lifecycle (insert / re-index / delete), and the pre-literal-DB graceful note.
 import pytest
 
 from chonks.retrieval.message_match import find_by_message
-from chonks.store import Store, _compute_skeleton, _longest_skeleton_fragment, _skeleton_match
+from chonks.storage.store import Store
+from chonks.core.skeleton import _compute_skeleton, _longest_skeleton_fragment, _skeleton_match
 
 
 def _make_store(tmp_path) -> Store:
@@ -459,7 +460,7 @@ class _FakeEmbedder:
 def test_index_paths_populates_chunk_literals_end_to_end(tmp_path):
     """The full pipeline, not just the individually-unit-tested pieces,
     resolves a format-hole message."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -485,7 +486,7 @@ def test_cpp_raw_string_literal_end_to_end(tmp_path):
     """raw_string_literal (R"(...)") was previously absent from
     _LITERAL_SPECS['cpp'].leaf_types, so segment_file returned zero literals
     for this function; the point here is that it's extracted at all."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -572,7 +573,7 @@ def test_legacy_over_cap_skeleton_row_excluded_at_query_time_and_announced(tmp_p
     an over-cap skeleton row; find_by_message must re-apply the cap at query
     time, not just trust what extraction stored."""
     import time
-    from chonks.store import _HOLE_SENTINEL
+    from chonks.core.skeleton import _HOLE_SENTINEL
 
     store = _make_store(tmp_path)
     _mark_complete(store)
@@ -793,7 +794,7 @@ def test_multiline_skeleton_matches_by_first_line(tmp_path):
 def test_multiline_skeleton_matches_by_first_line_end_to_end(tmp_path):
     """Same case as test_multiline_skeleton_matches_by_first_line but through
     the real extractor, where \\n escapes get decoded to real newlines."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -969,7 +970,7 @@ def test_first_line_sql_matches_first_line(text):
     """The SQL first-line expression must agree with the Python one."""
     import sqlite3
 
-    from chonks.store import _FIRST_LINE_SQL, _first_line
+    from chonks.core.skeleton import _FIRST_LINE_SQL, _first_line
 
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE cl (text TEXT)")

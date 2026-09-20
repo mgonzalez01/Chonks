@@ -22,15 +22,14 @@ from chonks.core.paths import (
     _dotdir_prefix,
     _stored_dirname,
 )
-from chonks.embedder import (
+from chonks.index.embed_retry import (
     EMBED_BATCH,
     EMBED_INFLIGHT,
     EMBED_WATCHDOG_SECS,
-    Embedder,
-    _compress_for_embed,
     _should_truncate_and_retry,
     compute_embed_timeout,
 )
+from chonks.embed.client import Embedder, compress_for_embed as _compress_for_embed
 from chonks.index.admission import (
     DEFAULT_DATA_BLOB_SIZE_LIMIT,
     DEFAULT_FALLBACK_EXTENSIONS,
@@ -53,7 +52,7 @@ from chonks.index.segment import (
 )
 from chonks.index.text_segment import segment_text_file
 from chonks.languages import EXT_TO_LANG as _EXT_TO_LANG
-from chonks.store import Store
+from chonks.storage.store import Store
 
 logger = logging.getLogger("chonks.chunker")
 

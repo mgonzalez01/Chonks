@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from chonks.core.edges import edge_provenance
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 _ASSOCIATED_RANK = 1  # typed edges (calls/imports/inherits/xlang) rank 0
 _MENTIONS_RANK = 2   # plain mentions ranks below associated

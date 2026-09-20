@@ -13,7 +13,7 @@ import pytest
 
 from chonks.index.graph.refs import build_refs
 from chonks.retrieval.graph_queries import get_hubs, get_impact
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 def _mk_store() -> Store:

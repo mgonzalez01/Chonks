@@ -1,5 +1,5 @@
 from chonks.retrieval.trace import trace_path
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 def _make_store(tmp_path) -> Store:

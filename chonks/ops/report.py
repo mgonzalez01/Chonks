@@ -10,7 +10,7 @@ from pathlib import Path
 
 from chonks.core.config import load_config
 from chonks.index.graph.pagerank import compute_pagerank_global
-from chonks.store import Store
+from chonks.storage.store import Store
 
 TOP_GOD_NODES_OVERALL   = 15
 TOP_GOD_NODES_SUBSYSTEM = 8

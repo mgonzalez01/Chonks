@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 logger = logging.getLogger("repomap")
 

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from chonks.index.graph.pagerank import compute_pagerank_global
-from chonks.summaries import build_folder_summaries
+from chonks.index.summaries import build_folder_summaries
 
 
 def _make_meta_chunk(chunk_id: str, path: str, name: str) -> dict:

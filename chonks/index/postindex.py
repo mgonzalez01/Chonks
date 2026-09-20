@@ -9,7 +9,7 @@ from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors
 from chonks.index.graph.refs import build_refs
 from chonks.index.graph.pagerank import persist_pagerank
-from chonks.summaries import build_folder_summaries
+from chonks.index.summaries import build_folder_summaries
 
 logger = logging.getLogger("chonks.chunker")
 

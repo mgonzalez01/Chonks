@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from chonks.languages import CODE_LANGUAGES
 from chonks.retrieval.graph_queries import find_outgoing, find_usages, get_hubs, get_impact
-from chonks.store import Store, _chunk_kind_clause
+from chonks.storage.store import Store, _chunk_kind_clause
 
 
 def _make_store(tmp_path) -> Store:
@@ -1079,7 +1079,7 @@ def test_find_symbols_bare_name_matches_qualified(tmp_path):
     """Observed in practice on a large corpus: out-of-line C++ definitions
     store 'Class::method'; a bare 'method' lookup must fall back to
     last-component suffix matching instead of zero-hitting an indexed symbol."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     store = Store(tmp_path / "t.db")
     try:
         store.insert_symbols([
@@ -1484,10 +1484,10 @@ def test_chunk_kind_code_matches_ast_language_regardless_of_parse_health(tmp_pat
 
 
 def test_hub_edge_types_and_collapse_rank_are_shared_with_core_edges():
-    """Guards the store.py import: both names must be the same objects as
-    the ones in chonks.core.edges, not copies."""
+    """Guards the chonks.core.edges import: both names must be the same
+    objects as chonks.retrieval.graph_queries reads, not copies."""
     import chonks.core.edges as edges
-    import chonks.store as store_mod
+    import chonks.retrieval.graph_queries as store_mod
     assert edges._HUB_EDGE_TYPES == frozenset(
         {"calls", "imports", "inherits", "mentions", "xlang", "associated"}
     )
@@ -1506,11 +1506,3 @@ def test_batched():
     assert list(batched([0, 1, 2, 3, 4], 2)) == [[0, 1], [2, 3], [4]]
     assert list(batched([0, 1, 2, 3], 2)) == [[0, 1], [2, 3]]
     assert list(batched([], 2)) == []
-
-
-def test_skeleton_all_names_are_store_globals():
-    """Guards the store.py star import: every name in skeleton.__all__ must
-    land in chonks.store's namespace."""
-    import chonks.core.skeleton as skeleton
-    import chonks.store
-    assert set(skeleton.__all__) <= set(vars(chonks.store))

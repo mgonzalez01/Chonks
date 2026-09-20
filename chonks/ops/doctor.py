@@ -24,7 +24,7 @@ from chonks.ops.diagnostics import (
 )
 from chonks.storage.readonly import _connect_readonly, set_embedding_model
 from chonks.storage.schema import SCHEMA_DDL
-from chonks.store import SCHEMA_VERSION
+from chonks.storage.schema import SCHEMA_VERSION
 
 # The tables of the schema that are not virtual, in schema order. An fts5 table
 # and chunk_vecs have no dbstat row under their own name, so they are not here.

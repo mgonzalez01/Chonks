@@ -2,7 +2,7 @@
 and are applied on the document vs query side. The low-level `embed`
 primitive stays prefix-free.
 """
-from chonks.embedder import (
+from chonks.embed.client import (
     CODERANK_QUERY_PREFIX,
     EMBED_QUERY_TOKEN_BUDGET,
     QUERY_CHARS_PER_TOKEN,
@@ -122,15 +122,15 @@ def test_embed_primitive_is_never_prefixed():
 # ---- indexing-concurrency defaults + plumbing contract ----
 
 def test_indexing_concurrency_defaults_unchanged():
-    import chonks.embedder as _e
+    import chonks.index.embed_retry as _e
     assert _e.EMBED_BATCH == 128
     assert _e.EMBED_INFLIGHT == 2
 
 
 def test_index_paths_exposes_concurrency_params():
     import inspect
-    import chonks.chunker as chunker
-    import chonks.embedder as _e
+    import chonks.index.pipeline as chunker
+    import chonks.index.embed_retry as _e
     sig = inspect.signature(chunker.index_paths)
     assert sig.parameters["embed_batch"].default == _e.EMBED_BATCH
     assert sig.parameters["embed_inflight"].default == _e.EMBED_INFLIGHT
@@ -138,8 +138,8 @@ def test_index_paths_exposes_concurrency_params():
 
 def test_reembed_all_exposes_batch_param():
     import inspect
-    import chonks.chunker as chunker
-    import chonks.embedder as _e
+    import chonks.index.pipeline as chunker
+    import chonks.index.embed_retry as _e
     sig = inspect.signature(chunker.reembed_all)
     assert sig.parameters["embed_batch"].default == _e.EMBED_BATCH
 
@@ -309,7 +309,7 @@ def test_explicit_query_token_budget_overrides_default():
 
 def test_embed_queries_retries_400_with_halved_budget():
     import httpx
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     calls = []
 
@@ -366,13 +366,13 @@ def test_explicit_prefixes_silence_no_preset_warning(caplog):
 # ---- qwen3 preset: query instruction, documents bare ----------------------
 
 def test_qwen3_preset_query_instruction_doc_bare():
-    from chonks.embedder import QWEN3_QUERY_PREFIX
+    from chonks.embed.client import QWEN3_QUERY_PREFIX
     assert resolve_prefixes("qwen3-embedding-0.6b") == (QWEN3_QUERY_PREFIX, "")
     assert resolve_prefixes("Qwen/Qwen3-Embedding-4B-GGUF") == (QWEN3_QUERY_PREFIX, "")
 
 
 def test_qwen3_queries_get_instruction_documents_do_not():
-    from chonks.embedder import QWEN3_QUERY_PREFIX
+    from chonks.embed.client import QWEN3_QUERY_PREFIX
     seen = []
     class _C:
         def post(self, url, json, timeout):
@@ -390,7 +390,7 @@ def test_qwen3_queries_get_instruction_documents_do_not():
 
 def test_default_model_name_warns_about_qwen3_instruction(caplog):
     import logging
-    from chonks.embedder import DEFAULT_EMBED_MODEL
+    from chonks.embed.client import DEFAULT_EMBED_MODEL
     with caplog.at_level(logging.WARNING, logger="chonks.embedder"):
         Embedder("http://h/v1/embeddings", DEFAULT_EMBED_MODEL)
     assert any("embed_model is not set" in r.message for r in caplog.records)

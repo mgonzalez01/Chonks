@@ -7,8 +7,8 @@ import hashlib
 import logging
 from unittest.mock import patch
 
-from chonks.chunker import index_paths
-from chonks.store import Store
+from chonks.index.pipeline import index_paths
+from chonks.storage.store import Store
 
 _DIM = 8
 
@@ -159,7 +159,7 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     # when a file's old chunks are deleted but 0 files complete this run, so
     # graph-maintenance never ran and old edges dangled forever.
     import chonks.index.pipeline as pipeline_mod
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "callee.py").write_text(
         "def target_function(x):\n    return x + 1\n"

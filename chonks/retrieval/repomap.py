@@ -11,7 +11,7 @@ import networkx as nx
 from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
 
 if TYPE_CHECKING:
-    from chonks.store import Store
+    from chonks.storage.store import Store
 
 _NODE_TYPE_PREFIX = _lang_merged("kind_labels", GENERIC_KIND_LABELS)
 

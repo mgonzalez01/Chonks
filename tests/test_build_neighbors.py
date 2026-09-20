@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from chonks.index.graph.knn import build_neighbors
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 def _make_store(n_chunks: int, dim: int = 8) -> Store:

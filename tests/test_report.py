@@ -3,8 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chonks.report import build_report
-from chonks.store import Store
+from chonks.ops.report import build_report
+from chonks.storage.store import Store
 
 
 def _fake_embedding(dim: int = 4) -> list[float]:
@@ -175,7 +175,7 @@ def test_cli_writes_report(tmp_path):
 
     out_path = tmp_path / "INDEX_REPORT.md"
     result = subprocess.run(
-        [sys.executable, "-m", "chonks.report",
+        [sys.executable, "-m", "chonks.ops.report",
          "--db", str(tmp_path / "test.db"), "-o", str(out_path)],
         capture_output=True, text=True, cwd=str(tmp_path),
     )
@@ -187,7 +187,7 @@ def test_cli_writes_report(tmp_path):
 
 
 def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch):
-    from chonks.report import main
+    from chonks.ops.report import main
 
     store = _build_synthetic_store(tmp_path)
     store.close()
@@ -203,7 +203,7 @@ def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch):
 
 def test_main_unreadable_config_is_an_argparse_error(tmp_path, monkeypatch, capsys):
     import pytest
-    from chonks.report import main
+    from chonks.ops.report import main
 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.json").write_text("{ broken")

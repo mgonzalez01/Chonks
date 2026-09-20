@@ -4,9 +4,10 @@ as hardcoded defaults."""
 import logging
 from pathlib import Path
 
-from chonks.chunker import _dotdir_prefix, index_paths
+from chonks.core.paths import _dotdir_prefix
+from chonks.index.pipeline import index_paths
 from chonks.ops.diagnostics import dotdir_breakdown, dotdir_total_share
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 # --------------------------------------------------------------------------

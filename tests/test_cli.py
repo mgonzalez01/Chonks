@@ -3,7 +3,7 @@ import importlib
 
 import pytest
 
-import chonks.cli as cli
+import chonks.ops.cli as cli
 import chonks.ops.cli
 
 

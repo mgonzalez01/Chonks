@@ -13,13 +13,8 @@ import uvicorn
 
 from chonks.core.config import load_config, resolve_codebase
 from chonks.embed.client import probe_embedder
-from chonks.embedder import (
-    DEFAULT_EMBED_MODEL,
-    DEFAULT_EMBED_URL,
-    EMBED_BATCH,
-    EMBED_INFLIGHT,
-    Embedder,
-)
+from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
+from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
 from chonks.serve.app import app
 from chonks.serve.projects import (
     DEFAULT_PROJECT,

@@ -14,9 +14,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from chonks.chunker import DEFAULT_FALLBACK_EXTENSIONS
+from chonks.index.admission import DEFAULT_FALLBACK_EXTENSIONS
 from chonks.embed.client import ping_embedder
-from chonks.embedder import RECOMMENDED_EMBED_MODEL
+from chonks.embed.client import RECOMMENDED_EMBED_MODEL
 
 DEFAULT_EMBED_URL = "http://localhost:11437"
 DEFAULT_DB_PATH = "./.db/chonks.db"
@@ -396,7 +396,7 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
     if ask_yes_no(input_fn, "\nRun the first index now?", default=False):
         import subprocess
         cmd = [
-            sys.executable, "-m", "chonks.chunker",
+            sys.executable, "-m", "chonks.ops.index_cmd",
             str(codebase), "--db", db, "--config", str(config_path),
         ]
         print_fn(f"\n$ {' '.join(cmd)}")

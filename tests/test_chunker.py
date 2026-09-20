@@ -5,7 +5,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 from chonks.retrieval.message_match import find_by_message
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 class _FakeEmbedder:
@@ -32,7 +32,7 @@ def _uclass_src(name: str) -> str:
 
 def test_ext_filter_is_case_insensitive(tmp_path):
     """Directory scan must pick up .CPP/.H (Windows-origin files)."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     cpp_file = tmp_path / "HELLO.CPP"
     cpp_file.write_text("int main() { return 0; }\n")
@@ -64,7 +64,7 @@ def test_ext_filter_is_case_insensitive(tmp_path):
 def test_index_populates_decoupled_symbols(tmp_path):
     """End-to-end: indexing a small class (folded into ONE chunk) still populates
     the symbols table with the class and each method, mapped to the owning chunk."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "widget.cpp").write_text(
         "class Widget {\npublic:\n"
@@ -93,7 +93,8 @@ def test_index_populates_decoupled_symbols(tmp_path):
 
 def test_index_concurrent_returns_409(tmp_path):
     from fastapi.testclient import TestClient
-    import chonks.server as server
+    import chonks.serve.app as serve_app
+    import chonks.serve.projects as serve_projects
     barrier = threading.Barrier(2)
     release = threading.Event()
 
@@ -102,9 +103,9 @@ def test_index_concurrent_returns_409(tmp_path):
         release.wait()
         return {"indexed": 0, "skipped": 0, "errors": 0, "pruned": 0, "truncated": 0}
 
-    server._projects.clear()
+    serve_projects._projects.clear()
     # Seed the project dict as main() would, including index_lock
-    server._projects[server.DEFAULT_PROJECT] = {
+    serve_projects._projects[serve_projects.DEFAULT_PROJECT] = {
         "db_path":      tmp_path / "test.db",
         "root":         None,
         "exclude":      [],
@@ -122,7 +123,7 @@ def test_index_concurrent_returns_409(tmp_path):
     }
 
     with patch("chonks.serve.app.index_paths", side_effect=slow_index):
-        client = TestClient(server.app, raise_server_exceptions=False)
+        client = TestClient(serve_app.app, raise_server_exceptions=False)
 
         results = []
 
@@ -144,7 +145,7 @@ def test_index_concurrent_returns_409(tmp_path):
 def test_macro_vocab_persists_when_recurring(tmp_path):
     """A macro that heals >= _MACRO_PERSIST_MIN_FILES files this run is written
     to meta['macro_vocab'] so future runs pre-blank it instead of rediscovering."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.cpp").write_text(_uclass_src("AThing"))
     (tmp_path / "b.cpp").write_text(_uclass_src("BThing"))
@@ -165,7 +166,7 @@ def test_macro_vocab_persists_on_crlf_sources(tmp_path):
     """Same as above but with Windows line endings, written as bytes so the
     fixture is CRLF on every platform: discovery tell (e), the only tell that
     sees in-body GENERATED_BODY-style macros, must match lines ending \\r\\n."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.cpp").write_bytes(_uclass_src("AThing").replace("\n", "\r\n").encode())
     (tmp_path / "b.cpp").write_bytes(_uclass_src("BThing").replace("\n", "\r\n").encode())
@@ -184,7 +185,7 @@ def test_macro_vocab_persists_on_crlf_sources(tmp_path):
 def test_macro_vocab_recurrence_filter_excludes_single_file(tmp_path):
     """A macro healing only ONE file is a candidate false-admit and must not be
     persisted; the recurrence filter (_MACRO_PERSIST_MIN_FILES) drops it."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     # Single file: each healed macro heals exactly one file -> below threshold.
     (tmp_path / "only.cpp").write_text(_uclass_src("Solo"))
@@ -203,7 +204,7 @@ def test_second_run_loads_persisted_vocab_and_preblanks(tmp_path):
     """A second index run loads meta['macro_vocab'] and pre-blanks those macros,
     so the files parse cleanly without paying the self-heal trial-reparse cost
     (observable as macro_healed_files dropping to 0)."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.cpp").write_text(_uclass_src("AThing"))
     (tmp_path / "b.cpp").write_text(_uclass_src("BThing"))
@@ -226,7 +227,7 @@ def test_second_run_loads_persisted_vocab_and_preblanks(tmp_path):
 def test_macros_param_preblanks_first_run(tmp_path):
     """A caller-supplied `macros` set is pre-blanked on the very first run, so
     even a single file skips self-heal (config override path)."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "only.cpp").write_text(_uclass_src("Solo"))
 
@@ -244,7 +245,7 @@ def test_unhealable_hash_persists_and_skips_heal_sweep_on_second_run(tmp_path):
     persisted to meta['unhealable_hashes']. A later run, even with --force on
     unchanged content, must skip the heal sweep entirely (one parse, not ~25)."""
     import tree_sitter
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     # Irreducible parse error, no macro-shaped tokens anywhere near it: the heal
     # sweep runs on the first pass and admits nothing.
@@ -286,7 +287,7 @@ def test_unhealable_memo_invalidated_when_vocab_grows(tmp_path):
     self-heal succeeds also depends on the pre-blanked vocab. A fingerprint of
     that vocab is persisted alongside the memo; if it changes, the memo drops."""
     import tree_sitter
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     # NOT_A_FIX(1) is a discoverable macro-call candidate (unlike the plain
     # "class Broken" fixture, which discovers zero), but blanking it doesn't
@@ -340,7 +341,7 @@ def test_unhealable_memo_invalidated_when_vocab_grows(tmp_path):
 
 
 def test_scan_admits_ts_js_extensions(tmp_path):
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -358,7 +359,7 @@ def test_scan_admits_ts_js_extensions(tmp_path):
 
 
 def test_scan_admits_fallback_extensions_by_default(tmp_path):
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -374,7 +375,7 @@ def test_scan_admits_fallback_extensions_by_default(tmp_path):
 
 
 def test_fallback_extensions_config_can_disable_path(tmp_path):
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -392,7 +393,7 @@ def test_fallback_extensions_config_can_disable_path(tmp_path):
 def test_unsupported_extension_counted_regardless_of_config(tmp_path):
     """A file with an extension in neither _EXT_TO_LANG nor fallback_extensions
     must be tallied in unsupported_ext_skipped, so the gap is never silent."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -410,7 +411,7 @@ def test_unsupported_extension_counted_regardless_of_config(tmp_path):
 def test_oversize_json_skipped_and_counted(tmp_path):
     """A .json file over the data_blob_size_limit is skipped rather than
     line-sliced into hundreds of ranking-competing chunks."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -430,7 +431,7 @@ def test_oversize_json_skipped_and_counted(tmp_path):
 def test_small_json_still_indexed(tmp_path):
     """A .json file under the size limit keeps current behaviour: chunked via
     the line-based fallback, not affected by the data-blob guard."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -448,7 +449,7 @@ def test_minified_js_bundle_skipped_but_legit_big_js_kept(tmp_path):
     """The minified-bundle guard: an oversize .js file is skipped only when
     minified-dense (avg line length beyond MINIFIED_AVG_LINE_LEN). An equally
     big but normally-formatted .js file is untouched; size alone never gates."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -472,7 +473,7 @@ def test_minified_js_bundle_skipped_but_legit_big_js_kept(tmp_path):
 def test_oversize_html_skipped_small_html_kept(tmp_path):
     """.html joins the size-gated data set (vendored web_dist bundles); a
     small hand-written HTML page keeps current fallback behaviour."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -490,7 +491,7 @@ def test_oversize_html_skipped_small_html_kept(tmp_path):
 def test_data_blob_size_limit_zero_restores_old_behavior(tmp_path):
     """data_blob_size_limit=0 disables the guard entirely: every data file
     gets chunked regardless of size, matching pre-guard behaviour."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
     src_dir.mkdir()
@@ -510,7 +511,7 @@ def test_config_seed_not_persisted(tmp_path):
     """A caller/config `macros` seed is applied at runtime but must not be baked
     into meta['macro_vocab']; only auto-discovered, recurring macros are durable.
     Prevents a typo'd or later-removed seed sticking in the DB forever."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     # UCLASS/GENERATED_BODY recur across 2 files -> they qualify and persist.
     (tmp_path / "a.cpp").write_text(_uclass_src("AThing"))
@@ -536,7 +537,7 @@ def test_excluded_dir_is_pruned_from_walk_not_just_filtered(tmp_path):
     must stop os.walk from descending into it at all, not merely filter its
     files out one by one after the fact. Zero chunks from the excluded tree,
     and the walk-prune counter reflects the skipped directory."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     nm = tmp_path / "node_modules" / "some_pkg"
     nm.mkdir(parents=True)
@@ -558,7 +559,7 @@ def test_include_rescues_deep_subtree_under_pruned_dir(tmp_path):
     """exclude=["tmp/"] + include=["tmp/git/a/"] must still index the deeper,
     more-specific include even though tmp/ itself is excluded; the walk-prune
     optimization must not short-circuit the existing include-override contract."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     other = tmp_path / "tmp" / "other"
     other.mkdir(parents=True)
@@ -584,7 +585,7 @@ def test_include_rescues_deep_subtree_under_pruned_dir(tmp_path):
 
 def test_dir_should_prune_helper():
     """Direct unit coverage of the include-aware prune decision."""
-    from chonks.chunker import _dir_should_prune
+    from chonks.core.paths import _dir_should_prune
 
     excludes = ["tmp/"]
     includes = ["tmp/git/a/"]
@@ -603,7 +604,8 @@ def test_include_rescues_subtree_nested_below_include_prefix(tmp_path):
     """Regression: exclude=["vendor/"] + include=["vendor/keep_me/"] must
     rescue everything nested under vendor/keep_me/, not just that dir itself.
     _dir_should_prune previously missed the case of being INSIDE a rescued subtree."""
-    from chonks.chunker import index_paths, _dir_should_prune
+    from chonks.index.pipeline import index_paths
+    from chonks.core.paths import _dir_should_prune
 
     junk = tmp_path / "vendor" / "junk"
     junk.mkdir(parents=True)
@@ -637,7 +639,7 @@ def test_index_paths_reports_per_phase_timing(tmp_path):
     """The summary used to report only embed-phase elapsed time, silently
     omitting build_refs/build_neighbors/folder-summary time (real wall time was
     ~2x the printed number). Must now break out each phase plus a grand total."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
     (tmp_path / "b.py").write_text("def b():\n    return a()\n")
@@ -673,7 +675,7 @@ def test_index_paths_reports_per_phase_timing(tmp_path):
 def test_chunker_version_stamped_clean_on_full_run(tmp_path):
     """A run that reprocesses every file (nothing skipped) is a clean stamp of
     the current code version, no matter what was there before."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
     from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
@@ -688,7 +690,7 @@ def test_chunker_version_mixed_when_incremental_run_skips_files(tmp_path):
     """A small incremental run that leaves most files untouched must not
     silently overwrite a stale chunker_version with a clean match; some
     chunks in the DB still carry the old boundaries."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
     from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
@@ -714,7 +716,7 @@ def test_chunker_version_mixed_when_incremental_run_skips_files(tmp_path):
 def test_chunker_version_self_heals_on_force_reindex(tmp_path):
     """A --force run always reprocesses every file, so it can always clean up
     a previously-mixed chunker_version stamp."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
     from chonks.index.segment import CHUNKER_VERSION
 
     (tmp_path / "a.py").write_text("def a():\n    return 1\n")
@@ -731,7 +733,7 @@ def test_literal_index_flag_set_clean_on_full_run(tmp_path):
     """A run that reprocesses every file (nothing skipped) sets the literal
     index completeness flag; mirrors test_chunker_version_stamped_clean_
     on_full_run for the literal_index_version meta key."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text('def a():\n    x = "a distinctive literal in file a"\n')
     store = Store(tmp_path / "test.db")
@@ -745,7 +747,7 @@ def test_literal_index_flag_stays_unset_on_partial_incremental_run(tmp_path):
     """Build a normal DB, strip it to a genuine pre-upgrade state (no
     literals, no flag), then an incremental run touching only one of two
     files must leave the flag unset, not look like a clean no-match."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text('def a():\n    x = "hello from a, a distinctive literal"\n')
     (tmp_path / "b.py").write_text('def b():\n    y = "hello from b, another distinctive literal"\n')
@@ -779,7 +781,7 @@ def test_literal_index_flag_self_heals_on_force_reindex(tmp_path):
     """--force always reprocesses every file, so it can establish the
     completeness flag even from an unflagged, partially-covered DB, and the
     previously-unreachable file's message resolves afterward."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text('def a():\n    x = "hello from a, a distinctive literal"\n')
     (tmp_path / "b.py").write_text('def b():\n    y = "hello from b, another distinctive literal"\n')
@@ -803,7 +805,7 @@ def test_literal_index_flag_stays_unset_when_force_covers_only_a_subset(tmp_path
     """`--force <one-of-two-tracked-paths>` is the gate's blind spot:
     state["skipped"] == 0 is trivially true when the run only got one file,
     even though the DB tracks two. The flag must stay unset."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text('def a():\n    x = "hello from a, a distinctive literal"\n')
     (tmp_path / "b.py").write_text('def b():\n    y = "hello from b, another distinctive literal"\n')
@@ -834,7 +836,7 @@ def test_literal_index_flag_once_set_survives_a_later_partial_run(tmp_path):
     """Once the flag is set (a prior full/--force run), a later small
     incremental run must not unset it; untouched files' chunks are still
     accurately literal-covered from before."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "a.py").write_text('def a():\n    x = "hello from a, a distinctive literal"\n')
     (tmp_path / "b.py").write_text('def b():\n    y = "hello from b, another distinctive literal"\n')
@@ -854,7 +856,7 @@ def test_exclude_include_persisted_to_meta(tmp_path):
     """doctor.py's staleness sweep needs the excludes a DB was actually built
     with, not just whatever's in a config.json that may no longer exist;
     index_paths must persist them."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "src.py").write_text("x = 1\n")
     (tmp_path / "vendor").mkdir()
@@ -1000,7 +1002,8 @@ def test_dropped_chunk_still_completes_file(tmp_path):
     permanently fails to embed and one that succeeds must still get a
     completed `files` row, so a later edit's delete actually fires instead
     of leaving the surviving chunk orphaned forever."""
-    from chonks.chunker import _file_hash, index_paths
+    from chonks.index.admission import _file_hash
+    from chonks.index.pipeline import index_paths
 
     class _PartialFailEmbedder:
         model = "fake"
@@ -1061,7 +1064,7 @@ def test_file_symbols_set_before_any_chunk_is_enqueued(tmp_path, monkeypatch):
     import sys
     import queue as queue_module
 
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "solo.py").write_text("def solo_fn(x):\n    return x + 1\n")
     target_path = "solo.py"
@@ -1158,7 +1161,7 @@ def test_watchdog_aborts_on_wedged_embedder(tmp_path):
     stall observable in test time without actually waiting minutes."""
     import pytest
 
-    from chonks.chunker import NoProgressError, index_paths
+    from chonks.index.pipeline import NoProgressError, index_paths
 
     (tmp_path / "solo.py").write_text("def solo_fn(x):\n    return x + 1\n")
 
@@ -1193,7 +1196,7 @@ def test_watchdog_names_the_embedding_file_not_the_parser_position(tmp_path):
     the wedge). Only one file's content wedges the embedder here."""
     import pytest
 
-    from chonks.chunker import NoProgressError, index_paths
+    from chonks.index.pipeline import NoProgressError, index_paths
 
     # Only this file's content hangs the embedder. Everything else drains, so
     # the parser (and the embedder) move well past it before the wedge bites.
@@ -1230,7 +1233,7 @@ def test_watchdog_does_not_fire_on_slow_but_moving_batches(tmp_path):
     """A batch that's merely slow, not wedged, must never trip the watchdog
     as long as each one completes and resets the clock. Each file embeds
     with a per-batch delay comfortably under the timeout."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     for i in range(4):
         (tmp_path / f"f{i}.py").write_text(f"def fn_{i}(x):\n    return x + {i}\n")
@@ -1258,7 +1261,7 @@ def test_watchdog_does_not_fire_during_bisection_recovery(tmp_path):
     """Bisection recovery on a pathological chunk can spend many legitimate
     round trips inside one embed_phase, never reaching commit_phase.
     Resetting the clock only on commit killed a productive recovery as a hang."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "crc.py").write_text(
         "CRC_TABLE = [\n" + "".join(f"    {i},\n" for i in range(64)) + "]\n"
@@ -1294,7 +1297,7 @@ def test_watchdog_tolerates_long_scan_tail_with_idle_embedder(tmp_path):
     incremental run whose one changed file embeds early leaves the embedder
     idle while the scanner grinds through a long unchanged tail. Progress
     on the scan alone must keep the run alive."""
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     # "a_" sorts first so the walk hits the (soon-to-be) changed file before
     # the unchanged tail on the second run.
@@ -1345,7 +1348,7 @@ def test_watchdog_still_aborts_when_whole_pipeline_freezes(tmp_path):
     instead of hanging forever."""
     import pytest
 
-    from chonks.chunker import NoProgressError, index_paths
+    from chonks.index.pipeline import NoProgressError, index_paths
 
     for i in range(3):
         (tmp_path / f"f{i}.py").write_text(f"def fn_{i}(x):\n    return x + {i}\n")
@@ -1378,7 +1381,7 @@ def test_watchdog_tolerates_long_prune_pass(tmp_path):
     per-file pruned count, not get aborted as a frozen pipeline."""
     import os
 
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     for i in range(8):
         (tmp_path / f"gone_{i}.py").write_text(f"def g{i}(x):\n    return x + {i}\n")
@@ -1427,7 +1430,7 @@ def test_circuit_breaker_aborts_on_persistently_dead_embedder(tmp_path):
     import httpx
     import pytest
 
-    from chonks.chunker import EmbedderDownError, index_paths
+    from chonks.index.pipeline import EmbedderDownError, index_paths
 
     for i in range(20):
         (tmp_path / f"f{i}.py").write_text(f"def fn_{i}(x):\n    return x + {i}\n")
@@ -1457,7 +1460,7 @@ def test_circuit_breaker_does_not_trip_on_4xx_oversize_batch(tmp_path):
     batch. The breaker is for a genuinely unreachable embedder, not a tight context window."""
     import httpx
 
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     for i in range(20):
         (tmp_path / f"f{i}.py").write_text(f"def fn_{i}(x):\n    return x + {i}\n")
@@ -1498,7 +1501,7 @@ def test_embed_timeout_scales_with_batch_size(tmp_path):
     connection. The call site must scale timeout with request size."""
     import pytest
 
-    from chonks.embedder import (
+    from chonks.index.embed_retry import (
         EMBED_TIMEOUT_CEILING_S,
         EMBED_TIMEOUT_FLOOR_S,
         EMBED_TIMEOUT_PER_ITEM_S,
@@ -1521,8 +1524,8 @@ def test_embed_documents_called_with_scaled_timeout(tmp_path):
     """Same contract as test_embed_timeout_scales_with_batch_size, but pinned
     at the actual call site (chunker.embed_phase), proving the override is
     threaded through, not just defined."""
-    from chonks.chunker import index_paths
-    from chonks.embedder import compute_embed_timeout
+    from chonks.index.pipeline import index_paths
+    from chonks.index.embed_retry import compute_embed_timeout
 
     (tmp_path / "solo.py").write_text("def solo_fn(x):\n    return x + 1\n")
 
@@ -1618,7 +1621,7 @@ def test_rebuild_knn_falls_back_to_full_chain_when_refs_empty(tmp_path, monkeypa
 def test_rebuild_graphs_and_rebuild_knn_are_mutually_exclusive(tmp_path):
     import pytest
 
-    import chonks.chunker as chunker
+    import chonks.ops.index_cmd as chunker
 
     with pytest.raises(SystemExit):
         chunker.main(["--db", str(tmp_path / "test.db"),
@@ -1632,7 +1635,7 @@ def test_symlinked_file_does_not_duplicate_index_entry(tmp_path, caplog):
     import os
     import pytest
 
-    from chonks.chunker import index_paths
+    from chonks.index.pipeline import index_paths
 
     real_dir = tmp_path / "real"
     real_dir.mkdir()

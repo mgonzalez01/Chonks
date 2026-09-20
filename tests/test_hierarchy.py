@@ -4,7 +4,7 @@ touch the chunk_refs graph."""
 import tempfile
 
 from chonks.index.graph.hierarchy import rebuild_hierarchy
-from chonks.store import Store
+from chonks.storage.store import Store
 
 
 def _mk_store() -> Store:
