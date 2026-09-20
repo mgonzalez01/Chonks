@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from ._ast import name_text
 from ._naming import cpp_function_declarator_name, tag_specifier_name
-from .spec import LanguageSpec, NameRule
+from .spec import LanguageSpec, LiteralSpec, NameRule
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -42,7 +42,7 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
-    version="1",
+    version="2",
     extensions=frozenset({".hlsl", ".fx", ".fxh"}),
     # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.
@@ -63,8 +63,11 @@ HLSL = LanguageSpec(
         "struct_specifier": "struct",
         "cbuffer": "cbuffer",
     },
-    # BUG preserved: no LiteralSpec, so find_by_message sees no HLSL string.
-    # A fix changes stored chunk metadata, so an indexed repo needs a re-index.
+    # Same C-preprocessor-family grammar as cpp: string_literal/raw_string_literal
+    # leaves, concatenated_string for adjacent juxtaposition. No plus_type: HLSL
+    # has no "+"-based string concatenation to detect, same as c/cpp.
+    literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
+                         concat_types=("concatenated_string",)),
     display_name="HLSL",
 )
 

@@ -848,6 +848,27 @@ def test_literal_index_flag_stays_unset_when_force_covers_only_a_subset(tmp_path
     store.close()
 
 
+def test_find_by_message_resolves_a_shader_string(tmp_path):
+    """HLSL now carries a LiteralSpec: a string in an indexed .hlsl file
+    reaches chunk_literals and find_by_message can match it."""
+    from chonks.index.pipeline import index_paths
+
+    (tmp_path / "post.hlsl").write_text(
+        'float4 MainPS() : SV_Target\n'
+        '{\n'
+        '    string tag = "diffuse pass shader marker";\n'
+        '    return float4(1,1,1,1);\n'
+        '}\n'
+    )
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+
+    hit = find_by_message(store, "diffuse pass shader marker")
+    assert len(hit["results"]) == 1
+    assert hit["results"][0]["path"] == "post.hlsl"
+    store.close()
+
+
 def test_literal_index_flag_once_set_survives_a_later_partial_run(tmp_path):
     """Once the flag is set (a prior full/--force run), a later small
     incremental run must not unset it; untouched files' chunks are still
