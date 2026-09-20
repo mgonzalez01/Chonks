@@ -4,6 +4,7 @@ import threading
 import time
 from unittest.mock import MagicMock, patch
 
+from chonks.retrieval.message_match import find_by_message
 from chonks.store import Store
 
 
@@ -768,7 +769,7 @@ def test_literal_index_flag_stays_unset_on_partial_incremental_run(tmp_path):
 
     # b.py's (untouched) message must get the honest "incomplete" note, not
     # a bare no-match; chunk_literals now has SOME rows (from a.py).
-    note = store.find_by_message("hello from b, another distinctive literal")["note"]
+    note = find_by_message(store, "hello from b, another distinctive literal")["note"]
     assert "incomplete" in note
     assert "--force" in note
     store.close()
@@ -793,7 +794,7 @@ def test_literal_index_flag_self_heals_on_force_reindex(tmp_path):
 
     assert result["skipped"] == 0
     assert store.get_meta("literal_index_version") == "1"
-    hit = store.find_by_message("hello from b, another distinctive literal")
+    hit = find_by_message(store, "hello from b, another distinctive literal")
     assert len(hit["results"]) == 1
     store.close()
 
@@ -823,7 +824,7 @@ def test_literal_index_flag_stays_unset_when_force_covers_only_a_subset(tmp_path
     assert store.tracked_file_count() == 2  # b.py is still a tracked file
     assert store.get_meta("literal_index_version") is None
 
-    note = store.find_by_message("hello from b, another distinctive literal")["note"]
+    note = find_by_message(store, "hello from b, another distinctive literal")["note"]
     assert "incomplete" in note
     assert "--force" in note
     store.close()

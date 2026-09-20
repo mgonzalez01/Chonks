@@ -20,6 +20,7 @@ from chonks.embedder import (
 )
 from chonks.index.pipeline import index_paths, reembed_all
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
+from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors
 from chonks.index.graph.refs import build_refs
 from chonks.index.graph.pagerank import persist_pagerank
@@ -249,7 +250,7 @@ def main(argv=None) -> None:
                 store, force=True, edge_type_weights=edge_type_weights,
             )
             print(f"Persisted {pagerank_count} PageRank scores.")
-            hierarchy = store.rebuild_hierarchy()
+            hierarchy = rebuild_hierarchy(store)
             print(f"Built hierarchy: {hierarchy['nodes']} nodes, "
                   f"{hierarchy['edges']} contains edges.")
             try:

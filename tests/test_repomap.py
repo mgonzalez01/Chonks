@@ -1,5 +1,6 @@
 """Tests for repomap symbol-type prefix rendering."""
 import pytest
+from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.retrieval.repomap import _format_map
 
 
@@ -954,7 +955,7 @@ def _seed_hierarchy(store, file_paths: list[str]) -> None:
     for i, p in enumerate(file_paths):
         store.upsert_file(p, size=1, mtime=0.0, content_hash=f"h{i}")
     store.commit()
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
 
 def _seed_symbol(store, path, name, *, kind="function_definition", lang="python"):

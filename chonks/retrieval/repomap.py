@@ -27,7 +27,7 @@ _DIR_OVERVIEW_MAX_DEPTH = 2
 
 def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | None) -> str:
     """Directory overview from graph_nodes; returns "" on a DB that
-    predates Store.rebuild_hierarchy() (no dir rows), or if nothing fits
+    predates rebuild_hierarchy() (no dir rows), or if nothing fits
     even at the top level."""
     dirs = store.get_graph_dirs()
     if not dirs:

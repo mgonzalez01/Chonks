@@ -5,6 +5,7 @@ import time
 
 import httpx
 
+from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors
 from chonks.index.graph.refs import build_refs
 from chonks.index.graph.pagerank import persist_pagerank
@@ -79,7 +80,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
         # Full rebuild every run: cheap relative to refs/kNN (see
         # rebuild_hierarchy), so no incremental path to keep in sync.
         _phase_t0 = time.monotonic()
-        hierarchy = store.rebuild_hierarchy()
+        hierarchy = rebuild_hierarchy(store)
         hierarchy_elapsed = time.monotonic() - _phase_t0
         logger.info("Built hierarchy: %d nodes, %d contains edges.",
                     hierarchy["nodes"], hierarchy["edges"])
