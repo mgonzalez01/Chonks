@@ -32,7 +32,7 @@ The MCP server returns ranked chunks with `path:line` citations and the calling 
 | `chonks init` | Interactive first-run setup wizard |
 | `chonks index` | Parse and embed source files into a chunks DB |
 | `chonks serve` | Run the HTTP search, research, and index server |
-| `chonks doctor` | Read-only index health report. Its flags are `--db`, `--config`, and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
+| `chonks doctor` | Read-only index health report. Its flags are `--db`, `--config` (default: the first of `config.json`, `chonks/config.json`, `.chonks.json` present), and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
 | `chonks report` | Generate `INDEX_REPORT.md` |
 
 Each subcommand's module is internal and the CLI is the only supported entry point. `chonks init` writes `config.json` and offers to run the first index; the Docker compose stack does neither, it runs the backend and the MCP adapter against a `chonks.db` and a `config.json` that already exist (see [DEPLOY.md](DEPLOY.md)).
@@ -69,14 +69,14 @@ CUDA (`.cu`/`.cuh`) and Objective-C++/Metal (`.mm`/`.metal`) are parsed best-eff
 ```mermaid
 flowchart TD
     CC["Claude Code / any MCP client"] -->|"MCP: JSON-RPC over stdio"| PROXY["mcp-server (Node/TypeScript)&#10;codebase_search &middot; codebase_research &middot; codebase_map&#10;codebase_status &middot; find_symbol &middot; find_usages &middot; investigate &middot; trace_path &middot; find_by_message"]
-    PROXY -->|"HTTP :11438, loopback"| API["chonks/server.py (FastAPI) &mdash; chonks serve&#10;/search /research /repomap /symbol /usages /outgoing /investigate /trace&#10;/index /status /find_by_message /impact /hubs"]
+    PROXY -->|"HTTP :11438, loopback"| API["chonks/serve/ (FastAPI) &mdash; chonks serve&#10;/search /research /repomap /symbol /usages /outgoing /investigate /trace&#10;/index /status /find_by_message /impact /hubs"]
     API --> SEARCHER["chonks/searcher.py&#10;search API"]
     API --> RESEARCH["chonks/research.py&#10;candidate collection"]
     API --> REPOMAP["chonks/repomap/&#10;symbol graph + persisted PageRank"]
-    API --> CHUNKER["chonks/chunker.py&#10;indexing &mdash; chonks index"]
-    CHUNKER --> SUMM["chonks/summaries.py&#10;folder summaries"]
+    API --> CHUNKER["chonks/index/&#10;indexing &mdash; chonks index"]
+    CHUNKER --> SUMM["chonks/index/summaries.py&#10;folder summaries"]
     SUMM -.->|"reads persisted PageRank"| REPOMAP
-    SEARCHER --> STORE["chonks/store.py&#10;sqlite-vec DB"]
+    SEARCHER --> STORE["chonks/storage/&#10;sqlite-vec DB"]
     RESEARCH --> STORE
     REPOMAP --> STORE
     CHUNKER --> STORE
@@ -126,15 +126,15 @@ The tables:
 
 ## Components
 
-### init.py — First-Run Setup Wizard
+### chonks/ops/init.py — First-Run Setup Wizard
 
-Writes `config.json` for a new install, from `uv run chonks init` or `make init`. It prompts for the codebase path, then scans it for junk-directory candidates by name heuristic (`node_modules`, `.venv`, `venv`, `.git`, `__pycache__`, `dist`, `build`, `target`, `packages`, `coverage`, `DerivedData`, `Intermediate`, `Saved`) and offers each as a yes/no toggle with a file count and a size, excluded by default and confirmed one at a time. Then come a fallback-extensions toggle (defaulting to `chunker.DEFAULT_FALLBACK_EXTENSIONS`), a DB path prompt, an embedding-server URL prompt whose `ping_embedder` reports reachability and dimension, and an embedding model name prompt (defaulting to `jina-code-embeddings-0.5b`, which selects the query and document prefixes and must match the model the server runs). It writes `config.json`, refusing to clobber an existing one without confirmation, prints the `claude mcp add` command, and offers to start the first index.
+Writes `config.json` for a new install, from `uv run chonks init` or `make init`. It prompts for the codebase path, then scans it for junk-directory candidates by name heuristic (`node_modules`, `.venv`, `venv`, `.git`, `__pycache__`, `dist`, `build`, `target`, `packages`, `coverage`, `DerivedData`, `Intermediate`, `Saved`) and offers each as a yes/no toggle with a file count and a size, excluded by default and confirmed one at a time. Then come a fallback-extensions toggle (defaulting to `chonks.index.admission.DEFAULT_FALLBACK_EXTENSIONS`), a DB path prompt, an embedding-server URL prompt whose `ping_embedder` reports reachability and dimension, and an embedding model name prompt (defaulting to `jina-code-embeddings-0.5b`, which selects the query and document prefixes and must match the model the server runs). It writes `config.json`, refusing to clobber an existing one without confirmation, prints the `claude mcp add` command, and offers to start the first index.
 
 **Non-interactive mode.** `--yes` with `--codebase`, `--db`, `--embed-url`, `--embed-model`, and `--exclude` (repeatable) skips every prompt. Scan-detected exclude suggestions apply there only when `--auto-exclude` is passed as well.
 
 ---
 
-### chunker.py — Indexing Pipeline
+### chonks/index/ — Indexing Pipeline
 
 In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
 
@@ -237,7 +237,7 @@ Then run `uv run pytest -q`. The registry refuses the module at import when a bo
 - `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
 - `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
 
-Nothing outside `chonks/languages/` carries a language list. `chunking.py`, `repomap/`, `store.py`, and `chonks doctor` read the registry.
+Nothing outside `chonks/languages/` carries a language list. `chunking.py`, `repomap/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
 
 #### Typed edges (calls, imports, inherits)
 
@@ -247,11 +247,11 @@ At parse time `chunking._extract_refs` walks each boundary node in cpp, c, c_sha
 
 **PMI-scored `associated` edges (`associated_top_frac`, default `0.02`).** The mentions pass yields a `(chunk, referenced name)` pair for every name a chunk's `_WORD_RE` scan finds among the indexed symbol names, after `cap_mentions_fanout`. `repomap.refs._classify_mentions` scores each pair corpus-wide as `PMI(A, n) = log2(T / (|referenced(A)| * df(n)))`, where `T` is the total pair count, `df(n)` the number of chunks referencing `n`, and `|referenced(A)|` chunk `A`'s distinct-name count, and relabels the top `associated_top_frac` fraction as `'associated'`, every definer edge of a promoted pair inheriting the label. Only the full-rebuild path computes PMI, so existing labels stand until `chonks index --rebuild-graphs`.
 
-**Typed-edge weighting (`edge_type_weights`).** One top-level config key, every type at 1.0 by default, with two consumers. `repomap.pagerank._compute_pagerank_live` weights its networkx edges by it, so a change lands at the next index run, PageRank being persisted by `persist_pagerank`. In research, `_graph_expand` drops an edge type entirely when its weight is 0 or below and `_apply_structural_boost` multiplies each contributing edge's `seed_cosine` by its weight; both read the weights on every `/research` call through the `research_cfg` plumbing in `server.py` (`_projects[name]["edge_type_weights"]`). `chunk_neighbors` edges have no `edge_type` and are never weighted by this map, unknown or missing keys fall back to 1.0, and `DEFAULT_EDGE_TYPE_WEIGHTS` in `repomap/_shared.py` is the single source of the default.
+**Typed-edge weighting (`edge_type_weights`).** One top-level config key, every type at 1.0 by default, with two consumers. `repomap.pagerank._compute_pagerank_live` weights its networkx edges by it, so a change lands at the next index run, PageRank being persisted by `persist_pagerank`. In research, `_graph_expand` drops an edge type entirely when its weight is 0 or below and `_apply_structural_boost` multiplies each contributing edge's `seed_cosine` by its weight; both read the weights on every `/research` call through the `research_cfg` plumbing in `chonks/serve/` (`_projects[name]["edge_type_weights"]`). `chunk_neighbors` edges have no `edge_type` and are never weighted by this map, unknown or missing keys fall back to 1.0, and `DEFAULT_EDGE_TYPE_WEIGHTS` in `repomap/_shared.py` is the single source of the default.
 
 ---
 
-### store.py — Vector Database
+### chonks/storage/ — Vector Database
 
 A sqlite-vec database with int8-quantized embeddings, holding the vector index, the FTS5 keyword index, and the relational chunk and graph metadata in one file with one write path and one transaction boundary.
 
@@ -289,7 +289,7 @@ final_score = α · cosine(query, chunk) + β · cosine(query, folder_summary)
 
 **`file_cap`** oversamples `4 × top_k`, or `max(4, blend oversample) × top_k` alongside `folder_blend`, then admits at most `file_cap` chunks per path while walking the rank-ordered pool. A chunk over its file's cap is skipped and its slot goes to the next chunk in rank order, so top_k backfills with distinct files in unchanged relative order; too few distinct files means fewer than top_k results.
 
-**Query reformulation (`query_reformulate.py`, `search.reformulate_query`).** A rule-based, no-LLM pass pulling identifier-bearing terms, such as a function name in backticks or a path from a stack trace, out of symptom-language query text. The raw query stays verbatim at the front and the extracted terms are capped and appended after it. It is off by default and `search.reformulate_query` is not in `config.example.json`.
+**Query reformulation (`chonks/retrieval/query_reformulate.py`, `search.reformulate_query`).** A rule-based, no-LLM pass pulling identifier-bearing terms, such as a function name in backticks or a path from a stack trace, out of symptom-language query text. The raw query stays verbatim at the front and the extracted terms are capped and appended after it. It is off by default and `search.reformulate_query` is not in `config.example.json`.
 
 **Result format:**
 ````
@@ -331,9 +331,9 @@ Ranks every named symbol by PageRank over the structural reference graph and ren
 
 **Index-time ref computation.** `repomap.build_refs(store)` runs at the end of every `index_paths()` run. It fetches all named chunks, scans each for word-boundary occurrences of other symbols' names, and writes those edges to `chunk_refs` along with the cross-language pairs and the typed edges resolved from the AST metadata. An incremental path updates only the names and chunks a small change batch could have touched, through damaged-row repair and a scoped re-resolve, while the batch is at most 20% of the corpus (`_REFS_INCREMENTAL_MAX_FRACTION`) and a graph exists; bigger batches rebuild fully.
 
-**Persisted PageRank.** `persist_pagerank(store, edge_type_weights=...)` runs `_compute_pagerank_live`, a weighted `networkx nx.pagerank`, once at index time and writes the result through `Store.save_pagerank`. It is called from `chunker.index_paths` at the end of every run and always after `--force` or `--rebuild-graphs`. A cumulative-churn gate at 20% of corpus size skips the recompute and reuses the persisted scores, skipped batches accumulating so that staleness stays bounded. `compute_pagerank_global(store)` returns `store.load_pagerank()` when the table is populated and otherwise falls back to a live computation, logging a warning to re-index.
+**Persisted PageRank.** `persist_pagerank(store, edge_type_weights=...)` runs `_compute_pagerank_live`, a weighted `networkx nx.pagerank`, once at index time and writes the result through `Store.save_pagerank`. It is called from `index_paths` in `chonks/index/pipeline.py` at the end of every run and always after `--force` or `--rebuild-graphs`. A cumulative-churn gate at 20% of corpus size skips the recompute and reuses the persisted scores, skipped batches accumulating so that staleness stays bounded. `compute_pagerank_global(store)` returns `store.load_pagerank()` when the table is populated and otherwise falls back to a live computation, logging a warning to re-index.
 
-**Symbol-kind prefixes,** from `_NODE_TYPE_PREFIX`, which maps tree-sitter node types (as stored in `chunk_type`) to display names across the Python, C, C++, HLSL, C#, and JS/TS grammars:
+**Symbol-kind prefixes,** from `_NODE_TYPE_PREFIX`, which maps tree-sitter node types (as stored in `chunk_type`) to display names across the grammars in the [Supported languages](#overview) table:
 
 | tree-sitter node type | display prefix |
 |---|---|
@@ -380,7 +380,7 @@ src/math/Vector.py
 
 ---
 
-### summaries.py — Folder Summary Generation
+### chonks/index/summaries.py — Folder Summary Generation
 
 The index-time generator for `folder_summaries`. For every folder holding indexed files it produces a short structural summary, namely the top-N PageRank-ranked symbols in the folder, the file count, the extension distribution, and the parent path token, embeds it through the same endpoint used for chunks, and persists it. It runs after `build_refs` at the end of every `index_paths()` run. There is no clustering and no LLM summarization.
 
@@ -398,13 +398,13 @@ The top symbols come from `compute_pagerank_global`, ranked against the whole co
 
 **Failure mode.** An unreachable embedding server is logged and indexing continues, since chunks and search work without summaries. Pruning runs before the embed step, so a deleted folder's row does not survive an outage, and a summary that missed regeneration is retried next run, its `content_hash` still not matching.
 
-**Subsystem suggestion (CLI).** `chonks index --suggest-subsystems` calls `summaries.suggest_subsystems(store, distance_threshold=0.30, min_cluster_size=2)`, which clusters the folder embeddings with SciPy's agglomerative clustering under cosine distance, `--subsystem-threshold` overriding the distance. It prints a `{"subsystems": {...}}` JSON snippet with placeholder cluster names, singletons filtered out, ready to rename and paste into `config.json`, and applies nothing itself.
+**Subsystem suggestion (CLI).** `chonks index --suggest-subsystems` calls `suggest_subsystems` in `chonks/ops/subsystems.py` (`suggest_subsystems(store, distance_threshold=0.30, min_cluster_size=2)`), which clusters the folder embeddings with SciPy's agglomerative clustering under cosine distance, `--subsystem-threshold` overriding the distance. It prints a `{"subsystems": {...}}` JSON snippet with placeholder cluster names, singletons filtered out, ready to rename and paste into `config.json`, and applies nothing itself.
 
 One tree level ships today, the per-folder summaries; recursive parent-folder summaries are future work, and the table can already hold those rows.
 
 ---
 
-### server.py — FastAPI HTTP Server
+### chonks/serve/ — FastAPI HTTP Server
 
 Wraps the backend behind the endpoints under [HTTP API](#http-api) and manages the DB connection lifecycle:
 
@@ -447,7 +447,7 @@ A Node.js and TypeScript MCP server wrapping the HTTP backend as tools callable 
 
 Base URL: `http://localhost:11438`
 
-There is no authentication, and the server binds loopback by default; see [server.py](#serverpy--fastapi-http-server). Every POST endpoint takes an optional `project: string` field (max 100 characters) selecting a configured project in multi-project mode, defaulting to the default project when omitted and returning 404 for an unknown name.
+There is no authentication, and the server binds loopback by default; see [chonks/serve/](#chonksserve--fastapi-http-server). Every POST endpoint takes an optional `project: string` field (max 100 characters) selecting a configured project in multi-project mode, defaulting to the default project when omitted and returning 404 for an unknown name.
 
 ### GET /
 
@@ -682,7 +682,7 @@ The lookup against the literal and message index. Given a runtime message, log l
 
 There are two tiers, direct hits first. In the exact tier the literal's raw text is a substring of the message or vice versa, where a short unshaped literal such as an error code counts only when the message is that literal verbatim, and a multi-line literal also matches on its first line alone. In the skeleton tier a format-hole literal counts when all its constant fragments verify against the message within a bounded gap per hole, prefiltered on its longest constant fragment and ranked by fragment length, with the same first-line fallback; its FTS candidate pool is capped at 20,000 rows ordered by bm25 relevance. Results sharing the same path, line, and text are deduplicated to one hit. The index is populated at index time by AST string-literal extraction (`chunking._collect_literals`) for python, cpp, c, c_sharp, gdscript, javascript, typescript, tsx, and lua.
 
-The caps: a template with more than 8 format holes is stored without a skeleton at all, excluded at index time; skeleton verification is skipped for messages over 600 characters; each candidate's verification is bounded by a hard work budget (`_SKELETON_MAX_HOLES`, `_SKELETON_MAX_MESSAGE_LEN`, and `_SKELETON_WORK_BUDGET` in `chonks/store.py`); the substring tier is skipped above 2000 characters; and the token and skeleton candidate query uses only the message's 12 longest significant tokens. When a cap excludes or skips something that would have mattered for a query with few or no results, the response `note` says so.
+The caps: a template with more than 8 format holes is stored without a skeleton at all, excluded at index time; skeleton verification is skipped for messages over 600 characters; each candidate's verification is bounded by a hard work budget (`_SKELETON_MAX_HOLES`, `_SKELETON_MAX_MESSAGE_LEN`, and `_SKELETON_WORK_BUDGET` in `chonks/core/skeleton.py`); the substring tier is skipped above 2000 characters; and the token and skeleton candidate query uses only the message's 12 longest significant tokens. When a cap excludes or skips something that would have mattered for a query with few or no results, the response `note` says so.
 
 Response: `{ "results": [{"path", "line", "chunk_id", "name", "matched_literal", "match_kind": "exact"|"skeleton", "skeleton"?}], "count": N, "truncated": bool, "note"? }`, where `skeleton` is present only when `match_kind` is `"skeleton"`. `note` always explains an empty or truncated result, whether a genuine miss, a truncated set, a degraded token or skeleton tier because the FTS query could not parse the message shape, a skeleton-cap exclusion, or one of two notes for a DB the `literal_index_version` meta flag does not cover: `"index predates literal extraction — run \`chonks index --force <paths>\` ..."` when `chunk_literals` is entirely empty, and `"literal index incomplete — ..."` when it has some rows but the flag is not set, because a partial or incremental run covered only some files. A plain re-index does not populate literals for unchanged files, so `--force` is required there. The flag means every chunk in the DB was produced by literal-aware code, and it is set only at the end of a full or `--force` run, never by a single incremental write.
 
@@ -934,12 +934,12 @@ find_by_message({
 })
 ```
 
-Given a runtime message, log line, or error string, this finds the source literal that emitted it, including through format holes, by matching the message against each literal's hole-collapsed skeleton. It renders one line per hit, as `path:line  [exact|template]  literal  (name)`, verbatim-substring matches before format-hole ones. Against this repository's own index, where `_load_config` in `chonks/server.py` emits `logger.info("Loaded config from %s", path)`:
+Given a runtime message, log line, or error string, this finds the source literal that emitted it, including through format holes, by matching the message against each literal's hole-collapsed skeleton. It renders one line per hit, as `path:line  [exact|template]  literal  (name)`, verbatim-substring matches before format-hole ones. Against this repository's own index, where `main` in `chonks/serve/main.py` and `main` in `chonks/ops/index_cmd.py` each emit `logger.info("Loaded config from %s", loaded.path)`:
 
 ```
 2 match(es):
-chonks/chunker.py:1922  [template]  Loaded config from ␀*  (main)
-chonks/server.py:914  [template]  Loaded config from ␀*  (_load_config)
+chonks/serve/main.py:78  [template]  Loaded config from ␀*  (main)
+chonks/ops/index_cmd.py:163  [template]  Loaded config from ␀*  (main)
 ```
 
 `␀*` marks the collapsed `%s` format hole. A split boundary's pieces each inherit the parent's extracted-literal set, and hits sharing the same path, line, and text are deduplicated to one, preferring whichever sibling chunk's line span contains the literal's line.
@@ -952,7 +952,7 @@ Moved to [DEPLOY.md](DEPLOY.md), together with the backend lifecycle modes, the 
 
 ## Configuration
 
-`uv run chonks init` (see [init.py](#initpy--first-run-setup-wizard)) provides an interactive, scan-informed setup; alternatively `config.example.json` is copied to `config.json` and the paths are filled in by hand. `config.json` is in `.gitignore` so personal paths stay out of source control.
+`uv run chonks init` (see [chonks/ops/init.py](#chonksopsinitpy--first-run-setup-wizard)) provides an interactive, scan-informed setup; alternatively `config.example.json` is copied to `config.json` and the paths are filled in by hand. `config.json` is in `.gitignore` so personal paths stay out of source control.
 
 ```json
 {
@@ -1011,7 +1011,7 @@ Moved to [DEPLOY.md](DEPLOY.md), together with the backend lifecycle modes, the 
 
 Subsystem paths must be arrays, even for a single path. There are no hardcoded default excludes in the code; `config.example.json` ships a recommended and editable starting list (`.venv/`, `node_modules/`, `__pycache__/`, `build/`, and others) to copy and curate per project. Excluded directories are pruned out of the filesystem walk as well as filtered file by file; see [Include / exclude paths](#include--exclude-paths).
 
-**Top-level keys** (read by `server.py` and `chunker.py`):
+**Top-level keys** (read by `serve`, `index`, `doctor`, and `report`):
 
 | Key | Default | Description |
 |---|---|---|
@@ -1021,8 +1021,8 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `include` | `[]` | List of path prefixes that override matching excludes when strictly more specific. A pure exception mechanism, not an allowlist; see [Include / exclude paths](#include--exclude-paths). |
 | `subsystems` | `{}` | Named path sets referenced by `@subsystem` prefixes in the MCP server |
 | `macros` | `[]` | Seed C++ engine macro names to pre-blank before parsing (unioned with the auto-discovered, persisted vocabulary) |
-| `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chunking.py`'s `_EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. |
-| `data_blob_size_limit` | `262144` (256KB) | Byte threshold above which a file is skipped instead of chunked. Two families share it: data files (`chunker.DATA_BLOB_EXTENSIONS`, that is `.json`/`.yaml`/`.yml`/`.toml`/`.html`), skipped on size alone; and minified bundles (`chunker.MINIFIED_GUARD_EXTENSIONS`, that is `.js`/`.mjs`/`.cjs`/`.css`), skipped only when oversize *and* line-density says minified. Counted in `data_blob_skipped`, logged at the end of every indexing run. `0` disables the guard. Prose fallback extensions (`.md`, `.markdown`, ...) are never affected. |
+| `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chonks/languages/`'s `EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. |
+| `data_blob_size_limit` | `262144` (256KB) | Byte threshold above which a file is skipped instead of chunked. Two families share it: data files (`chonks.index.admission.DATA_BLOB_EXTENSIONS`, that is `.json`/`.yaml`/`.yml`/`.toml`/`.html`), skipped on size alone; and minified bundles (`chonks.index.admission.MINIFIED_GUARD_EXTENSIONS`, that is `.js`/`.mjs`/`.cjs`/`.css`), skipped only when oversize *and* line-density says minified. Counted in `data_blob_skipped`, logged at the end of every indexing run. `0` disables the guard. Prose fallback extensions (`.md`, `.markdown`, ...) are never affected. |
 | `edge_type_weights` | `{"calls": 1.0, "imports": 1.0, "inherits": 1.0, "xlang": 1.0, "associated": 1.0, "mentions": 1.0}` | Per-edge-type weight feeding index-time PageRank (`persist_pagerank`) and `research.py`'s graph expansion and structural boost. All-1.0 reproduces unweighted behaviour exactly; weighting an edge type ≤0 excludes it from research's graph expansion entirely. Overridable per-request on `POST /research`; the MCP `codebase_research` tool's `scope: "explore"` sends a typed-edge-heavy override. |
 | `cap_mentions_fanout` | `false` | When true, `build_refs`' mentions pass skips a referenced name with more than 8 definer chunks entirely, the same skip-the-whole-name rule the xlang and typed passes apply, instead of fanning out to every definer. Takes effect on the next full graph rebuild (`chonks index --rebuild-graphs`). |
 | `associated_top_frac` | `0.02` | Fraction of the mentions pass' (chunk, referenced name) pairs, ranked by pointwise mutual information, relabelled `associated` instead of `mentions`. `0` disables entirely (bit-identical `chunk_refs` to no PMI labeling). Purely a label: the `associated` default in `edge_type_weights` (`1.0`, same as `mentions`) keeps PageRank and research scoring unaffected until they are weighted apart. Only the full-rebuild path applies PMI labeling, so an index's `associated` labels reflect the last full graph build until the next `chonks index --rebuild-graphs`. |
@@ -1033,7 +1033,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `embed_inflight` | `2` | Embedding requests in flight at once (`--embed-inflight`) |
 | `embed_query_token_budget` | `3800` | Per-slot token budget used to truncate an over-long query before embedding; settable globally or per project |
 
-**Search keys** (read by `server.py`, used by `searcher.py`):
+**Search keys** (read by `serve`, used by `searcher.py`):
 
 | Key | Default | Description |
 |---|---|---|
@@ -1042,7 +1042,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `file_cap` | 0 (off) | (semantic only) Cap chunks per path in the returned top_k, backfilling freed slots from the next-ranked chunks of other files. 0 reproduces the uncapped behaviour exactly. Overridable per-request on `POST /search`'s `file_cap` field. |
 | `reformulate_query` | false | Rule-based, no-LLM extraction of identifier-bearing terms from symptom-style query text, appended to the query before embedding. Not set in `config.example.json`; see [searcher.py](#searcherpy--query-processing). |
 
-**Research keys** (read by `server.py`, used by `research.py`):
+**Research keys** (read by `serve`, used by `research.py`):
 
 | Key | Default | Description |
 |---|---|---|

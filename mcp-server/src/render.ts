@@ -116,7 +116,7 @@ export function rankFilesFromChunks(chunks: Chunk[]): FileRank[] {
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 }
 
-// Must mirror chonks/repomap.py's PROVENANCE_BY_EDGE_TYPE exactly.
+// Must mirror chonks/core/edges.py's PROVENANCE_BY_EDGE_TYPE exactly.
 const EDGE_PROVENANCE: Record<string, string> = {
   calls: "extracted", imports: "extracted", inherits: "extracted", contains: "extracted",
   mentions: "inferred", associated: "inferred", semantic: "inferred", xlang: "paired",

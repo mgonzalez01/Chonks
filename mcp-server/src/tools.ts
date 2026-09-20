@@ -243,7 +243,7 @@ export async function toolFindByMessage(args: any): Promise<string> {
     return res.note ? `No literal matches for "${message}". ${res.note}` : `No literal matches for "${message}".`;
   }
   // ␀* marks a format hole in the rendered skeleton (same sentinel the
-  // index stores, see chonks/store.py's _HOLE_SENTINEL) so a skeleton hit
+  // index stores, see chonks/core/skeleton.py's _HOLE_SENTINEL) so a skeleton hit
   // reads as a template, not a literal transcription of the pasted message.
   const lines = rows.map((r) => {
     const kind = r.match_kind === "skeleton" ? "template" : "exact";

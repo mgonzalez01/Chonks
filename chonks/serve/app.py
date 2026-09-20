@@ -215,7 +215,8 @@ def usages(req: UsagesRequest) -> JSONResponse:
 @app.post("/impact")
 def impact(req: ImpactRequest) -> JSONResponse:
     """Blast radius of `name`, aggregated by referencing file; see DOCS.md
-    for the field-level contract and Store.get_impact for the ranking."""
+    for the field-level contract and get_impact in chonks/retrieval/graph_queries.py
+    for the ranking."""
     project = _get_project(req.project)
     try:
         result = graph_queries.get_impact(project["store"],

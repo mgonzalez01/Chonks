@@ -1445,7 +1445,8 @@ class Store:
             params.extend(sorted(edge_types_set))
         if path_prefix:
             # RANGE, not LIKE: an ESCAPE clause disables SQLite's LIKE-prefix
-            # index optimization (same trick as _get_hubs_live).
+            # index optimization (same trick as _get_hubs_live in
+            # chonks/retrieval/graph_queries.py).
             lo = path_prefix.rstrip("/\\")
             clauses.append("c.path >= ? AND c.path < ?")
             params.extend([lo, lo + "\U0010FFFF"])

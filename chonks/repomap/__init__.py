@@ -3,11 +3,11 @@ chunk_refs. No tree-sitter re-parsing here; symbols and edges come from
 tables already populated at index time.
 
 Split by subsystem:
-- ._shared:   constants and helpers shared across the other modules.
-- .knn:       k-NN neighbor graph (backend detection, _Corpus, build_neighbors).
-- .refs:      chunk_refs graph construction (mentions/xlang/typed edges, build_refs).
-- .pagerank:  PageRank compute/persist/read.
-- chonks.retrieval.repomap:    repo-map text rendering (build_repomap).
+- chonks.repomap._shared:     constants and helpers shared across the other modules.
+- chonks.repomap.knn:         k-NN neighbor graph (backend detection, _Corpus, build_neighbors).
+- chonks.repomap.refs:        chunk_refs graph construction (mentions/xlang/typed edges, build_refs).
+- chonks.repomap.pagerank:    PageRank compute/persist/read.
+- chonks.retrieval.repomap:   repo-map text rendering (build_repomap).
 - chonks.retrieval.trace:     trace_path bidirectional BFS.
 
 This module re-exports every name any production or test file imports

@@ -79,6 +79,6 @@ def persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, ne
         store.set_meta("unhealable_hashes", json.dumps(unhealable_order))
         # Fingerprint of the vocab this memo was (re)built under, the same
         # `persisted | qualifying` set persisted above as meta['macro_vocab'],
-        # so the next run's load-time check (above) can detect vocab growth.
+        # so load_macro_memo's next-run load-time check can detect vocab growth.
         store.set_meta("unhealable_vocab_fingerprint",
                        _vocab_fingerprint(persisted | qualifying))
