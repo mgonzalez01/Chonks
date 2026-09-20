@@ -1,7 +1,7 @@
 """Node-text and identifier helpers shared by the refs DSL and language specs."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Collection
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -21,15 +21,12 @@ def last_identifier(node: Node, src: bytes) -> str | None:
     return None
 
 
-TERMINAL_IDENTIFIER_TYPES = ("identifier", "field_identifier", "type_identifier", "namespace_identifier")
-
-
-def terminal_identifier(n: "Node | None", src: bytes) -> str | None:
-    """`n`'s own text if it's an identifier-like leaf, else the rightmost
-    such leaf in its subtree."""
+def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Collection[str]) -> str | None:
+    """`n`'s own text if it's one of the caller's language's identifier-leaf
+    types, else the rightmost such leaf in its subtree."""
     if n is None:
         return None
-    if n.type in TERMINAL_IDENTIFIER_TYPES:
+    if n.type in identifier_leaf_types:
         return name_text(n, src)
     return last_identifier(n, src)
 

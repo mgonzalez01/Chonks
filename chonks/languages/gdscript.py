@@ -28,7 +28,7 @@ def call_receiver(call_node: Node, callee: Node, src: bytes) -> str | None:
             break
         if c.is_named:
             prev = c
-    return terminal_identifier(prev, src)
+    return terminal_identifier(prev, src, GDSCRIPT.identifier_leaf_types)
 
 
 GDSCRIPT = LanguageSpec(

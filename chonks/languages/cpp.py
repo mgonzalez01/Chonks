@@ -26,7 +26,7 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
             cur = nxt
         else:
             break
-    return terminal_identifier(cur.child_by_field_name("scope"), src)
+    return terminal_identifier(cur.child_by_field_name("scope"), src, CPP.identifier_leaf_types)
 
 
 def classify_param(part: str) -> "str | object":

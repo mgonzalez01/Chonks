@@ -33,24 +33,20 @@ _REFS_MAX_CALL_VARIANTS_PER_NAME = 8
 # definer-qualifier split.
 
 # Left-recursive grammars only: chain nests on the base/left side, so the
-# base field's rightmost leaf is the immediate receiver. cpp's
+# base field's rightmost leaf is the immediate receiver. Each language names
+# that field itself, in its spec's chain_base_fields. cpp's
 # qualified_identifier is right-recursive and handled by the cpp spec's
 # call_receiver hook.
-_CHAIN_BASE_FIELD: dict[str, str] = {
-    "field_expression": "argument",
-    "attribute": "object",
-    "member_access_expression": "expression",
-    "qualified_name": "qualifier",
-}
 
 
-def _call_receiver(callee: Node, src: bytes) -> str | None:
+def _call_receiver(callee: Node, src: bytes, lang: str) -> str | None:
     """The immediate receiver of a call's callee expression (see the chain
     rule in this section's header comment). None for a bare/free callee."""
-    base_field = _CHAIN_BASE_FIELD.get(callee.type)
+    spec = _lang_spec(lang)
+    base_field = spec.chain_base_fields.get(callee.type) if spec is not None else None
     if base_field is None:
         return None
-    return _terminal_identifier(callee.child_by_field_name(base_field), src)
+    return _terminal_identifier(callee.child_by_field_name(base_field), src, spec.identifier_leaf_types)
 
 
 def _receiver(call_node: Node, callee: Node, src: bytes, lang: str) -> str | None:
@@ -59,24 +55,23 @@ def _receiver(call_node: Node, callee: Node, src: bytes, lang: str) -> str | Non
         result = spec.call_receiver(call_node, callee, src)
         if result is not _NOT_HANDLED:
             return result
-    return _call_receiver(callee, src)
+    return _call_receiver(callee, src, lang)
 
 
-# A spread/pack/varargs marker makes the positional count meaningless.
-_VARIADIC_CALL_ARG_TYPES = {"list_splat", "dictionary_splat", "parameter_pack_expansion"}
-# Keyword args are real but not positional; don't count or force wildcard.
-_KEYWORD_CALL_ARG_TYPES = {"keyword_argument"}
 # A named `comment` node between arguments would otherwise inflate arity
 # by 1 per comment; must be skipped, not counted.
 _TRIVIA_CALL_ARG_TYPES = {"comment"}
 
 
-def _call_arity(args_node: "Node | None") -> int | None:
+def _call_arity(args_node: "Node | None", lang: str) -> int | None:
     """Positional argument count, or None (wildcard) when a variadic marker
     or ANY keyword argument is present, since a keyword arg can satisfy a
     required param the positional count wouldn't reflect."""
     if args_node is None:
         return 0
+    spec = _lang_spec(lang)
+    variadic_types = spec.variadic_arg_types if spec is not None else frozenset()
+    keyword_types = spec.keyword_arg_types if spec is not None else frozenset()
     count = 0
     saw_keyword = False
     for c in args_node.children:
@@ -84,9 +79,9 @@ def _call_arity(args_node: "Node | None") -> int | None:
             continue
         if c.type in _TRIVIA_CALL_ARG_TYPES:
             continue
-        if c.type in _VARIADIC_CALL_ARG_TYPES:
+        if c.type in variadic_types:
             return None
-        if c.type in _KEYWORD_CALL_ARG_TYPES:
+        if c.type in keyword_types:
             saw_keyword = True
             continue
         count += 1
@@ -148,7 +143,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                 add_call(
                     rule.name_fn(target, src),
                     _receiver(n, target, src, lang),
-                    _call_arity(n.child_by_field_name("arguments")),
+                    _call_arity(n.child_by_field_name("arguments"), lang),
                 )
             else:
                 add(rule.bucket, rule.name_fn(target, src))
@@ -177,7 +172,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                     add_call(
                         spec.name_fn(c, src),
                         receiver,
-                        _call_arity(n.child_by_field_name("arguments")),
+                        _call_arity(n.child_by_field_name("arguments"), lang),
                     )
                 else:
                     add(spec.bucket, spec.name_fn(c, src))

@@ -5,9 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
-import chonks.index.refs_extract as chunking
 import chonks.languages as languages
-from chonks.languages import _ast
 from chonks.languages.spec import LanguageSpec
 
 
@@ -28,22 +26,40 @@ def _normalize(value):
     return value
 
 
+# The engine used to consult these as cross-language unions instead of the
+# per-language spec fields they duplicated. They are gone now; what's worth
+# pinning is that the union of the per-language fields still covers exactly
+# what each literal used to hold, member for member, so a future spec edit
+# can't silently drop one.
 _UNION_CASES = {
-    "chunking._CHAIN_BASE_FIELD": (
-        lambda: languages.merged("chain_base_fields"), lambda: chunking._CHAIN_BASE_FIELD),
-    "_ast.TERMINAL_IDENTIFIER_TYPES": (
-        lambda: languages.union("identifier_leaf_types"), lambda: set(_ast.TERMINAL_IDENTIFIER_TYPES)),
-    "chunking._VARIADIC_CALL_ARG_TYPES": (
-        lambda: languages.union("variadic_arg_types"), lambda: chunking._VARIADIC_CALL_ARG_TYPES),
-    "chunking._KEYWORD_CALL_ARG_TYPES": (
-        lambda: languages.union("keyword_arg_types"), lambda: chunking._KEYWORD_CALL_ARG_TYPES),
+    "chain_base_fields": (
+        lambda: languages.merged("chain_base_fields"),
+        lambda: {
+            "field_expression": "argument",
+            "attribute": "object",
+            "member_access_expression": "expression",
+            "qualified_name": "qualifier",
+        },
+    ),
+    "identifier_leaf_types": (
+        lambda: languages.union("identifier_leaf_types"),
+        lambda: {"identifier", "field_identifier", "type_identifier", "namespace_identifier"},
+    ),
+    "variadic_arg_types": (
+        lambda: languages.union("variadic_arg_types"),
+        lambda: {"list_splat", "dictionary_splat", "parameter_pack_expansion"},
+    ),
+    "keyword_arg_types": (
+        lambda: languages.union("keyword_arg_types"),
+        lambda: {"keyword_argument"},
+    ),
 }
 
 
 @pytest.mark.parametrize("name", sorted(_UNION_CASES))
-def test_union_matches_live_table(name):
-    registry_fn, live_fn = _UNION_CASES[name]
-    assert _normalize(registry_fn()) == _normalize(live_fn())
+def test_union_matches_former_literal(name):
+    registry_fn, expected_fn = _UNION_CASES[name]
+    assert _normalize(registry_fn()) == _normalize(expected_fn())
 
 
 def test_grammar_names():
