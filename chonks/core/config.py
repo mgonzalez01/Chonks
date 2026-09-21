@@ -52,7 +52,7 @@ def resolve_codebase(codebase: str | None, explicit_config: bool, logger: loggin
     if not codebase:
         return None
     p = Path(codebase)
-    if p.is_absolute() and not explicit_config:
+    if (p.root or p.drive) and not explicit_config:
         logger.warning(
             "Ignoring absolute 'codebase' path %r from auto-discovered "
             "config; pass --config explicitly to use it.",

@@ -29,7 +29,7 @@ def parse_env_example() -> list[tuple[str, str, str]]:
     rows = []
     if not ENV_EXAMPLE_PATH.exists():
         return rows
-    for line in ENV_EXAMPLE_PATH.read_text().splitlines():
+    for line in ENV_EXAMPLE_PATH.read_text(encoding="utf-8").splitlines():
         m = re.match(r"^([A-Z][A-Z0-9_]*)=([^#]*)(?:#\s*(.*))?$", line)
         if m:
             rows.append((m.group(1), m.group(2).strip(), (m.group(3) or "").strip()))
@@ -39,7 +39,7 @@ def parse_env_example() -> list[tuple[str, str, str]]:
 def parse_env(path: Path) -> dict[str, str]:
     vals: dict[str, str] = {}
     if path.exists():
-        for line in path.read_text().splitlines():
+        for line in path.read_text(encoding="utf-8").splitlines():
             m = re.match(r"^([A-Z][A-Z0-9_]*)=(.*)$", line)
             if m:
                 vals[m.group(1)] = m.group(2)
@@ -48,9 +48,9 @@ def parse_env(path: Path) -> dict[str, str]:
 
 def atomic_write(path: Path, content: str) -> None:
     if path.exists():
-        path.with_suffix(path.suffix + ".bak").write_text(path.read_text())
+        path.with_suffix(path.suffix + ".bak").write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content)
+    tmp.write_text(content, encoding="utf-8")
     tmp.replace(path)
 
 
@@ -100,7 +100,7 @@ def render(message: str = "") -> str:
             fields.append(
                 f'<label>{key} <span class="doc">(not in .env.example)</span></label>'
                 f'<input type="text" name="{key}" value="{html.escape(val)}">')
-    cfg = CONFIG_PATH.read_text() if CONFIG_PATH.exists() else "{\n}\n"
+    cfg = CONFIG_PATH.read_text(encoding="utf-8") if CONFIG_PATH.exists() else "{\n}\n"
     return PAGE.format(root=html.escape(str(ROOT)), message=message,
                        env_fields="\n".join(fields), config_json=html.escape(cfg))
 

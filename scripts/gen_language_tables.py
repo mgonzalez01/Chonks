@@ -55,11 +55,11 @@ def main(argv=None) -> None:
     args = argv if argv is not None else sys.argv[1:]
     check = "--check" in args
 
-    docs_text = DOCS_PATH.read_text()
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
     new_docs_text = render(docs_text, "language-extensions", extensions_table())
     new_docs_text = render(new_docs_text, "language-boundaries", boundaries_table())
 
-    readme_text = README_PATH.read_text()
+    readme_text = README_PATH.read_text(encoding="utf-8")
     readme_lines = readme_text.split("\n")
     cell = readme_ast_cell()
     for i, line in enumerate(readme_lines):
@@ -84,9 +84,9 @@ def main(argv=None) -> None:
         return
 
     if new_docs_text != docs_text:
-        DOCS_PATH.write_text(new_docs_text)
+        DOCS_PATH.write_text(new_docs_text, encoding="utf-8")
     if new_readme_text != readme_text:
-        README_PATH.write_text(new_readme_text)
+        README_PATH.write_text(new_readme_text, encoding="utf-8")
 
 
 if __name__ == "__main__":
