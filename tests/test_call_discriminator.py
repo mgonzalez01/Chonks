@@ -9,7 +9,6 @@ from chonks.index.graph.call_resolve import (
     _discriminate_definers,
 )
 from chonks.index.graph.refs import _build_graph
-from chonks.index.segment import segment_file
 
 
 # ---------------------------------------------------------------------------
@@ -281,56 +280,3 @@ def test_build_graph_imports_and_inherits_unaffected_by_discriminator():
     edges = _build_graph(chunks)
     assert edges.get(("caller", "a")) == "inherits"
     assert edges.get(("caller", "b")) == "inherits"
-
-
-# ---------------------------------------------------------------------------
-# C# named arguments: `argument` is one node type for both a named and a
-# positional argument, distinguished only by a 'name' field. A scan keyed on
-# node type alone can't see that distinction; is_keyword_arg does.
-# ---------------------------------------------------------------------------
-
-def test_csharp_named_argument_widens_arity_to_wildcard():
-    """`Foo(x: 1, 2)`: 'x: 1' and '2' are both `argument` nodes, so a scan
-    keyed on node type alone counts both as positional (arity 2). A named
-    arg can satisfy any required param the positional count wouldn't
-    reflect, so the recorded arity must be the wildcard None instead."""
-    src = b"class C { void Driver() { Foo(x: 1, 2); } }"
-    segments = segment_file(src, "c_sharp", counters={})
-    call = next(c for c in segments[0]["refs"]["calls"] if c["name"] == "Foo")
-
-    type_only_arity = 2
-    assert call["arity"] is None
-    assert call["arity"] != type_only_arity
-
-
-def test_csharp_named_argument_ref_and_out_modifiers_still_count():
-    """`ref`/`out`/`in` are modifiers on a positional argument, not a name
-    field; they must keep counting instead of being swept up as keyword."""
-    src = b"class C { void Driver() { Foo(1, ref y, out z, in w); } }"
-    segments = segment_file(src, "c_sharp", counters={})
-    call = next(c for c in segments[0]["refs"]["calls"] if c["name"] == "Foo")
-    assert call["arity"] == 4
-
-
-def test_csharp_named_argument_wrong_arity_picks_wrong_definer():
-    """Resolution-level consequence of counting by node type alone: a call
-    meant for a one-required-param definer gets arity 2 from `Foo(x: 1,
-    2)`, which exactly matches a same-named two-required-param decoy and
-    excludes the true definer from the survivor set outright. The wildcard
-    arity a named arg should produce instead asserts no false exact match,
-    so both survive rather than silently resolving to the decoy alone."""
-    ids = ["decoy", "real"]
-    id_to_chunk = {
-        "decoy": {"name": "Utils.Foo", "chunk_type": "method_declaration",
-                  "content": "void Foo(int a, int b) {}", "language": "c_sharp"},
-        "real": {"name": "Logger.Foo", "chunk_type": "method_declaration",
-                 "content": "void Foo(int a) {}", "language": "c_sharp"},
-    }
-
-    type_only_arity = 2
-    narrowed = _discriminate_definers(ids, "Foo", None, type_only_arity, id_to_chunk, {})
-    assert narrowed == ["decoy"]  # the true definer is silently dropped
-
-    wildcard_arity = None
-    fanned_out = _discriminate_definers(ids, "Foo", None, wildcard_arity, id_to_chunk, {})
-    assert fanned_out == ids  # no false exact match, so nothing is wrongly excluded

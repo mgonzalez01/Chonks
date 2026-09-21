@@ -105,10 +105,6 @@ class LanguageSpec:
     call_receiver: "Callable[[Node, Node, bytes], str | None | object] | None" = None
     variadic_arg_types: frozenset[str] = frozenset()
     keyword_arg_types: frozenset[str] = frozenset()
-    # for a keyword-arg kind indistinguishable from positional by node type
-    # alone (e.g. C#'s named argument, which is a plain `argument` node
-    # carrying a 'name' field); checked in addition to keyword_arg_types.
-    is_keyword_arg: "Callable[[Node], bool] | None" = None
     class_like_chunk_types: frozenset[str] = frozenset()
     def_signature_keyword: str | None = None
     classify_param: "Callable[[str], str | object] | None" = None

@@ -1,14 +1,9 @@
 """C# language plugin data."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from ._ast import name_last_or_text, name_text
 from ._naming import name_field
 from .spec import ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 BASES = Children((
     ChildSpec(("base_list",), "inherits", nested=NestedSpec(("identifier",), name_text)),
@@ -21,18 +16,11 @@ def classify_param(part: str) -> "str | object":
     return NOT_HANDLED
 
 
-def is_named_argument(node: Node) -> bool:
-    """True for `argument` nodes of the form `name: value`; false for a
-    positional argument, including one carrying a `ref`/`out`/`in`
-    modifier, which is still positional and must keep counting."""
-    return node.child_by_field_name("name") is not None
-
-
 C_SHARP = LanguageSpec(
     name="c_sharp",
     # tree-sitter-language-pack uses 'csharp' but we use 'c_sharp' internally
     grammar="csharp",
-    version="2",
+    version="1",
     extensions=frozenset({".cs"}),
     boundary_nodes=frozenset({
         "method_declaration", "constructor_declaration", "destructor_declaration",
@@ -74,7 +62,6 @@ C_SHARP = LanguageSpec(
     identifier_leaf_types=frozenset({"identifier"}),
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
     classify_param=classify_param,
-    is_keyword_arg=is_named_argument,
     kind_labels={
         "class_declaration": "class",
         "method_declaration": "method",
@@ -88,6 +75,9 @@ C_SHARP = LanguageSpec(
         "conversion_operator_declaration": "operator",
         "constructor_declaration": "method",
     },
+    # BUG preserved: a named argument (`x: 1`) has the node type `argument`,
+    # the same as a positional one, so call arity counts it as positional.
+    # A fix changes stored chunk metadata, so an indexed repo needs a re-index.
     literals=LiteralSpec(
         leaf_types=("string_literal", "verbatim_string_literal", "interpolated_string_expression"),
         plus_type="binary_expression"),

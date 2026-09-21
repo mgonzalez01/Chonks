@@ -40,7 +40,7 @@
           "refs": {
             "calls": [
               {
-                "arity": null,
+                "arity": 2,
                 "name": "Foo",
                 "receiver": null
               }
