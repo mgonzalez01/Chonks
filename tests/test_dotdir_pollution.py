@@ -4,13 +4,14 @@ as hardcoded defaults."""
 import logging
 from pathlib import Path
 
-from chonks.chunker import _dotdir_prefix, index_paths
-from chonks.chunking import dotdir_breakdown, dotdir_total_share
-from chonks.store import Store
+from chonks.core.paths import _dotdir_prefix
+from chonks.index.pipeline import index_paths
+from chonks.ops.diagnostics import dotdir_breakdown, dotdir_total_share
+from chonks.storage.store import Store
 
 
 # --------------------------------------------------------------------------
-# chunking.dotdir_breakdown / dotdir_total_share
+# chonks.ops.diagnostics.dotdir_breakdown / dotdir_total_share
 # --------------------------------------------------------------------------
 
 def test_dotdir_breakdown_ignores_non_dot_paths():
@@ -72,7 +73,7 @@ def test_dotdir_total_share_no_dotdir_content():
 
 
 # --------------------------------------------------------------------------
-# chunker._dotdir_prefix
+# chonks.core.paths._dotdir_prefix
 # --------------------------------------------------------------------------
 
 def test_dotdir_prefix_none_for_ordinary_path():
@@ -97,7 +98,7 @@ def test_dotdir_prefix_single_segment_when_dotdir_has_no_children():
 
 
 # --------------------------------------------------------------------------
-# chunker.index_paths: end-to-end nested-.git-under-dotdir warning
+# chonks.index.pipeline.index_paths: end-to-end nested-.git-under-dotdir warning
 # --------------------------------------------------------------------------
 
 _DIM = 4

@@ -1,0 +1,2531 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "parse_error": 1,
+        "symbols": [
+          {
+            "end_line": 47,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "after",
+            "start_line": 26
+          },
+          {
+            "end_line": 22,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "before",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def before():\n    v0 = 0 + 1\n    v1 = 1 + 1\n    v2 = 2 + 1\n    v3 = 3 + 1\n    v4 = 4 + 1\n    v5 = 5 + 1\n    v6 = 6 + 1\n    v7 = 7 + 1\n    v8 = 8 + 1\n    v9 = 9 + 1\n    v10 = 10 + 1\n    v11 = 11 + 1\n    v12 = 12 + 1\n    v13 = 13 + 1\n    v14 = 14 + 1\n    v15 = 15 + 1\n    v16 = 16 + 1\n    v17 = 17 + 1\n    v18 = 18 + 1\n    v19 = 19 + 1\n    return v0",
+          "end_line": 22,
+          "literals": [],
+          "name": "before",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        },
+        {
+          "chunk_type": "module",
+          "content": "\n\n/* filler text here */",
+          "end_line": 24,
+          "literals": [],
+          "name": "<module>",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 22
+        },
+        {
+          "chunk_type": "function_definition",
+          "content": "def after():\n    v0 = 0 + 2\n    v1 = 1 + 2\n    v2 = 2 + 2\n    v3 = 3 + 2\n    v4 = 4 + 2\n    v5 = 5 + 2\n    v6 = 6 + 2\n    v7 = 7 + 2\n    v8 = 8 + 2\n    v9 = 9 + 2\n    v10 = 10 + 2\n    v11 = 11 + 2\n    v12 = 12 + 2\n    v13 = 13 + 2\n    v14 = 14 + 2\n    v15 = 15 + 2\n    v16 = 16 + 2\n    v17 = 17 + 2\n    v18 = 18 + 2\n    v19 = 19 + 2\n    return v0",
+          "end_line": 47,
+          "literals": [],
+          "name": "after",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 26
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 47,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "after",
+          "start_line": 26
+        },
+        {
+          "end_line": 22,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "before",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "python_comment_only_2095",
+    "language": "python",
+    "source": "def before():\n    v0 = 0 + 1\n    v1 = 1 + 1\n    v2 = 2 + 1\n    v3 = 3 + 1\n    v4 = 4 + 1\n    v5 = 5 + 1\n    v6 = 6 + 1\n    v7 = 7 + 1\n    v8 = 8 + 1\n    v9 = 9 + 1\n    v10 = 10 + 1\n    v11 = 11 + 1\n    v12 = 12 + 1\n    v13 = 13 + 1\n    v14 = 14 + 1\n    v15 = 15 + 1\n    v16 = 16 + 1\n    v17 = 17 + 1\n    v18 = 18 + 1\n    v19 = 19 + 1\n    return v0\n\n/* filler text here */\n\ndef after():\n    v0 = 0 + 2\n    v1 = 1 + 2\n    v2 = 2 + 2\n    v3 = 3 + 2\n    v4 = 4 + 2\n    v5 = 5 + 2\n    v6 = 6 + 2\n    v7 = 7 + 2\n    v8 = 8 + 2\n    v9 = 9 + 2\n    v10 = 10 + 2\n    v11 = 11 + 2\n    v12 = 12 + 2\n    v13 = 13 + 2\n    v14 = 14 + 2\n    v15 = 15 + 2\n    v16 = 16 + 2\n    v17 = 17 + 2\n    v18 = 18 + 2\n    v19 = 19 + 2\n    return v0\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "parse_error": 1,
+        "symbols": [
+          {
+            "end_line": 48,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "after",
+            "start_line": 27
+          },
+          {
+            "end_line": 22,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "before",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def before():\n    v0 = 0 + 1\n    v1 = 1 + 1\n    v2 = 2 + 1\n    v3 = 3 + 1\n    v4 = 4 + 1\n    v5 = 5 + 1\n    v6 = 6 + 1\n    v7 = 7 + 1\n    v8 = 8 + 1\n    v9 = 9 + 1\n    v10 = 10 + 1\n    v11 = 11 + 1\n    v12 = 12 + 1\n    v13 = 13 + 1\n    v14 = 14 + 1\n    v15 = 15 + 1\n    v16 = 16 + 1\n    v17 = 17 + 1\n    v18 = 18 + 1\n    v19 = 19 + 1\n    return v0",
+          "end_line": 22,
+          "literals": [],
+          "name": "before",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        },
+        {
+          "chunk_type": "module",
+          "content": "};\n/* filler */",
+          "end_line": 25,
+          "literals": [],
+          "name": "<module>",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 24
+        },
+        {
+          "chunk_type": "function_definition",
+          "content": "def after():\n    v0 = 0 + 2\n    v1 = 1 + 2\n    v2 = 2 + 2\n    v3 = 3 + 2\n    v4 = 4 + 2\n    v5 = 5 + 2\n    v6 = 6 + 2\n    v7 = 7 + 2\n    v8 = 8 + 2\n    v9 = 9 + 2\n    v10 = 10 + 2\n    v11 = 11 + 2\n    v12 = 12 + 2\n    v13 = 13 + 2\n    v14 = 14 + 2\n    v15 = 15 + 2\n    v16 = 16 + 2\n    v17 = 17 + 2\n    v18 = 18 + 2\n    v19 = 19 + 2\n    return v0",
+          "end_line": 48,
+          "literals": [],
+          "name": "after",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 27
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 48,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "after",
+          "start_line": 27
+        },
+        {
+          "end_line": 22,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "before",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "python_identity_free_1523",
+    "language": "python",
+    "source": "def before():\n    v0 = 0 + 1\n    v1 = 1 + 1\n    v2 = 2 + 1\n    v3 = 3 + 1\n    v4 = 4 + 1\n    v5 = 5 + 1\n    v6 = 6 + 1\n    v7 = 7 + 1\n    v8 = 8 + 1\n    v9 = 9 + 1\n    v10 = 10 + 1\n    v11 = 11 + 1\n    v12 = 12 + 1\n    v13 = 13 + 1\n    v14 = 14 + 1\n    v15 = 15 + 1\n    v16 = 16 + 1\n    v17 = 17 + 1\n    v18 = 18 + 1\n    v19 = 19 + 1\n    return v0\n\n};\n/* filler */\n\ndef after():\n    v0 = 0 + 2\n    v1 = 1 + 2\n    v2 = 2 + 2\n    v3 = 3 + 2\n    v4 = 4 + 2\n    v5 = 5 + 2\n    v6 = 6 + 2\n    v7 = 7 + 2\n    v8 = 8 + 2\n    v9 = 9 + 2\n    v10 = 10 + 2\n    v11 = 11 + 2\n    v12 = 12 + 2\n    v13 = 13 + 2\n    v14 = 14 + 2\n    v15 = 15 + 2\n    v16 = 16 + 2\n    v17 = 17 + 2\n    v18 = 18 + 2\n    v19 = 19 + 2\n    return v0\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "only_pos",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            3,
+            3,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "only_pos"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def only_pos(a, b, /, c):\n    return a + b + c\nonly_pos(1, 2, c=3)",
+          "end_line": 4,
+          "literals": [],
+          "name": "only_pos",
+          "refs": {
+            "calls": [
+              {
+                "arity": null,
+                "name": "only_pos",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "only_pos",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "python_positional_only_marker",
+    "language": "python",
+    "source": "def only_pos(a, b, /, c):\n    return a + b + c\n\nonly_pos(1, 2, c=3)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 7,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "C",
+            "start_line": 1
+          },
+          {
+            "end_line": 7,
+            "kind": "decorated_definition",
+            "language": "python",
+            "name": "cls_method",
+            "start_line": 5
+          },
+          {
+            "end_line": 7,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "cls_method",
+            "start_line": 6
+          },
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "method_name",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "cls_method"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "method_name"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "class_definition",
+          "content": "class C:\n    def method_name(self, x):\n        return x\n\n    @classmethod\n    def cls_method(cls, y):\n        return y\nmethod_name(1)\ncls_method(2)",
+          "end_line": 10,
+          "literals": [],
+          "name": "C",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "method_name",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "cls_method",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 7,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "C",
+          "start_line": 1
+        },
+        {
+          "end_line": 7,
+          "kind": "decorated_definition",
+          "language": "python",
+          "name": "cls_method",
+          "start_line": 5
+        },
+        {
+          "end_line": 7,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "cls_method",
+          "start_line": 6
+        },
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "method_name",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "python_self_cls_strip",
+    "language": "python",
+    "source": "class C:\n    def method_name(self, x):\n        return x\n\n    @classmethod\n    def cls_method(cls, y):\n        return y\n\nmethod_name(1)\ncls_method(2)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 8,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "uses_bare_star",
+            "start_line": 7
+          },
+          {
+            "end_line": 5,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "uses_kwargs",
+            "start_line": 4
+          },
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "uses_args",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            true
+          ],
+          "chunk_index": 0,
+          "name": "uses_args"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            true
+          ],
+          "chunk_index": 0,
+          "name": "uses_bare_star"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            true
+          ],
+          "chunk_index": 0,
+          "name": "uses_kwargs"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def uses_args(a, *args):\n    return a\ndef uses_kwargs(a, **kwargs):\n    return a\ndef uses_bare_star(a, *, b):\n    return a + b\nuses_args(1, 2, 3)\nuses_kwargs(1, x=2)\nuses_bare_star(1, b=2)",
+          "end_line": 12,
+          "literals": [],
+          "name": "uses_args",
+          "refs": {
+            "calls": [
+              {
+                "arity": 3,
+                "name": "uses_args",
+                "receiver": null
+              },
+              {
+                "arity": null,
+                "name": "uses_kwargs",
+                "receiver": null
+              },
+              {
+                "arity": null,
+                "name": "uses_bare_star",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 8,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "uses_bare_star",
+          "start_line": 7
+        },
+        {
+          "end_line": 5,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "uses_kwargs",
+          "start_line": 4
+        },
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "uses_args",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "python_star_forms",
+    "language": "python",
+    "source": "def uses_args(a, *args):\n    return a\n\ndef uses_kwargs(a, **kwargs):\n    return a\n\ndef uses_bare_star(a, *, b):\n    return a + b\n\nuses_args(1, 2, 3)\nuses_kwargs(1, x=2)\nuses_bare_star(1, b=2)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 21,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "Bar",
+            "start_line": 19
+          },
+          {
+            "end_line": 21,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "go",
+            "start_line": 20
+          },
+          {
+            "end_line": 17,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "Foo",
+            "start_line": 12
+          },
+          {
+            "end_line": 17,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "run",
+            "start_line": 13
+          },
+          {
+            "end_line": 10,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "Base",
+            "start_line": 9
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_definition",
+          "content": "import os\nimport os.path\nfrom collections import defaultdict\nfrom typing import Any, Optional\nimport xml.etree.ElementTree as ET\nfrom a.b import c as d, e as f\nclass Base:\n    pass\nclass Foo(Base):\n    def run(self):\n        helper()\n        helper()\n        self.other.call(x)\n        mod.sub.deep_call()",
+          "end_line": 17,
+          "literals": [],
+          "name": "Base",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "helper",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "call",
+                "receiver": "other"
+              },
+              {
+                "arity": 0,
+                "name": "deep_call",
+                "receiver": "sub"
+              }
+            ],
+            "imports": [
+              "os",
+              "os.path",
+              "collections",
+              "defaultdict",
+              "typing",
+              "Any",
+              "Optional",
+              "xml.etree.ElementTree",
+              "a.b",
+              "c",
+              "e"
+            ],
+            "inherits": [
+              "Base"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        },
+        {
+          "chunk_type": "class_definition",
+          "content": "class Bar(Base, metaclass=type):\n    def go(self):\n        another()",
+          "end_line": 21,
+          "literals": [],
+          "name": "Bar",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "another",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [
+              "Base"
+            ],
+            "literals": []
+          },
+          "start_line": 19
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 21,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "Bar",
+          "start_line": 19
+        },
+        {
+          "end_line": 21,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "go",
+          "start_line": 20
+        },
+        {
+          "end_line": 17,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "Foo",
+          "start_line": 12
+        },
+        {
+          "end_line": 17,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "run",
+          "start_line": 13
+        },
+        {
+          "end_line": 10,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "Base",
+          "start_line": 9
+        }
+      ]
+    },
+    "id": "refs_equivalence_python",
+    "language": "python",
+    "source": "\nimport os\nimport os.path\nfrom collections import defaultdict\nfrom typing import Any, Optional\nimport xml.etree.ElementTree as ET\nfrom a.b import c as d, e as f\n\nclass Base:\n    pass\n\nclass Foo(Base):\n    def run(self):\n        helper()\n        helper()\n        self.other.call(x)\n        mod.sub.deep_call()\n\nclass Bar(Base, metaclass=type):\n    def go(self):\n        another()\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def driver():\n    f(1,  # note\n      2)",
+          "end_line": 4,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "f",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_arity_skips_comment_python",
+    "language": "python",
+    "source": "\ndef driver():\n    f(1,  # note\n      2)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def driver():\n    foo(1, 2, *args)\n    bar(1, 2, **kw)\n    baz(1, key=2)\n    qux()",
+          "end_line": 6,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": null,
+                "name": "foo",
+                "receiver": null
+              },
+              {
+                "arity": null,
+                "name": "bar",
+                "receiver": null
+              },
+              {
+                "arity": null,
+                "name": "baz",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "qux",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_arity_varargs_and_defaults_wildcard_python",
+    "language": "python",
+    "source": "\ndef driver():\n    foo(1, 2, *args)\n    bar(1, 2, **kw)\n    baz(1, key=2)\n    qux()\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def driver():\n    a.b.c.d(1)",
+          "end_line": 3,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "d",
+                "receiver": "c"
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_receiver_is_immediate_not_root_python",
+    "language": "python",
+    "source": "\ndef driver():\n    a.b.c.d(1)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "driver",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def driver():\n    helper()",
+          "end_line": 2,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "helper",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "driver",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_calls_entries_are_dicts_not_backward_compat_strings",
+    "language": "python",
+    "source": "def driver():\n    helper()\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    # msg = \"this lives in a comment, not code\"\n    return 1",
+          "end_line": 4,
+          "literals": [],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_comment_text_never_becomes_a_literal",
+    "language": "python",
+    "source": "\ndef f():\n    # msg = \"this lives in a comment, not code\"\n    return 1\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "_Fmt",
+            "start_line": 4
+          },
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "emit",
+            "start_line": 5
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_definition",
+          "content": "import sys\nif __name__ == \"__main__\":\nclass _Fmt:\n        def emit(self):\n            return 1\n    SETUP_MARKER = configure(sys.argv)\n    run_cli(SETUP_MARKER)\n",
+          "end_line": 8,
+          "literals": [],
+          "name": "_Fmt",
+          "refs": {
+            "calls": [],
+            "imports": [
+              "sys"
+            ],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "_Fmt",
+          "start_line": 4
+        },
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "emit",
+          "start_line": 5
+        }
+      ]
+    },
+    "id": "test_coverage_completeness_wrapper_body_captured",
+    "language": "python",
+    "source": "import sys\n\nif __name__ == \"__main__\":\n    class _Fmt:\n        def emit(self):\n            return 1\n    SETUP_MARKER = configure(sys.argv)\n    run_cli(SETUP_MARKER)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 8,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "Foo",
+            "start_line": 5
+          },
+          {
+            "end_line": 8,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "run",
+            "start_line": 6
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_definition",
+          "content": "import os\nfrom collections import defaultdict\nclass Foo(Base):\n    def run(self):\n        helper()\n        self.other.call(x)",
+          "end_line": 8,
+          "literals": [],
+          "name": "Foo",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "helper",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "call",
+                "receiver": "other"
+              }
+            ],
+            "imports": [
+              "os",
+              "collections",
+              "defaultdict"
+            ],
+            "inherits": [
+              "Base"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 8,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "Foo",
+          "start_line": 5
+        },
+        {
+          "end_line": 8,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "run",
+          "start_line": 6
+        }
+      ]
+    },
+    "id": "test_extract_refs_python",
+    "language": "python",
+    "source": "\nimport os\nfrom collections import defaultdict\n\nclass Foo(Base):\n    def run(self):\n        helper()\n        self.other.call(x)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = \"hex escape decodes: \\x41\\x42\\x43 becomes ABC here\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "hex escape decodes: ABC becomes ABC here",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fhex escape decodes: ABC becomes ABC here"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_hex_escape_decoded",
+    "language": "python",
+    "source": "\ndef f():\n    x = \"hex escape decodes: \\x41\\x42\\x43 becomes ABC here\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = \"first line here\\nsecond line here\\n\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "first line here\nsecond line here",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffirst line here\nsecond line here"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_interior_newline_kept_only_trailing_one_stripped",
+    "language": "python",
+    "source": "\ndef f():\n    x = \"first line here\\nsecond line here\\n\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "error_salvaged": 1,
+        "error_salvaged_nodes": 1,
+        "parse_error": 1,
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "outer",
+            "start_line": 1
+          },
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "inner",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def outer(a,b):\n    x = a+b\n    def inner(c):\n        return c*2\n    y=inner(x\n    return y",
+          "end_line": 6,
+          "literals": [],
+          "name": "outer",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        },
+        {
+          "chunk_type": "function_definition",
+          "content": "def inner(c):\n        return c*2",
+          "end_line": 4,
+          "literals": [],
+          "name": "inner",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 3
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "outer",
+          "start_line": 1
+        },
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "inner",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_legal_nested_function_keeps_outer_name_python",
+    "language": "python",
+    "source": "def outer(a,b):\n    x = a+b\n    def inner(c):\n        return c*2\n    y=inner(x\n    return y\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 5
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "\"\"\"Module doc.\"\"\"\nimport os\nimport sys\ndef f(x):\n    return x + 1",
+          "end_line": 6,
+          "literals": [],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [
+              "os",
+              "sys"
+            ],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 5
+        }
+      ]
+    },
+    "id": "test_module_residue_does_not_demote_real_name",
+    "language": "python",
+    "source": "\"\"\"Module doc.\"\"\"\nimport os\nimport sys\n\ndef f(x):\n    return x + 1\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = \"just one literal here\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "just one literal here",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fjust one literal here"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_no_cap_drop_counters_when_under_cap",
+    "language": "python",
+    "source": "\ndef f():\n    x = \"just one literal here\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 10,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "C",
+            "start_line": 8
+          },
+          {
+            "end_line": 5,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 3
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "\"\"\"module docstring long enough to pass the floor\"\"\"\ndef f():\n    \"\"\"function docstring long enough to pass the floor\"\"\"\n    print(\"hello world runtime message\")\nclass C:\n    \"\"\"class docstring long enough to pass the floor\"\"\"\n    pass",
+          "end_line": 10,
+          "literals": [
+            [
+              "hello world runtime message",
+              5
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "print",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "5\u001fhello world runtime message"
+            ]
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 10,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "C",
+          "start_line": 8
+        },
+        {
+          "end_line": 5,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 3
+        }
+      ]
+    },
+    "id": "test_python_docstrings_are_not_extracted_as_literals",
+    "language": "python",
+    "source": "\"\"\"module docstring long enough to pass the floor\"\"\"\n\ndef f():\n    \"\"\"function docstring long enough to pass the floor\"\"\"\n    print(\"hello world runtime message\")\n\n\nclass C:\n    \"\"\"class docstring long enough to pass the floor\"\"\"\n    pass\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def load(name, code):\n    logger.error(f\"failed to load {name}: {code:d}\")",
+          "end_line": 3,
+          "literals": [
+            [
+              "failed to load {name}: {code:d}",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "error",
+                "receiver": "logger"
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffailed to load {name}: {code:d}"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_fstring_holes_survive_as_literal_markup",
+    "language": "python",
+    "source": "\ndef load(name, code):\n    logger.error(f\"failed to load {name}: {code:d}\")\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    msg = \"hello there, \" \"friend of mine\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "hello there, friend of mine",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fhello there, friend of mine"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_implicit_concat_joins_adjacent_pieces",
+    "language": "python",
+    "source": "\ndef f():\n    msg = \"hello there, \" \"friend of mine\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 26,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "func_A",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "# helper that accumulates the steps\ndef func_A(x):\n    acc = 0\n    acc += step_A_0(x)\n    acc += step_A_1(x)\n    acc += step_A_2(x)\n    acc += step_A_3(x)\n    acc += step_A_4(x)\n    acc += step_A_5(x)\n    acc += step_A_6(x)\n    acc += step_A_7(x)\n    acc += step_A_8(x)\n    acc += step_A_9(x)\n    acc += step_A_10(x)\n    acc += step_A_11(x)\n    acc += step_A_12(x)\n    acc += step_A_13(x)\n    acc += step_A_14(x)\n    acc += step_A_15(x)\n    acc += step_A_16(x)\n    acc += step_A_17(x)\n    acc += step_A_18(x)\n    acc += step_A_19(x)\n    acc += step_A_20(x)\n    acc += step_A_21(x)\n    return acc",
+          "end_line": 26,
+          "literals": [],
+          "name": "func_A",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 26,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "func_A",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_leading_comment_attaches",
+    "language": "python",
+    "source": "# helper that accumulates the steps\ndef func_A(x):\n    acc = 0\n    acc += step_A_0(x)\n    acc += step_A_1(x)\n    acc += step_A_2(x)\n    acc += step_A_3(x)\n    acc += step_A_4(x)\n    acc += step_A_5(x)\n    acc += step_A_6(x)\n    acc += step_A_7(x)\n    acc += step_A_8(x)\n    acc += step_A_9(x)\n    acc += step_A_10(x)\n    acc += step_A_11(x)\n    acc += step_A_12(x)\n    acc += step_A_13(x)\n    acc += step_A_14(x)\n    acc += step_A_15(x)\n    acc += step_A_16(x)\n    acc += step_A_17(x)\n    acc += step_A_18(x)\n    acc += step_A_19(x)\n    acc += step_A_20(x)\n    acc += step_A_21(x)\n    return acc\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 24,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "helper",
+            "start_line": 11
+          }
+        ]
+      },
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "helper"
+        }
+      ],
+      "segments": [
+        {
+          "chunk_type": "module",
+          "content": "\"\"\"Module docstring explaining the CLI tool and its purpose in detail.\"\"\"\nimport os\nimport sys\nimport json\nfrom pathlib import Path\n\nDEFAULT_TIMEOUT = 30\nMAX_RETRIES = 5\nCONFIG = {'alpha': 1, 'beta': 2, 'gamma': 3, 'delta': 4, 'epsilon': 5}",
+          "end_line": 9,
+          "literals": [
+            [
+              "epsilon",
+              9
+            ]
+          ],
+          "name": "<module>",
+          "refs": {
+            "calls": [],
+            "imports": [
+              "os",
+              "sys",
+              "json",
+              "pathlib",
+              "Path"
+            ],
+            "inherits": [],
+            "literals": [
+              "9\u001fepsilon"
+            ]
+          },
+          "start_line": 1
+        },
+        {
+          "chunk_type": "function_definition",
+          "content": "def helper(x):\n    x = x + 0  # accumulate step 0 of the helper\n    x = x + 1  # accumulate step 1 of the helper\n    x = x + 2  # accumulate step 2 of the helper\n    x = x + 3  # accumulate step 3 of the helper\n    x = x + 4  # accumulate step 4 of the helper\n    x = x + 5  # accumulate step 5 of the helper\n    x = x + 6  # accumulate step 6 of the helper\n    x = x + 7  # accumulate step 7 of the helper\n    x = x + 8  # accumulate step 8 of the helper\n    x = x + 9  # accumulate step 9 of the helper\n    x = x + 10  # accumulate step 10 of the helper\n    x = x + 11  # accumulate step 11 of the helper\n    return x",
+          "end_line": 24,
+          "literals": [],
+          "name": "helper",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 11
+        },
+        {
+          "chunk_type": "module",
+          "content": "if __name__ == \"__main__\":\n    import argparse\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--opt0\", help=\"option 0 configures behavior\")\n    parser.add_argument(\"--opt1\", help=\"option 1 configures behavior\")\n    parser.add_argument(\"--opt2\", help=\"option 2 configures behavior\")\n    parser.add_argument(\"--opt3\", help=\"option 3 configures behavior\")\n    parser.add_argument(\"--opt4\", help=\"option 4 configures behavior\")\n    parser.add_argument(\"--opt5\", help=\"option 5 configures behavior\")\n    parser.add_argument(\"--opt6\", help=\"option 6 configures behavior\")\n    parser.add_argument(\"--opt7\", help=\"option 7 configures behavior\")\n    parser.add_argument(\"--opt8\", help=\"option 8 configures behavior\")\n    parser.add_argument(\"--opt9\", help=\"option 9 configures behavior\")\n    parser.add_argument(\"--opt10\", help=\"option 10 configures behavior\")\n    parser.add_argument(\"--opt11\", help=\"option 11 configures behavior\")\n    parser.add_argument(\"--opt12\", help=\"option 12 configures behavior\")\n    parser.add_argument(\"--opt13\", help=\"option 13 configures behavior\")\n    parser.add_argument(\"--opt14\", help=\"option 14 configures behavior\")\n    parser.add_argument(\"--opt15\", help=\"option 15 configures behavior\")\n    parser.add_argument(\"--opt16\", help=\"option 16 configures behavior\")\n    parser.add_argument(\"--opt17\", help=\"option 17 configures behavior\")\n    parser.add_argument(\"--opt18\", help=\"option 18 configures behavior\")\n    parser.add_argument(\"--opt19\", help=\"option 19 configures behavior\")\n    parser.add_argument(\"--opt20\", help=\"option 20 configures behavior\")\n    parser.add_argument(\"--opt21\", help=\"option 21 configures behavior\")\n    parser.add_argument(\"--opt22\", help=\"option 22 configures behavior\")\n    parser.add_argument(\"--opt23\", help=\"option 23 configures behavior\")\n    parser.add_argument(\"--opt24\", help=\"option 24 configures behavior\")\n    parser.add_argument(\"--opt25\", help=\"option 25 configures behavior\")\n    parser.add_argument(\"--opt26\", help=\"option 26 configures behavior\")\n    parser.add_argument(\"--opt27\", help=\"option 27 configures behavior\")\n    parser.add_argument(\"--opt28\", help=\"option 28 configures behavior\")\n    parser.add_argument(\"--opt29\", help=\"option 29 configures behavior\")\n    parser.add_argument(\"--opt30\", help=\"option 30 configures behavior\")\n    parser.add_argument(\"--opt31\", help=\"option 31 configures behavior\")\n    parser.add_argument(\"--opt32\", help=\"option 32 configures behavior\")\n    parser.add_argument(\"--opt33\", help=\"option 33 configures behavior\")\n    parser.add_argument(\"--opt34\", help=\"option 34 configures behavior\")\n    parser.add_argument(\"--opt35\", help=\"option 35 configures behavior\")\n    parser.add_argument(\"--opt36\", help=\"option 36 configures behavior\")\n    parser.add_argument(\"--opt37\", help=\"option 37 configures behavior\")\n    parser.add_argument(\"--opt38\", help=\"option 38 configures behavior\")\n    parser.add_argument(\"--opt39\", help=\"option 39 configures behavior\")\n    args = parser.parse_args()\n    sys.exit(helper(args))",
+          "end_line": 70,
+          "literals": [
+            [
+              "__main__",
+              26
+            ],
+            [
+              "--opt0",
+              29
+            ],
+            [
+              "option 0 configures behavior",
+              29
+            ],
+            [
+              "--opt1",
+              30
+            ],
+            [
+              "option 1 configures behavior",
+              30
+            ],
+            [
+              "--opt2",
+              31
+            ],
+            [
+              "option 2 configures behavior",
+              31
+            ],
+            [
+              "--opt3",
+              32
+            ],
+            [
+              "option 3 configures behavior",
+              32
+            ],
+            [
+              "--opt4",
+              33
+            ],
+            [
+              "option 4 configures behavior",
+              33
+            ],
+            [
+              "--opt5",
+              34
+            ],
+            [
+              "option 5 configures behavior",
+              34
+            ],
+            [
+              "--opt6",
+              35
+            ],
+            [
+              "option 6 configures behavior",
+              35
+            ],
+            [
+              "--opt7",
+              36
+            ],
+            [
+              "option 7 configures behavior",
+              36
+            ],
+            [
+              "--opt8",
+              37
+            ],
+            [
+              "option 8 configures behavior",
+              37
+            ],
+            [
+              "--opt9",
+              38
+            ],
+            [
+              "option 9 configures behavior",
+              38
+            ],
+            [
+              "--opt10",
+              39
+            ],
+            [
+              "option 10 configures behavior",
+              39
+            ],
+            [
+              "--opt11",
+              40
+            ],
+            [
+              "option 11 configures behavior",
+              40
+            ],
+            [
+              "--opt12",
+              41
+            ],
+            [
+              "option 12 configures behavior",
+              41
+            ],
+            [
+              "--opt13",
+              42
+            ],
+            [
+              "option 13 configures behavior",
+              42
+            ],
+            [
+              "--opt14",
+              43
+            ],
+            [
+              "option 14 configures behavior",
+              43
+            ],
+            [
+              "--opt15",
+              44
+            ],
+            [
+              "option 15 configures behavior",
+              44
+            ],
+            [
+              "--opt16",
+              45
+            ],
+            [
+              "option 16 configures behavior",
+              45
+            ],
+            [
+              "--opt17",
+              46
+            ],
+            [
+              "option 17 configures behavior",
+              46
+            ],
+            [
+              "--opt18",
+              47
+            ],
+            [
+              "option 18 configures behavior",
+              47
+            ],
+            [
+              "--opt19",
+              48
+            ],
+            [
+              "option 19 configures behavior",
+              48
+            ],
+            [
+              "--opt20",
+              49
+            ],
+            [
+              "option 20 configures behavior",
+              49
+            ],
+            [
+              "--opt21",
+              50
+            ],
+            [
+              "option 21 configures behavior",
+              50
+            ],
+            [
+              "--opt22",
+              51
+            ],
+            [
+              "option 22 configures behavior",
+              51
+            ],
+            [
+              "--opt23",
+              52
+            ],
+            [
+              "option 23 configures behavior",
+              52
+            ],
+            [
+              "--opt24",
+              53
+            ],
+            [
+              "option 24 configures behavior",
+              53
+            ],
+            [
+              "--opt25",
+              54
+            ],
+            [
+              "option 25 configures behavior",
+              54
+            ],
+            [
+              "--opt26",
+              55
+            ],
+            [
+              "option 26 configures behavior",
+              55
+            ],
+            [
+              "--opt27",
+              56
+            ],
+            [
+              "option 27 configures behavior",
+              56
+            ],
+            [
+              "--opt28",
+              57
+            ],
+            [
+              "option 28 configures behavior",
+              57
+            ],
+            [
+              "--opt29",
+              58
+            ],
+            [
+              "option 29 configures behavior",
+              58
+            ],
+            [
+              "--opt30",
+              59
+            ],
+            [
+              "option 30 configures behavior",
+              59
+            ],
+            [
+              "--opt31",
+              60
+            ],
+            [
+              "option 31 configures behavior",
+              60
+            ],
+            [
+              "--opt32",
+              61
+            ],
+            [
+              "option 32 configures behavior",
+              61
+            ],
+            [
+              "--opt33",
+              62
+            ],
+            [
+              "option 33 configures behavior",
+              62
+            ],
+            [
+              "--opt34",
+              63
+            ],
+            [
+              "option 34 configures behavior",
+              63
+            ],
+            [
+              "--opt35",
+              64
+            ],
+            [
+              "option 35 configures behavior",
+              64
+            ],
+            [
+              "--opt36",
+              65
+            ],
+            [
+              "option 36 configures behavior",
+              65
+            ],
+            [
+              "--opt37",
+              66
+            ],
+            [
+              "option 37 configures behavior",
+              66
+            ],
+            [
+              "--opt38",
+              67
+            ],
+            [
+              "option 38 configures behavior",
+              67
+            ],
+            [
+              "--opt39",
+              68
+            ],
+            [
+              "option 39 configures behavior",
+              68
+            ]
+          ],
+          "name": "<module>:__main__",
+          "refs": {
+            "calls": [
+              {
+                "arity": 0,
+                "name": "ArgumentParser",
+                "receiver": "argparse"
+              },
+              {
+                "arity": null,
+                "name": "add_argument",
+                "receiver": "parser"
+              },
+              {
+                "arity": 0,
+                "name": "parse_args",
+                "receiver": "parser"
+              },
+              {
+                "arity": 1,
+                "name": "exit",
+                "receiver": "sys"
+              },
+              {
+                "arity": 1,
+                "name": "helper",
+                "receiver": null
+              }
+            ],
+            "imports": [
+              "argparse"
+            ],
+            "inherits": [],
+            "literals": [
+              "26\u001f__main__",
+              "29\u001f--opt0",
+              "29\u001foption 0 configures behavior",
+              "30\u001f--opt1",
+              "30\u001foption 1 configures behavior",
+              "31\u001f--opt2",
+              "31\u001foption 2 configures behavior",
+              "32\u001f--opt3",
+              "32\u001foption 3 configures behavior",
+              "33\u001f--opt4",
+              "33\u001foption 4 configures behavior",
+              "34\u001f--opt5",
+              "34\u001foption 5 configures behavior",
+              "35\u001f--opt6",
+              "35\u001foption 6 configures behavior",
+              "36\u001f--opt7",
+              "36\u001foption 7 configures behavior",
+              "37\u001f--opt8",
+              "37\u001foption 8 configures behavior",
+              "38\u001f--opt9",
+              "38\u001foption 9 configures behavior",
+              "39\u001f--opt10",
+              "39\u001foption 10 configures behavior",
+              "40\u001f--opt11",
+              "40\u001foption 11 configures behavior",
+              "41\u001f--opt12",
+              "41\u001foption 12 configures behavior",
+              "42\u001f--opt13",
+              "42\u001foption 13 configures behavior",
+              "43\u001f--opt14",
+              "43\u001foption 14 configures behavior",
+              "44\u001f--opt15",
+              "44\u001foption 15 configures behavior",
+              "45\u001f--opt16",
+              "45\u001foption 16 configures behavior",
+              "46\u001f--opt17",
+              "46\u001foption 17 configures behavior",
+              "47\u001f--opt18",
+              "47\u001foption 18 configures behavior",
+              "48\u001f--opt19",
+              "48\u001foption 19 configures behavior",
+              "49\u001f--opt20",
+              "49\u001foption 20 configures behavior",
+              "50\u001f--opt21",
+              "50\u001foption 21 configures behavior",
+              "51\u001f--opt22",
+              "51\u001foption 22 configures behavior",
+              "52\u001f--opt23",
+              "52\u001foption 23 configures behavior",
+              "53\u001f--opt24",
+              "53\u001foption 24 configures behavior",
+              "54\u001f--opt25",
+              "54\u001foption 25 configures behavior",
+              "55\u001f--opt26",
+              "55\u001foption 26 configures behavior",
+              "56\u001f--opt27",
+              "56\u001foption 27 configures behavior",
+              "57\u001f--opt28",
+              "57\u001foption 28 configures behavior",
+              "58\u001f--opt29",
+              "58\u001foption 29 configures behavior",
+              "59\u001f--opt30",
+              "59\u001foption 30 configures behavior",
+              "60\u001f--opt31",
+              "60\u001foption 31 configures behavior",
+              "61\u001f--opt32",
+              "61\u001foption 32 configures behavior",
+              "62\u001f--opt33",
+              "62\u001foption 33 configures behavior",
+              "63\u001f--opt34",
+              "63\u001foption 34 configures behavior",
+              "64\u001f--opt35",
+              "64\u001foption 35 configures behavior",
+              "65\u001f--opt36",
+              "65\u001foption 36 configures behavior",
+              "66\u001f--opt37",
+              "66\u001foption 37 configures behavior",
+              "67\u001f--opt38",
+              "67\u001foption 38 configures behavior",
+              "68\u001f--opt39",
+              "68\u001foption 39 configures behavior"
+            ]
+          },
+          "start_line": 26
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 24,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "helper",
+          "start_line": 11
+        }
+      ]
+    },
+    "id": "test_python_module_residue_captured",
+    "language": "python",
+    "source": "\"\"\"Module docstring explaining the CLI tool and its purpose in detail.\"\"\"\nimport os\nimport sys\nimport json\nfrom pathlib import Path\n\nDEFAULT_TIMEOUT = 30\nMAX_RETRIES = 5\nCONFIG = {'alpha': 1, 'beta': 2, 'gamma': 3, 'delta': 4, 'epsilon': 5}\n\ndef helper(x):\n    x = x + 0  # accumulate step 0 of the helper\n    x = x + 1  # accumulate step 1 of the helper\n    x = x + 2  # accumulate step 2 of the helper\n    x = x + 3  # accumulate step 3 of the helper\n    x = x + 4  # accumulate step 4 of the helper\n    x = x + 5  # accumulate step 5 of the helper\n    x = x + 6  # accumulate step 6 of the helper\n    x = x + 7  # accumulate step 7 of the helper\n    x = x + 8  # accumulate step 8 of the helper\n    x = x + 9  # accumulate step 9 of the helper\n    x = x + 10  # accumulate step 10 of the helper\n    x = x + 11  # accumulate step 11 of the helper\n    return x\n\nif __name__ == \"__main__\":\n    import argparse\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"--opt0\", help=\"option 0 configures behavior\")\n    parser.add_argument(\"--opt1\", help=\"option 1 configures behavior\")\n    parser.add_argument(\"--opt2\", help=\"option 2 configures behavior\")\n    parser.add_argument(\"--opt3\", help=\"option 3 configures behavior\")\n    parser.add_argument(\"--opt4\", help=\"option 4 configures behavior\")\n    parser.add_argument(\"--opt5\", help=\"option 5 configures behavior\")\n    parser.add_argument(\"--opt6\", help=\"option 6 configures behavior\")\n    parser.add_argument(\"--opt7\", help=\"option 7 configures behavior\")\n    parser.add_argument(\"--opt8\", help=\"option 8 configures behavior\")\n    parser.add_argument(\"--opt9\", help=\"option 9 configures behavior\")\n    parser.add_argument(\"--opt10\", help=\"option 10 configures behavior\")\n    parser.add_argument(\"--opt11\", help=\"option 11 configures behavior\")\n    parser.add_argument(\"--opt12\", help=\"option 12 configures behavior\")\n    parser.add_argument(\"--opt13\", help=\"option 13 configures behavior\")\n    parser.add_argument(\"--opt14\", help=\"option 14 configures behavior\")\n    parser.add_argument(\"--opt15\", help=\"option 15 configures behavior\")\n    parser.add_argument(\"--opt16\", help=\"option 16 configures behavior\")\n    parser.add_argument(\"--opt17\", help=\"option 17 configures behavior\")\n    parser.add_argument(\"--opt18\", help=\"option 18 configures behavior\")\n    parser.add_argument(\"--opt19\", help=\"option 19 configures behavior\")\n    parser.add_argument(\"--opt20\", help=\"option 20 configures behavior\")\n    parser.add_argument(\"--opt21\", help=\"option 21 configures behavior\")\n    parser.add_argument(\"--opt22\", help=\"option 22 configures behavior\")\n    parser.add_argument(\"--opt23\", help=\"option 23 configures behavior\")\n    parser.add_argument(\"--opt24\", help=\"option 24 configures behavior\")\n    parser.add_argument(\"--opt25\", help=\"option 25 configures behavior\")\n    parser.add_argument(\"--opt26\", help=\"option 26 configures behavior\")\n    parser.add_argument(\"--opt27\", help=\"option 27 configures behavior\")\n    parser.add_argument(\"--opt28\", help=\"option 28 configures behavior\")\n    parser.add_argument(\"--opt29\", help=\"option 29 configures behavior\")\n    parser.add_argument(\"--opt30\", help=\"option 30 configures behavior\")\n    parser.add_argument(\"--opt31\", help=\"option 31 configures behavior\")\n    parser.add_argument(\"--opt32\", help=\"option 32 configures behavior\")\n    parser.add_argument(\"--opt33\", help=\"option 33 configures behavior\")\n    parser.add_argument(\"--opt34\", help=\"option 34 configures behavior\")\n    parser.add_argument(\"--opt35\", help=\"option 35 configures behavior\")\n    parser.add_argument(\"--opt36\", help=\"option 36 configures behavior\")\n    parser.add_argument(\"--opt37\", help=\"option 37 configures behavior\")\n    parser.add_argument(\"--opt38\", help=\"option 38 configures behavior\")\n    parser.add_argument(\"--opt39\", help=\"option 39 configures behavior\")\n    args = parser.parse_args()\n    sys.exit(helper(args))\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = 1\n    \"not a docstring, not first statement, still runtime-visible text\"",
+          "end_line": 4,
+          "literals": [
+            [
+              "not a docstring, not first statement, still runtime-visible text",
+              4
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "4\u001fnot a docstring, not first statement, still runtime-visible text"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_non_docstring_bare_string_statement_still_skipped_by_position_only",
+    "language": "python",
+    "source": "\ndef f():\n    x = 1\n    \"not a docstring, not first statement, still runtime-visible text\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = \"line one\\nline two decoded properly\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "line one\nline two decoded properly",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fline one\nline two decoded properly"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_normal_string_escapes_decoded",
+    "language": "python",
+    "source": "\ndef f():\n    x = \"line one\\nline two decoded properly\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 45,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "impure",
+            "start_line": 24
+          },
+          {
+            "end_line": 22,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "pure",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def pure():\n    msg = \"hello \" + \"there \" + \"friend\"\n    _ = 0  # padding line 0 to clear CHUNK_MIN\n    _ = 1  # padding line 1 to clear CHUNK_MIN\n    _ = 2  # padding line 2 to clear CHUNK_MIN\n    _ = 3  # padding line 3 to clear CHUNK_MIN\n    _ = 4  # padding line 4 to clear CHUNK_MIN\n    _ = 5  # padding line 5 to clear CHUNK_MIN\n    _ = 6  # padding line 6 to clear CHUNK_MIN\n    _ = 7  # padding line 7 to clear CHUNK_MIN\n    _ = 8  # padding line 8 to clear CHUNK_MIN\n    _ = 9  # padding line 9 to clear CHUNK_MIN\n    _ = 10  # padding line 10 to clear CHUNK_MIN\n    _ = 11  # padding line 11 to clear CHUNK_MIN\n    _ = 12  # padding line 12 to clear CHUNK_MIN\n    _ = 13  # padding line 13 to clear CHUNK_MIN\n    _ = 14  # padding line 14 to clear CHUNK_MIN\n    _ = 15  # padding line 15 to clear CHUNK_MIN\n    _ = 16  # padding line 16 to clear CHUNK_MIN\n    _ = 17  # padding line 17 to clear CHUNK_MIN\n    _ = 18  # padding line 18 to clear CHUNK_MIN\n    _ = 19  # padding line 19 to clear CHUNK_MIN",
+          "end_line": 22,
+          "literals": [
+            [
+              "hello there friend",
+              2
+            ]
+          ],
+          "name": "pure",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "2\u001fhello there friend"
+            ]
+          },
+          "start_line": 1
+        },
+        {
+          "chunk_type": "function_definition",
+          "content": "def impure(code):\n    msg = \"error code: \" + str(code)\n    _ = 0  # padding line 0 to clear CHUNK_MIN\n    _ = 1  # padding line 1 to clear CHUNK_MIN\n    _ = 2  # padding line 2 to clear CHUNK_MIN\n    _ = 3  # padding line 3 to clear CHUNK_MIN\n    _ = 4  # padding line 4 to clear CHUNK_MIN\n    _ = 5  # padding line 5 to clear CHUNK_MIN\n    _ = 6  # padding line 6 to clear CHUNK_MIN\n    _ = 7  # padding line 7 to clear CHUNK_MIN\n    _ = 8  # padding line 8 to clear CHUNK_MIN\n    _ = 9  # padding line 9 to clear CHUNK_MIN\n    _ = 10  # padding line 10 to clear CHUNK_MIN\n    _ = 11  # padding line 11 to clear CHUNK_MIN\n    _ = 12  # padding line 12 to clear CHUNK_MIN\n    _ = 13  # padding line 13 to clear CHUNK_MIN\n    _ = 14  # padding line 14 to clear CHUNK_MIN\n    _ = 15  # padding line 15 to clear CHUNK_MIN\n    _ = 16  # padding line 16 to clear CHUNK_MIN\n    _ = 17  # padding line 17 to clear CHUNK_MIN\n    _ = 18  # padding line 18 to clear CHUNK_MIN\n    _ = 19  # padding line 19 to clear CHUNK_MIN",
+          "end_line": 45,
+          "literals": [
+            [
+              "error code: ",
+              25
+            ]
+          ],
+          "name": "impure",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "str",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "25\u001ferror code: "
+            ]
+          },
+          "start_line": 24
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 45,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "impure",
+          "start_line": 24
+        },
+        {
+          "end_line": 22,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "pure",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_python_pure_plus_chain_joins_but_impure_chain_does_not",
+    "language": "python",
+    "source": "def pure():\n    msg = \"hello \" + \"there \" + \"friend\"\n    _ = 0  # padding line 0 to clear CHUNK_MIN\n    _ = 1  # padding line 1 to clear CHUNK_MIN\n    _ = 2  # padding line 2 to clear CHUNK_MIN\n    _ = 3  # padding line 3 to clear CHUNK_MIN\n    _ = 4  # padding line 4 to clear CHUNK_MIN\n    _ = 5  # padding line 5 to clear CHUNK_MIN\n    _ = 6  # padding line 6 to clear CHUNK_MIN\n    _ = 7  # padding line 7 to clear CHUNK_MIN\n    _ = 8  # padding line 8 to clear CHUNK_MIN\n    _ = 9  # padding line 9 to clear CHUNK_MIN\n    _ = 10  # padding line 10 to clear CHUNK_MIN\n    _ = 11  # padding line 11 to clear CHUNK_MIN\n    _ = 12  # padding line 12 to clear CHUNK_MIN\n    _ = 13  # padding line 13 to clear CHUNK_MIN\n    _ = 14  # padding line 14 to clear CHUNK_MIN\n    _ = 15  # padding line 15 to clear CHUNK_MIN\n    _ = 16  # padding line 16 to clear CHUNK_MIN\n    _ = 17  # padding line 17 to clear CHUNK_MIN\n    _ = 18  # padding line 18 to clear CHUNK_MIN\n    _ = 19  # padding line 19 to clear CHUNK_MIN\n\ndef impure(code):\n    msg = \"error code: \" + str(code)\n    _ = 0  # padding line 0 to clear CHUNK_MIN\n    _ = 1  # padding line 1 to clear CHUNK_MIN\n    _ = 2  # padding line 2 to clear CHUNK_MIN\n    _ = 3  # padding line 3 to clear CHUNK_MIN\n    _ = 4  # padding line 4 to clear CHUNK_MIN\n    _ = 5  # padding line 5 to clear CHUNK_MIN\n    _ = 6  # padding line 6 to clear CHUNK_MIN\n    _ = 7  # padding line 7 to clear CHUNK_MIN\n    _ = 8  # padding line 8 to clear CHUNK_MIN\n    _ = 9  # padding line 9 to clear CHUNK_MIN\n    _ = 10  # padding line 10 to clear CHUNK_MIN\n    _ = 11  # padding line 11 to clear CHUNK_MIN\n    _ = 12  # padding line 12 to clear CHUNK_MIN\n    _ = 13  # padding line 13 to clear CHUNK_MIN\n    _ = 14  # padding line 14 to clear CHUNK_MIN\n    _ = 15  # padding line 15 to clear CHUNK_MIN\n    _ = 16  # padding line 16 to clear CHUNK_MIN\n    _ = 17  # padding line 17 to clear CHUNK_MIN\n    _ = 18  # padding line 18 to clear CHUNK_MIN\n    _ = 19  # padding line 19 to clear CHUNK_MIN\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = rb\"raw bytes with backslash-n: \\n stays literal\"\n    y = br\"same but prefix order swapped: \\t also stays literal\"",
+          "end_line": 4,
+          "literals": [
+            [
+              "raw bytes with backslash-n: \\n stays literal",
+              3
+            ],
+            [
+              "same but prefix order swapped: \\t also stays literal",
+              4
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fraw bytes with backslash-n: \\n stays literal",
+              "4\u001fsame but prefix order swapped: \\t also stays literal"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_raw_bytes_string_not_decoded",
+    "language": "python",
+    "source": "\ndef f():\n    x = rb\"raw bytes with backslash-n: \\n stays literal\"\n    y = br\"same but prefix order swapped: \\t also stays literal\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = r\"raw literal with backslash-n: \\n stays literal\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "raw literal with backslash-n: \\n stays literal",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001fraw literal with backslash-n: \\n stays literal"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_python_raw_string_not_decoded",
+    "language": "python",
+    "source": "\ndef f():\n    x = r\"raw literal with backslash-n: \\n stays literal\"\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "c",
+            "start_line": 8
+          },
+          {
+            "end_line": 6,
+            "kind": "class_definition",
+            "language": "python",
+            "name": "B",
+            "start_line": 4
+          },
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "m",
+            "start_line": 5
+          },
+          {
+            "end_line": 2,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "a",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def a(x):\n    return x + 1\nclass B:\n    def m(self):\n        return 2\ndef c(y):\n    return y * 2",
+          "end_line": 9,
+          "literals": [],
+          "name": "a",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "c",
+          "start_line": 8
+        },
+        {
+          "end_line": 6,
+          "kind": "class_definition",
+          "language": "python",
+          "name": "B",
+          "start_line": 4
+        },
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "m",
+          "start_line": 5
+        },
+        {
+          "end_line": 2,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "a",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_residue_does_not_double_count_boundaries",
+    "language": "python",
+    "source": "def a(x):\n    return x + 1\n\nclass B:\n    def m(self):\n        return 2\n\ndef c(y):\n    return y * 2\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 7,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    a = \"hi\"          # len 2, dropped\n    b = \"12345\"       # len 5, dropped\n    c = \"------\"      # len 6 but no alpha, dropped\n    d = \"123456\"      # len 6, no alpha, dropped\n    e = \"hello!\"      # len 6, has alpha, KEPT",
+          "end_line": 7,
+          "literals": [
+            [
+              "hello!",
+              7
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "7\u001fhello!"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 7,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_trivial_literals_skipped_short_and_no_alpha",
+    "language": "python",
+    "source": "\ndef f():\n    a = \"hi\"          # len 2, dropped\n    b = \"12345\"       # len 5, dropped\n    c = \"------\"      # len 6 but no alpha, dropped\n    d = \"123456\"      # len 6, no alpha, dropped\n    e = \"hello!\"      # len 6, has alpha, KEPT\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "python",
+            "name": "f",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "def f():\n    x = \"unrecognized escape stays as-is: \\d and \\p both untouched here\"",
+          "end_line": 3,
+          "literals": [
+            [
+              "unrecognized escape stays as-is: \\d and \\p both untouched here",
+              3
+            ]
+          ],
+          "name": "f",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001funrecognized escape stays as-is: \\d and \\p both untouched here"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "python",
+          "name": "f",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_unknown_escape_passed_through_unchanged",
+    "language": "python",
+    "source": "\ndef f():\n    x = \"unrecognized escape stays as-is: \\d and \\p both untouched here\"\n"
+  }
+]

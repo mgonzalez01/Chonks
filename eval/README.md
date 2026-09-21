@@ -8,7 +8,7 @@ The numbers in the README were produced with this harness at a pinned commit and
 
 ## Gold is portable rather than pinned to one DB
 
-A gold target means that the chunk in which a query's answer lives is known in advance, so that recall and MRR need no judge; the check is simply whether that chunk comes back. The obvious way to record the chunk would be its DB row id. However, chunk ids are derived from `path:start_line:content` (see `chunker.py`) and are therefore not stable across a re-index, since a chunker version bump, a source edit, or an embedder swap that triggers a fresh re-index all reassign them.
+A gold target means that the chunk in which a query's answer lives is known in advance, so that recall and MRR need no judge; the check is simply whether that chunk comes back. The obvious way to record the chunk would be its DB row id. However, chunk ids are derived from `path:start_line:content` (see `chonks/index/rows.py`) and are therefore not stable across a re-index, since a chunker version bump, a source edit, or an embedder swap that triggers a fresh re-index all reassign them.
 
 For this reason, gold is keyed on a portable identity instead: the `path`, the symbol `name`, and the `chunk_type`, with a content-hash tiebreak for ambiguous cases and for the rare unnamed chunk (see `eval/gold.py`). `sample_targets.py` and `relational_sample.py` freeze that identity into `targets.json` and `relational_targets.json`, and `run.py`, `relational_run.py`, and `token_footprint.py` resolve it back to chunk ids at run time against whichever DB is loaded. This is what allows one frozen question set to be reused across re-indexes and across embedders.
 

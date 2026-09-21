@@ -1,9 +1,10 @@
-"""graph_nodes/graph_edges (Store.rebuild_hierarchy) are deliberately
+"""graph_nodes/graph_edges (rebuild_hierarchy) are deliberately
 independent of chunk_refs/chunk_pagerank/chunk_indegree; these tests never
 touch the chunk_refs graph."""
 import tempfile
 
-from chonks.store import Store
+from chonks.index.graph.hierarchy import rebuild_hierarchy
+from chonks.storage.store import Store
 
 
 def _mk_store() -> Store:
@@ -43,7 +44,7 @@ def _seed_small_corpus(store: Store) -> None:
 def test_rebuild_node_set_and_parent_chain():
     store = _mk_store()
     _seed_small_corpus(store)
-    counts = store.rebuild_hierarchy()
+    counts = rebuild_hierarchy(store)
 
     # dirs: ".", "a", "a/b" ; files: "root.py", "a/b/c.py"
     assert counts["nodes"] == 5
@@ -82,7 +83,7 @@ def test_rebuild_node_set_and_parent_chain():
 def test_rebuild_contains_edges_and_children_ordering():
     store = _mk_store()
     _seed_small_corpus(store)
-    counts = store.rebuild_hierarchy()
+    counts = rebuild_hierarchy(store)
 
     # dir->dir: .->a, a->a/b (2)
     # dir->file: .->root.py, a/b->a/b/c.py (2)
@@ -103,7 +104,7 @@ def test_rebuild_contains_edges_and_children_ordering():
 def test_get_graph_node_missing_returns_none():
     store = _mk_store()
     _seed_small_corpus(store)
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
     assert store.get_graph_node("dir:nonexistent") is None
     node = store.get_graph_node("dir:a")
     assert node == {"id": "dir:a", "kind": "dir", "path": "a", "parent_id": "dir:."}
@@ -117,8 +118,8 @@ def test_get_graph_node_missing_returns_none():
 def test_rebuild_idempotent():
     store = _mk_store()
     _seed_small_corpus(store)
-    first = store.rebuild_hierarchy()
-    second = store.rebuild_hierarchy()
+    first = rebuild_hierarchy(store)
+    second = rebuild_hierarchy(store)
     assert first == second
     assert store.count_graph_nodes() == first["nodes"]
     assert store.count_graph_edges() == first["edges"]
@@ -132,11 +133,11 @@ def test_rebuild_idempotent():
 def test_rebuild_after_file_deletion_drops_its_nodes_and_edges():
     store = _mk_store()
     _seed_small_corpus(store)
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     store.delete_file("a/b/c.py")
     store.commit()
-    counts = store.rebuild_hierarchy()
+    counts = rebuild_hierarchy(store)
 
     node_ids = {r["id"] for r in store._conn.execute("SELECT id FROM graph_nodes").fetchall()}
     assert node_ids == {"dir:.", "file:root.py"}
@@ -160,7 +161,7 @@ def test_rebuild_after_file_deletion_drops_its_nodes_and_edges():
 
 def test_rebuild_on_empty_store_is_all_zeros():
     store = _mk_store()
-    counts = store.rebuild_hierarchy()
+    counts = rebuild_hierarchy(store)
     assert counts == {"nodes": 0, "edges": 0}
     assert store.count_graph_nodes() == 0
     assert store.count_graph_edges() == 0
@@ -182,7 +183,7 @@ def test_same_dir_header_impl_pair_both_directions():
     store = _mk_store()
     _seed_file(store, "widget.h", ["h1"])
     _seed_file(store, "widget.cpp", ["c1"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     assert _paired_edges(store) == {
         ("file:widget.h", "file:widget.cpp"),
@@ -195,7 +196,7 @@ def test_different_dir_same_stem_not_paired():
     store = _mk_store()
     _seed_file(store, "include/widget.h", ["h1"])
     _seed_file(store, "src/widget.cpp", ["c1"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     assert _paired_edges(store) == set()
     store.close()
@@ -205,7 +206,7 @@ def test_impl_impl_not_paired():
     store = _mk_store()
     _seed_file(store, "widget.c", ["c1"])
     _seed_file(store, "widget.cpp", ["c2"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     assert _paired_edges(store) == set()
     store.close()
@@ -216,7 +217,7 @@ def test_multi_impl_stem_pairs_header_to_each():
     _seed_file(store, "widget.h", ["h1"])
     _seed_file(store, "widget.c", ["c1"])
     _seed_file(store, "widget.cpp", ["c2"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     assert _paired_edges(store) == {
         ("file:widget.h", "file:widget.c"),
@@ -231,7 +232,7 @@ def test_pairing_counts_included_in_edge_count():
     store = _mk_store()
     _seed_file(store, "widget.h", ["h1"])
     _seed_file(store, "widget.cpp", ["c1"])
-    counts = store.rebuild_hierarchy()
+    counts = rebuild_hierarchy(store)
 
     # dir->file: ".->widget.h", ".->widget.cpp" (2)
     # file->chunk: widget.h->h1, widget.cpp->c1 (2)
@@ -244,7 +245,7 @@ def test_pairing_extension_case_insensitive():
     store = _mk_store()
     _seed_file(store, "widget.H", ["h1"])
     _seed_file(store, "widget.CPP", ["c1"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     assert _paired_edges(store) == {
         ("file:widget.H", "file:widget.CPP"),
@@ -259,7 +260,7 @@ def test_get_paired_files_batched_lookup():
     _seed_file(store, "widget.c", ["c1"])
     _seed_file(store, "widget.cpp", ["c2"])
     _seed_file(store, "lonely.py", ["p1"])
-    store.rebuild_hierarchy()
+    rebuild_hierarchy(store)
 
     result = store.get_paired_files(["widget.h", "widget.c", "widget.cpp", "lonely.py"])
     assert set(result["widget.h"]) == {"widget.c", "widget.cpp"}
@@ -279,8 +280,8 @@ def test_rebuild_pairing_idempotent():
     store = _mk_store()
     _seed_file(store, "widget.h", ["h1"])
     _seed_file(store, "widget.cpp", ["c1"])
-    first = store.rebuild_hierarchy()
-    second = store.rebuild_hierarchy()
+    first = rebuild_hierarchy(store)
+    second = rebuild_hierarchy(store)
     assert first == second
     assert _paired_edges(store) == {
         ("file:widget.h", "file:widget.cpp"),

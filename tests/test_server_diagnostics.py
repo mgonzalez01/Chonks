@@ -1,11 +1,14 @@
 """Tests for the /symbol and /usages endpoint miss diagnostics."""
 import json
 
-from chonks.chunking import segment_file
-from chonks.searcher import Searcher
-from chonks.store import Store
+from chonks.index.segment import segment_file
+from chonks.retrieval.searcher import Searcher
+from chonks.storage.store import Store
 
-import chonks.server as server
+import chonks.serve.app as serve_app
+import chonks.serve.main as serve_main
+import chonks.serve.models as serve_models
+import chonks.serve.projects as serve_projects
 
 
 def _fake_embedding(dim: int = 4) -> list[float]:
@@ -18,13 +21,13 @@ class _NoEmbedder:
 
 
 def _setup_default_project(monkeypatch, tmp_path) -> dict:
-    monkeypatch.setattr(server.uvicorn, "run", lambda *a, **kw: None)
-    server._projects.clear()
+    monkeypatch.setattr(serve_main.uvicorn, "run", lambda *a, **kw: None)
+    serve_projects._projects.clear()
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps({}))
-    server.main(["--config", str(config_path), "--db", str(tmp_path / "x.db")])
+    serve_main.main(["--config", str(config_path), "--db", str(tmp_path / "x.db")])
 
-    project = server._projects[server.DEFAULT_PROJECT]
+    project = serve_projects._projects[serve_projects.DEFAULT_PROJECT]
     project["store"] = Store(project["db_path"])
     project["searcher"] = Searcher(project["store"], _NoEmbedder())
     return project
@@ -32,8 +35,8 @@ def _setup_default_project(monkeypatch, tmp_path) -> dict:
 
 def test_symbol_endpoint_miss_gets_routing_note(monkeypatch, tmp_path):
     _setup_default_project(monkeypatch, tmp_path)
-    req = server.SymbolRequest(name="m_somefield")
-    body = json.loads(server.symbol(req).body)
+    req = serve_models.SymbolRequest(name="m_somefield")
+    body = json.loads(serve_app.symbol(req).body)
 
     assert body["symbols"] == []
     assert "m_somefield" in body["note"]
@@ -53,8 +56,8 @@ def test_symbol_endpoint_hit_has_no_note(monkeypatch, tmp_path):
         "language": "cpp", "start_line": 1, "end_line": 2, "chunk_id": "c1",
     }])
 
-    req = server.SymbolRequest(name="doThing")
-    body = json.loads(server.symbol(req).body)
+    req = serve_models.SymbolRequest(name="doThing")
+    body = json.loads(serve_app.symbol(req).body)
     assert len(body["symbols"]) == 1
     assert body["note"] is None
 
@@ -72,8 +75,8 @@ def test_usages_endpoint_qualified_miss_gets_note(monkeypatch, tmp_path):
         "language": "cpp", "start_line": 1, "end_line": 2, "chunk_id": "c1",
     }])
 
-    req = server.UsagesRequest(name="Manager::Init")
-    body = json.loads(server.usages(req).body)
+    req = serve_models.UsagesRequest(name="Manager::Init")
+    body = json.loads(serve_app.usages(req).body)
 
     assert body["usages"] == []
     assert body["note"] == "symbol not found — try the bare name 'Init'"
@@ -96,8 +99,8 @@ def test_outgoing_endpoint_happy_path(monkeypatch, tmp_path):
     }])
     store.insert_refs([("c1", "c2")])
 
-    req = server.OutgoingRequest(name="applyStep")
-    body = json.loads(server.outgoing(req).body)
+    req = serve_models.OutgoingRequest(name="applyStep")
+    body = json.loads(serve_app.outgoing(req).body)
 
     assert body["count"] == 1
     assert body["outgoing"][0]["chunk_id"] == "c2"
@@ -107,8 +110,8 @@ def test_outgoing_endpoint_happy_path(monkeypatch, tmp_path):
 
 def test_outgoing_endpoint_miss_gets_note(monkeypatch, tmp_path):
     _setup_default_project(monkeypatch, tmp_path)
-    req = server.OutgoingRequest(name="doesNotExist")
-    body = json.loads(server.outgoing(req).body)
+    req = serve_models.OutgoingRequest(name="doesNotExist")
+    body = json.loads(serve_app.outgoing(req).body)
 
     assert body["outgoing"] == []
     assert body["note"] == "symbol not found"
@@ -135,8 +138,8 @@ def test_investigate_endpoint_returns_all_four_legs(monkeypatch, tmp_path):
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = server.InvestigateRequest(name="applyStep")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep")
+    body = json.loads(serve_app.investigate(req).body)
 
     assert body["symbol"] == "applyStep"
     assert len(body["definitions"]) == 1
@@ -154,8 +157,8 @@ def test_investigate_endpoint_attaches_definition_source_by_default(monkeypatch,
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = server.InvestigateRequest(name="applyStep")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep")
+    body = json.loads(serve_app.investigate(req).body)
 
     assert len(body["definitions"]) == 1
     assert body["definitions"][0]["source"] == "class Widget {}"
@@ -165,8 +168,8 @@ def test_investigate_endpoint_omits_source_when_disabled(monkeypatch, tmp_path):
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = server.InvestigateRequest(name="applyStep", definition_source=False)
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep", definition_source=False)
+    body = json.loads(serve_app.investigate(req).body)
 
     assert "source" not in body["definitions"][0]
 
@@ -185,8 +188,8 @@ def test_investigate_endpoint_truncates_source_at_small_budget(monkeypatch, tmp_
         "language": "cpp", "start_line": 1, "end_line": 52, "chunk_id": "c1",
     }])
 
-    req = server.InvestigateRequest(name="applyStep", definition_source_max_chars=200)
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep", definition_source_max_chars=200)
+    body = json.loads(serve_app.investigate(req).body)
 
     source = body["definitions"][0]["source"]
     assert source.startswith(long_content[:200])
@@ -195,18 +198,18 @@ def test_investigate_endpoint_truncates_source_at_small_budget(monkeypatch, tmp_
 
 
 def test_investigate_endpoint_short_circuits_on_total_miss(monkeypatch, tmp_path):
+    import chonks.retrieval.graph_queries as graph_queries
     project = _setup_default_project(monkeypatch, tmp_path)
-    store = project["store"]
 
     def _boom(*a, **kw):
         raise AssertionError("should not be called on a total miss")
 
-    monkeypatch.setattr(store, "find_usages", _boom)
-    monkeypatch.setattr(store, "find_outgoing", _boom)
-    monkeypatch.setattr(store, "get_impact", _boom)
+    monkeypatch.setattr(graph_queries, "find_usages", _boom)
+    monkeypatch.setattr(graph_queries, "find_outgoing", _boom)
+    monkeypatch.setattr(graph_queries, "get_impact", _boom)
 
-    req = server.InvestigateRequest(name="doesNotExist")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="doesNotExist")
+    body = json.loads(serve_app.investigate(req).body)
 
     assert body["symbol"] == "doesNotExist"
     assert body["definitions"] == []
@@ -243,8 +246,8 @@ def test_investigate_endpoint_respects_per_leg_limits(monkeypatch, tmp_path):
         [(f"caller{i}", "c1") for i in range(3)] + [("c1", f"callee{i}") for i in range(3)]
     )
 
-    req = server.InvestigateRequest(name="applyStep", usages_limit=1, outgoing_limit=2, impact_limit=1)
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep", usages_limit=1, outgoing_limit=2, impact_limit=1)
+    body = json.loads(serve_app.investigate(req).body)
 
     assert body["usages"]["count"] == 1
     assert body["outgoing"]["count"] == 2
@@ -258,8 +261,8 @@ def test_investigate_path_prefix_never_scopes_definitions(monkeypatch, tmp_path)
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = server.InvestigateRequest(name="applyStep", path_prefix="caller")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep", path_prefix="caller")
+    body = json.loads(serve_app.investigate(req).body)
 
     assert len(body["definitions"]) == 1          # widget.cpp, outside the prefix
     assert body["notes"]["definitions"] is None
@@ -287,8 +290,8 @@ def test_investigate_endpoint_stitches_split_definition_under_budget(monkeypatch
         "language": "cpp", "start_line": 1, "end_line": 7, "chunk_id": "c1",
     }])
 
-    req = server.InvestigateRequest(name="bigFn")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="bigFn")
+    body = json.loads(serve_app.investigate(req).body)
 
     source = body["definitions"][0]["source"]
     assert source == part1 + "\n" + part2
@@ -313,8 +316,8 @@ def test_investigate_endpoint_truncates_stitched_source_and_names_full_range(mon
         "language": "cpp", "start_line": 1, "end_line": 22, "chunk_id": "c1",
     }])
 
-    req = server.InvestigateRequest(name="bigFn", definition_source_max_chars=200)
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="bigFn", definition_source_max_chars=200)
+    body = json.loads(serve_app.investigate(req).body)
 
     source = body["definitions"][0]["source"]
     assert source.startswith((part1 + part2)[:200])
@@ -326,8 +329,8 @@ def test_investigate_endpoint_single_chunk_source_unchanged(monkeypatch, tmp_pat
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = server.InvestigateRequest(name="applyStep")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="applyStep")
+    body = json.loads(serve_app.investigate(req).body)
 
     assert body["definitions"][0]["source"] == "class Widget {}"
 
@@ -346,8 +349,8 @@ def test_investigate_endpoint_missing_continuation_chunk_gets_boundary_marker(mo
         "language": "cpp", "start_line": 1, "end_line": 10, "chunk_id": "c1",
     }])
 
-    req = server.InvestigateRequest(name="bigFn")
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="bigFn")
+    body = json.loads(serve_app.investigate(req).body)
 
     source = body["definitions"][0]["source"]
     assert source.startswith(part1)
@@ -385,8 +388,8 @@ def test_investigate_endpoint_stitches_real_chunker_split_without_duplication(mo
         "end_line": segments[-1]["end_line"], "chunk_id": "c0",
     }])
 
-    req = server.InvestigateRequest(name="big_fn", definition_source_max_chars=15000)
-    body = json.loads(server.investigate(req).body)
+    req = serve_models.InvestigateRequest(name="big_fn", definition_source_max_chars=15000)
+    body = json.loads(serve_app.investigate(req).body)
 
     source = body["definitions"][0]["source"]
     expected = "\n".join(src_lines[segments[0]["start_line"] - 1:segments[-1]["end_line"]])

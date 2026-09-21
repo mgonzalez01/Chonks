@@ -31,10 +31,10 @@ Files are chunked in one of two ways, chosen by extension:
 
 | Tier | Extensions | How it is chunked |
 |---|---|---|
-| AST-aware (full symbol and graph support) | `.cpp .cc .cxx .h .hpp .hxx .inl .cu .cuh .mm .metal` (C++) · `.c` (C) · `.cs` (C#) · `.py .pyi` (Python) · `.ts .tsx .js .jsx .mjs .cjs` (TypeScript/JavaScript) · `.hlsl .fx .fxh` (HLSL) · `.gd` (GDScript) · `.lua` (Lua) | tree-sitter boundaries: functions, classes, methods. Named chunks that feed the symbol index, cross-reference graph, and repomap. |
+| AST-aware (full symbol and graph support) | `.c` (C) · `.cs` (C#) · `.cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm` (C++) · `.gd` (GDScript) · `.fx .fxh .hlsl` (HLSL) · `.cjs .js .jsx .mjs` (JavaScript) · `.lua` (Lua) · `.py .pyi` (Python) · `.tsx` (TSX) · `.ts` (TypeScript) | tree-sitter boundaries: functions, classes, methods. Named chunks that feed the symbol index, cross-reference graph, and repomap. |
 | Text fallback (searchable, no symbols) | `.html .vue .svelte .md .markdown .yaml .yml .toml .json` (default; edit via the `fallback_extensions` config key, or `[]` to disable) | line-based slices. Docs and config surface in search and research and stay out of the structural graph. |
 
-Everything else is skipped. Adding a language is a table edit in one file: `tree-sitter-language-pack` lists 248 grammars, and nothing is bundled, since each grammar downloads into a per-user cache on first use. This means the first index run needs network access once per language it encounters, so an air-gapped machine has to have that cache populated beforehand. See [DOCS.md, Adding a language](DOCS.md#adding-a-language).
+Everything else is skipped. Adding an AST language is one new file under `chonks/languages/`: `tree-sitter-language-pack` lists 248 grammars, and nothing is bundled, since each grammar downloads into a per-user cache on first use. This means the first index run needs network access once per language it encounters, so an air-gapped machine has to have that cache populated beforehand. Text formats are not languages in that registry; the `fallback_extensions` config key admits them. See [DOCS.md, Adding a language](DOCS.md#adding-a-language).
 
 ## When not to use it
 

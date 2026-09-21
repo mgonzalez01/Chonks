@@ -1,9 +1,9 @@
-"""Literal & message index extraction tests (chunking.py side).
+"""Literal & message index extraction tests (chonks/index/refs_extract.py side).
 
 Covers per-language string literal extraction: interpolation holes,
 adjacent-string concatenation, escape decoding, and the per-chunk cap."""
 
-from chonks.chunking import segment_file
+from chonks.index.segment import segment_file
 
 
 def _literals_by_name(segs: list[dict]) -> dict[str, list[tuple[str, int]]]:
@@ -87,7 +87,7 @@ void f() {
 
 def test_cpp_raw_string_literal_stripped_and_never_decoded():
     """R"(...)": the wrapper is stripped (grammar's own raw_string_content
-    child, see chunking.py's _leaf_literal_text) but the content is never
+    child, see chonks/index/refs_extract.py's _leaf_literal_text) but the content is never
     escape-decoded: a literal backslash-n here is two real characters, not
     a newline."""
     src = b'''
@@ -187,16 +187,34 @@ def f():
     assert lits == {}
 
 
-def test_hlsl_unsupported_language_yields_no_literals():
-    """A language with no _LITERAL_SPECS entry falls back to empty literals,
-    same shape as the calls/imports/inherits fallback."""
+def test_hlsl_string_literal_extracted():
+    """HLSL rides the same C-preprocessor-family grammar as cpp/c: a bare
+    string_literal in a function body is now collected."""
     src = b'''
-struct VSOut { float4 pos : SV_Position; };
-VSOut main(float3 p : POSITION) { VSOut o; o.pos = float4(p, 1); return o; }
+float4 MainPS() : SV_Target
+{
+    string tag = "diffuse pass";
+    return float4(1,1,1,1);
+}
 '''
     segs = segment_file(src, "hlsl", path="t.hlsl")
-    for seg in segs:
-        assert seg["literals"] == []
+    lits = _literals_by_name(segs)
+    assert lits["MainPS"] == [("diffuse pass", 4)]
+
+
+def test_hlsl_adjacent_string_literals_join():
+    """Same grammar production as cpp's concatenated_string: two adjacent
+    string_literal tokens join into one record."""
+    src = b'''
+float4 MainPS() : SV_Target
+{
+    string tag = "failed to load asset" " from disk";
+    return float4(1,1,1,1);
+}
+'''
+    segs = segment_file(src, "hlsl", path="t.hlsl")
+    lits = _literals_by_name(segs)
+    assert lits["MainPS"] == [("failed to load asset from disk", 4)]
 
 
 def test_lua_string_literal_and_concat_join():

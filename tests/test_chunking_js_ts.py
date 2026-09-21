@@ -1,4 +1,5 @@
-from chonks.chunking import CHUNK_MAX, CHUNK_MIN, segment_file, segment_text_file
+from chonks.index.segment import CHUNK_MAX, CHUNK_MIN, segment_file
+from chonks.index.text_segment import segment_text_file
 
 # Pushes each boundary comfortably over CHUNK_MIN so _merge_small doesn't fold
 # adjacent tiny functions together, these tests are about boundary detection

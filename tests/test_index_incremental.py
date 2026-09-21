@@ -1,14 +1,14 @@
 """Integration test for index_paths -> build_neighbors wiring. The incremental
 k-NN path itself is unit tested in test_build_neighbors.py; what's untested
-there is the chunker.py plumbing that collects changed_ids/deleted_ids across
+there is the chonks/index/pipeline.py plumbing that collects changed_ids/deleted_ids across
 a real index run. Proves it's correct by cross-checking a real incremental
 run against a full rebuild's ground truth on the same corpus."""
 import hashlib
 import logging
 from unittest.mock import patch
 
-from chonks.chunker import index_paths
-from chonks.store import Store
+from chonks.index.pipeline import index_paths
+from chonks.storage.store import Store
 
 _DIM = 8
 
@@ -78,7 +78,7 @@ def _write_initial_tree(tmp_path) -> None:
 
 
 def test_index_paths_incremental_wiring_matches_full_rebuild(tmp_path, caplog):
-    from chonks.repomap import build_neighbors
+    from chonks.index.graph.knn import build_neighbors
 
     _write_initial_tree(tmp_path)
     store = Store(tmp_path / "test.db")
@@ -120,7 +120,7 @@ def test_index_paths_incremental_wiring_matches_full_rebuild(tmp_path, caplog):
 def test_index_paths_orphan_prune_matches_full_rebuild(tmp_path, caplog):
     # Deleting a file with no other changes exercises the orphan-prune call
     # site, not the changed-file call site.
-    from chonks.repomap import build_neighbors
+    from chonks.index.graph.knn import build_neighbors
 
     _write_initial_tree(tmp_path)
     store = Store(tmp_path / "test.db")
@@ -158,8 +158,8 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     # Regression: the old gate was `indexed > 0 or pruned > 0`, which is False
     # when a file's old chunks are deleted but 0 files complete this run, so
     # graph-maintenance never ran and old edges dangled forever.
-    import chonks.chunker as chunker_mod
-    from chonks.chunker import index_paths
+    import chonks.index.pipeline as pipeline_mod
+    from chonks.index.pipeline import index_paths
 
     (tmp_path / "callee.py").write_text(
         "def target_function(x):\n    return x + 1\n"
@@ -196,14 +196,14 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     (tmp_path / "callee.py").write_text(
         "def target_function(x):\n    return x + 999\n"
     )
-    real_segment_file = chunker_mod.segment_file
+    real_segment_file = pipeline_mod.segment_file
 
     def failing_segment_file(src, lang, *, path=None, **kw):
         if path == "callee.py":
             raise RuntimeError("simulated parser crash")
         return real_segment_file(src, lang, path=path, **kw)
 
-    with patch.object(chunker_mod, "segment_file", side_effect=failing_segment_file):
+    with patch.object(pipeline_mod, "segment_file", side_effect=failing_segment_file):
         second = index_paths([str(tmp_path)], store, embedder, root=tmp_path)
 
     assert second["indexed"] == 0, (

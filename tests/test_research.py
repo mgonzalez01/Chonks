@@ -1,7 +1,7 @@
 """Tests for research candidate pool ranking."""
 import numpy as np
 
-from chonks.research import _apply_structural_boost, _dedup, _rank_and_cap, _score_candidates
+from chonks.retrieval.research import _apply_structural_boost, _dedup, _rank_and_cap, _score_candidates
 
 
 def _make_chunk(id: str, score: float) -> dict:
@@ -275,7 +275,7 @@ def test_paired_trigger_is_file_level_not_chunk_level():
     Two high chunks from file X push P's only chunk to chunk-rank 3; with
     seeds_per_iter=2 a chunk-level trigger would never see P.
     """
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     x1 = {"id": "x1", "_score": 0.9, "path": "m/x.cpp", "name": "foo"}
     x2 = {"id": "x2", "_score": 0.8, "path": "m/x.cpp", "name": "bar"}
     p1 = {"id": "p1", "_score": 0.5, "path": "m/p.cpp", "name": "baz"}
@@ -353,7 +353,7 @@ def test_structural_boost_low_weight_mentions_edge_contributes_less():
 # --- _graph_expand: edge_type weight gate ------------------------------------
 
 def test_graph_expand_excludes_zero_weighted_edge_type():
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     seeds = [{"id": "A", "_score": 0.9}]
     store = _FakeStore(edges=[("A", "N", "mentions")])
     out = _graph_expand(store, seeds, seeds_per_iter=20, neighbours_per_seed=5,
@@ -362,7 +362,7 @@ def test_graph_expand_excludes_zero_weighted_edge_type():
 
 
 def test_graph_expand_includes_edge_when_weight_positive_or_default():
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
 
     class _StoreWithChunks(_FakeStore):
         def get_chunks_by_ids(self, ids):
@@ -383,7 +383,7 @@ def test_graph_expand_includes_edge_when_weight_positive_or_default():
 def test_graph_expand_attaches_evidence_for_structural_admission():
     """A chunk pulled in via a typed chunk_refs edge carries _evidence with
     origin="graph", the admitting seed as anchor_id, and the edge_type."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
 
     class _StoreWithChunks(_FakeStore):
         def get_chunks_by_ids(self, ids):
@@ -400,7 +400,7 @@ def test_graph_expand_attaches_evidence_for_structural_admission():
 def test_graph_expand_attaches_evidence_for_semantic_admission():
     """A chunk pulled in via semantic k-NN carries _evidence with
     origin="semantic" and the admitting seed as anchor_id, no edge_type."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
 
     class _StoreWithChunks(_FakeStore):
         def get_chunks_by_ids(self, ids):
@@ -418,7 +418,7 @@ def test_graph_expand_evidence_first_writer_wins():
     """A chunk reachable both by semantic k-NN and a structural edge from the
     same seed set keeps whichever route admitted it first (semantic runs
     before the structural loop in _graph_expand)."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
 
     class _StoreWithChunks(_FakeStore):
         def get_chunks_by_ids(self, ids):
@@ -436,7 +436,7 @@ def test_graph_expand_paired_evidence_uses_seed_anchor():
     """A companion chunk admitted via paired-file expansion carries
     origin="paired" with anchor_id set to a seed chunk id of the paired
     path."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     seeds = [{"id": "A", "_score": 0.9, "path": "widget.h", "name": "Widget"}]
     store = _PairedStore(
         paired={"widget.h": ["widget.cpp"]},
@@ -454,7 +454,7 @@ def test_graph_expand_normalizes_path_prefix_like_search_semantic():
     chunks) normalizes by stripping trailing slashes before a LIKE match.
     Both must apply the same rstrip('/\\') so expansion scope agrees with
     seed scope, e.g. for prefix 'foo/' against a path like 'foobar.py'."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
 
     class _StoreWithChunks(_FakeStore):
         def get_chunks_by_ids(self, ids):
@@ -476,7 +476,7 @@ def test_graph_seed_confidence_gate_filters_low_scorers(monkeypatch):
     """graph_seed_min_rel_score must drop low-scoring candidates from the
     expansion seed set only (the pool itself is untouched). Gate off (0.0)
     passes everything."""
-    import chonks.research as research
+    import chonks.retrieval.research as research
 
     captured = {}
     def fake_expand(store, seed_chunks, **kw):
@@ -554,7 +554,7 @@ class _PairedStore(_FakeStore):
 def test_graph_expand_paired_files_off_by_default_no_call():
     """expand_paired_files defaults to False: get_paired_files must never
     be called and no paired chunk enters the pool."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     seeds = [{"id": "A", "_score": 0.9, "path": "widget.h", "name": "Widget"}]
     store = _PairedStore(
         paired={"widget.h": ["widget.cpp"]},
@@ -569,7 +569,7 @@ def test_graph_expand_paired_files_off_by_default_no_call():
 def test_graph_expand_paired_files_same_name_match():
     """expand_paired_files=True: a companion chunk sharing the seed's name
     enters the expansion pool."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     seeds = [{"id": "A", "_score": 0.9, "path": "widget.h", "name": "Widget"}]
     store = _PairedStore(
         paired={"widget.h": ["widget.cpp"]},
@@ -584,7 +584,7 @@ def test_graph_expand_paired_files_same_name_match():
 def test_graph_expand_paired_files_fallback_to_top_pagerank():
     """No name match in the companion -> fall back to its single
     highest-PageRank chunk."""
-    from chonks.research import _graph_expand
+    from chonks.retrieval.research import _graph_expand
     seeds = [{"id": "A", "_score": 0.9, "path": "widget.h", "name": "Widget"}]
     store = _PairedStore(
         paired={"widget.h": ["widget.cpp"]},
@@ -598,7 +598,7 @@ def test_graph_expand_paired_files_fallback_to_top_pagerank():
 
 def test_graph_expand_paired_files_cap_respected():
     """Companion contributes at most PAIRED_CHUNKS_PER_FILE chunks."""
-    from chonks.research import PAIRED_CHUNKS_PER_FILE, _graph_expand
+    from chonks.retrieval.research import PAIRED_CHUNKS_PER_FILE, _graph_expand
     seed_names = [f"Sym{i}" for i in range(PAIRED_CHUNKS_PER_FILE + 3)]
     seeds = [{"id": "A", "_score": 0.9, "path": "widget.h", "name": seed_names[0]}]
     seeds = [
@@ -621,7 +621,7 @@ def _c(id, path, score, boost=0.0):
 def test_interleave_file_cap_frees_slots_for_buried_connected_file():
     """Lever (b): a wall of one file's near-duplicate chunks is capped so a
     graph-connected file sitting just past top_k is lifted into the window."""
-    from chonks.research import _select_final_interleave
+    from chonks.retrieval.research import _select_final_interleave
     wall = [_c(f"w{i}", "wall.py", 0.9 - i * 0.01) for i in range(5)]
     connected = _c("g", "gold.py", 0.4, boost=0.5)
     cands = wall + [connected]
@@ -636,7 +636,7 @@ def test_interleave_reserved_rescues_deeply_buried_connected_file():
     appended into the window's slack when the cap alone can't reach it.
     Rescues fill slack, never displace a found file, so the window needs
     room (fewer distinct files than top_k)."""
-    from chonks.research import _select_final_interleave
+    from chonks.retrieval.research import _select_final_interleave
     filler = [_c(f"f{i}_{j}", f"f{i}.py", 0.9 - (i * 2 + j) * 0.01)
               for i in range(3) for j in range(2)]
     deep = _c("d", "deep.py", 0.1, boost=0.8)
@@ -650,7 +650,7 @@ def test_interleave_reserved_rescues_deeply_buried_connected_file():
 def test_interleave_never_demotes_a_file_already_in_window():
     """Non-regression guarantee: every first-occurrence file keeps its rank
     relative to the others; rescues can only append new files at the tail."""
-    from chonks.research import _select_final_interleave
+    from chonks.retrieval.research import _select_final_interleave
     a = _c("a", "a.py", 0.9)
     b = _c("b", "b.py", 0.8)
     c = _c("c", "c.py", 0.7)
@@ -661,7 +661,7 @@ def test_interleave_never_demotes_a_file_already_in_window():
 
 
 def test_interleave_returns_natural_order_when_levers_off():
-    from chonks.research import _select_final_interleave
+    from chonks.retrieval.research import _select_final_interleave
     cands = [_c("a", "a.py", 0.9), _c("b", "a.py", 0.8), _c("c", "b.py", 0.7)]
     out = _select_final_interleave(cands, top_k=3, reserved_n=0, file_cap=0)
     assert [x["id"] for x in out] == ["a", "b", "c"]
@@ -670,21 +670,21 @@ def test_interleave_returns_natural_order_when_levers_off():
 # --- _result_connections: typed subgraph among returned chunks -------------
 
 def test_result_connections_includes_edge_with_both_endpoints_returned():
-    from chonks.research import _result_connections
+    from chonks.retrieval.research import _result_connections
     store = _FakeStore(edges=[("A", "B", "calls")])
     out = _result_connections(store, ["A", "B"])
     assert out == [{"from_id": "A", "to_id": "B", "edge_type": "calls", "provenance": "extracted"}]
 
 
 def test_result_connections_excludes_edge_to_a_chunk_outside_the_returned_set():
-    from chonks.research import _result_connections
+    from chonks.retrieval.research import _result_connections
     store = _FakeStore(edges=[("A", "B", "calls"), ("A", "OUTSIDE", "calls")])
     out = _result_connections(store, ["A", "B"])
     assert out == [{"from_id": "A", "to_id": "B", "edge_type": "calls", "provenance": "extracted"}]
 
 
 def test_result_connections_dedupes_same_pair_deterministically():
-    from chonks.research import _result_connections
+    from chonks.retrieval.research import _result_connections
 
     class _MultiEdgeStore(_FakeStore):
         def get_refs_for_chunks_typed(self, ids):
@@ -697,7 +697,7 @@ def test_result_connections_dedupes_same_pair_deterministically():
 
 
 def test_result_connections_caps_after_dedupe():
-    from chonks.research import _result_connections
+    from chonks.retrieval.research import _result_connections
 
     class _ManyEdgesStore(_FakeStore):
         def get_refs_for_chunks_typed(self, ids):
@@ -710,7 +710,7 @@ def test_result_connections_caps_after_dedupe():
 
 
 def test_result_connections_empty_ids_returns_empty():
-    from chonks.research import _result_connections
+    from chonks.retrieval.research import _result_connections
     out = _result_connections(_FakeStore(edges=[("A", "B", "calls")]), [])
     assert out == []
 
@@ -721,7 +721,7 @@ def test_deep_research_degraded_flag_set_when_query_embed_fails(monkeypatch):
     """deep_research's honest-degradation fallback (neutral 0 scores when
     the embedder is unreachable) used to be invisible to the caller; the
     payload must say so via `degraded`, additive only (ranking untouched)."""
-    import chonks.research as research
+    import chonks.retrieval.research as research
 
     monkeypatch.setattr(research, "_graph_expand", lambda store, seeds, **kw: [])
     monkeypatch.setattr(research, "_extract_symbols", lambda c: [])
@@ -752,7 +752,7 @@ def test_deep_research_degraded_flag_set_when_query_embed_fails(monkeypatch):
 def test_deep_research_degraded_none_when_query_embed_succeeds():
     """Healthy path: degraded is the explicit not-degraded value (None),
     not merely absent from the payload."""
-    import chonks.research as research
+    import chonks.retrieval.research as research
 
     class FakeSearcher:
         class store:

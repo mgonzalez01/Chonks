@@ -11,9 +11,9 @@ from collections import Counter
 
 import pytest
 
-import chonks.store as store_mod
-from chonks.repomap import build_refs
-from chonks.store import Store
+from chonks.index.graph.refs import build_refs
+from chonks.retrieval.graph_queries import get_hubs, get_impact
+from chonks.storage.store import Store
 
 
 def _mk_store() -> Store:
@@ -135,8 +135,8 @@ def test_hubs_precomputed_matches_live_fallback_global_and_scoped():
     store = _mk_store()
     _seed_hub_corpus(store)
 
-    precomputed_global = store.get_hubs()
-    precomputed_scoped = store.get_hubs(path_prefix="src/")
+    precomputed_global = get_hubs(store)
+    precomputed_scoped = get_hubs(store, path_prefix="src/")
     assert precomputed_global["hubs"], "fixture should produce global hubs"
     assert precomputed_scoped["hubs"], "fixture should produce scoped hubs"
 
@@ -144,8 +144,8 @@ def test_hubs_precomputed_matches_live_fallback_global_and_scoped():
         store._conn.execute("DELETE FROM chunk_indegree")
         store._conn.commit()
 
-    live_global = store.get_hubs()
-    live_scoped = store.get_hubs(path_prefix="src/")
+    live_global = get_hubs(store)
+    live_scoped = get_hubs(store, path_prefix="src/")
 
     assert precomputed_global == live_global
     assert precomputed_scoped == live_scoped
@@ -157,7 +157,7 @@ def test_hubs_precomputed_ranks_by_indegree_then_pagerank():
     _seed_hub_corpus(store)
     store.save_pagerank({"hub": 0.9, "util": 0.1})
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert [h["name"] for h in result["hubs"]] == ["Base", "Util"]
     assert result["hubs"][0]["in_degree"] == 3
     assert result["hubs"][0]["edge_types"] == {"calls": 2, "mentions": 1}
@@ -169,7 +169,7 @@ def test_hubs_precomputed_by_provenance_rollup():
     store = _mk_store()
     _seed_hub_corpus(store)
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     by_name = {h["name"]: h for h in result["hubs"]}
     assert by_name["Base"]["by_provenance"] == {"extracted": 2, "inferred": 1}
     assert by_name["Util"]["by_provenance"] == {"inferred": 1}
@@ -185,10 +185,10 @@ def test_hubs_live_fallback_by_provenance_rollup():
         store._conn.execute("DELETE FROM chunk_indegree")
         store._conn.commit()
 
-    scoped = {h["name"]: h for h in store.get_hubs(path_prefix="src/")["hubs"]}
+    scoped = {h["name"]: h for h in get_hubs(store, path_prefix="src/")["hubs"]}
     assert scoped["Base"]["by_provenance"] == {"extracted": 2, "inferred": 1}
 
-    unscoped = {h["name"]: h for h in store.get_hubs()["hubs"]}
+    unscoped = {h["name"]: h for h in get_hubs(store)["hubs"]}
     assert unscoped["Base"]["by_provenance"] == {"extracted": 2, "inferred": 1}
     assert unscoped["Util"]["by_provenance"] == {"inferred": 1}
     store.close()
@@ -202,7 +202,7 @@ def test_hubs_edge_types_filter_sums_only_selected_types():
     store = _mk_store()
     _seed_hub_corpus(store)
 
-    result = store.get_hubs(edge_types=["calls"])
+    result = get_hubs(store, edge_types=["calls"])
     names = {h["name"]: h for h in result["hubs"]}
     assert names["Base"]["in_degree"] == 2
     assert names["Base"]["edge_types"] == {"calls": 2}
@@ -221,7 +221,7 @@ def test_hubs_edge_types_filter_accepts_associated():
     store.insert_refs([("r1", "hub", "associated")])
     store.save_indegree({("hub", "associated"): 1})
 
-    result = store.get_hubs(edge_types=["associated"])
+    result = get_hubs(store, edge_types=["associated"])
     names = {h["name"]: h for h in result["hubs"]}
     assert names["Base"]["in_degree"] == 1
     assert names["Base"]["edge_types"] == {"associated": 1}
@@ -231,12 +231,12 @@ def test_hubs_edge_types_filter_accepts_associated():
 def test_hubs_edge_types_filter_matches_between_precomputed_and_live():
     store = _mk_store()
     _seed_hub_corpus(store)
-    precomputed = store.get_hubs(edge_types=["mentions"])
+    precomputed = get_hubs(store, edge_types=["mentions"])
 
     with store._lock:
         store._conn.execute("DELETE FROM chunk_indegree")
         store._conn.commit()
-    live = store.get_hubs(edge_types=["mentions"])
+    live = get_hubs(store, edge_types=["mentions"])
 
     assert precomputed == live
     assert {h["name"] for h in precomputed["hubs"]} == {"Base", "Util"}
@@ -247,7 +247,7 @@ def test_hubs_edge_types_invalid_raises():
     store = _mk_store()
     _seed_hub_corpus(store)
     with pytest.raises(ValueError, match="edge_types"):
-        store.get_hubs(edge_types=["bogus"])
+        get_hubs(store, edge_types=["bogus"])
     store.close()
 
 
@@ -258,7 +258,7 @@ def test_hubs_edge_types_invalid_raises_on_live_fallback_too():
         store._conn.execute("DELETE FROM chunk_indegree")
         store._conn.commit()
     with pytest.raises(ValueError, match="edge_types"):
-        store.get_hubs(edge_types=["bogus"])
+        get_hubs(store, edge_types=["bogus"])
     store.close()
 
 
@@ -277,23 +277,24 @@ def test_hubs_old_db_fallback_still_works_with_empty_indegree_table(tmp_path):
     # indexed before chunk_indegree existed.
     assert _indegree_table(store) == {}
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert [h["name"] for h in result["hubs"]] == ["Base"]
     assert result["hubs"][0]["in_degree"] == 1
 
 
 def test_hubs_global_guard_still_fires_on_empty_indegree_table(tmp_path, monkeypatch):
+    import chonks.retrieval.graph_queries as graph_queries
     store = Store(tmp_path / "old.db")
     store.insert_chunks(
         [_chunk("hub", "src/base.cpp", "Base"), _chunk("r1", "src/a.cpp", "a1")],
         [_embed(), _embed()],
     )
     store.insert_refs([("r1", "hub", "calls")])
-    monkeypatch.setattr(store_mod, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
+    monkeypatch.setattr(graph_queries, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
 
     with pytest.raises(ValueError, match="path_prefix"):
-        store.get_hubs()
-    assert store.get_hubs(path_prefix="src")["hubs"]  # scoped branch unaffected
+        get_hubs(store)
+    assert get_hubs(store, path_prefix="src")["hubs"]  # scoped branch unaffected
 
 
 # ---------------------------------------------------------------------------
@@ -326,11 +327,11 @@ def test_impact_rank_by_count_orders_by_raw_reference_count():
     store.insert_refs([("a1", "def"), ("a2", "def"), ("a3", "def"), ("b1", "def")])
     store.save_pagerank({"a1": 0.01, "a2": 0.01, "a3": 0.01, "b1": 0.9})
 
-    default = store.get_impact("applyStep")
+    default = get_impact(store, "applyStep")
     assert default["rank_by"] == "pagerank_sum"
     assert [f["path"] for f in default["files"]] == ["b.cpp", "a.cpp"]
 
-    by_count = store.get_impact("applyStep", rank_by="count")
+    by_count = get_impact(store, "applyStep", rank_by="count")
     assert by_count["rank_by"] == "count"
     assert [f["path"] for f in by_count["files"]] == ["a.cpp", "b.cpp"]
     assert [f["count"] for f in by_count["files"]] == [3, 1]
@@ -340,7 +341,7 @@ def test_impact_rank_by_count_orders_by_raw_reference_count():
 def test_impact_rank_by_invalid_raises():
     store = _mk_store()
     with pytest.raises(ValueError, match="rank_by"):
-        store.get_impact("applyStep", rank_by="bogus")
+        get_impact(store, "applyStep", rank_by="bogus")
     store.close()
 
 

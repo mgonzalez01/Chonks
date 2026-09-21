@@ -1,10 +1,11 @@
 import json
 
-import chonks.server as server
+import chonks.serve.app as serve_app
+import chonks.serve.projects as serve_projects
 
 
 def test_root_endpoint_returns_name_version_and_endpoints():
-    body = json.loads(server.root().body)
+    body = json.loads(serve_app.root().body)
 
     assert body["name"] == "chonks"
     assert isinstance(body["version"], str) and body["version"]
@@ -13,7 +14,7 @@ def test_root_endpoint_returns_name_version_and_endpoints():
 
 
 def test_root_endpoint_lists_status_and_search():
-    body = json.loads(server.root().body)
+    body = json.loads(serve_app.root().body)
     paths = {e["path"] for e in body["endpoints"]}
 
     assert "/status" in paths
@@ -22,7 +23,7 @@ def test_root_endpoint_lists_status_and_search():
 
 
 def test_root_endpoint_every_entry_has_method_path_description():
-    body = json.loads(server.root().body)
+    body = json.loads(serve_app.root().body)
 
     for entry in body["endpoints"]:
         assert entry["method"] in ("GET", "POST")
@@ -32,6 +33,6 @@ def test_root_endpoint_every_entry_has_method_path_description():
 
 def test_root_endpoint_does_not_require_a_project():
     # Cold-client entry point, so it can't depend on _get_project().
-    server._projects.clear()
-    body = json.loads(server.root().body)
+    serve_projects._projects.clear()
+    body = json.loads(serve_app.root().body)
     assert body["name"] == "chonks"

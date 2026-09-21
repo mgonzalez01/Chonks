@@ -4,9 +4,12 @@ import sqlite3
 import time
 from pathlib import Path
 
-from chonks.chunking import CHUNKER_VERSION
-from chonks.doctor import _connect_readonly, build_report
-from chonks.store import SCHEMA_VERSION, Store
+from chonks.storage.readonly import _connect_readonly
+from chonks.ops.doctor import build_report
+from chonks.index.segment import CHUNKER_VERSION
+from chonks.languages import language_set
+from chonks.storage.schema import SCHEMA_VERSION
+from chonks.storage.store import Store
 
 
 def _fake_embedding(dim: int = 4) -> list[float]:
@@ -132,6 +135,19 @@ def test_table_sizes_section(tmp_path):
     assert "files: 3 rows" in report
     assert "chunk_refs: 2 rows" in report
     assert "chunk_neighbors: 2 rows" in report
+
+
+def test_table_sizes_section_lists_the_schema_tables(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    sizes = report.split("== Table sizes ==")[1].split("\n== ")[0]
+    for table in ("chunk_pagerank", "chunk_indegree", "graph_nodes", "graph_edges", "chunk_literals"):
+        assert f"\n{table}: " in sizes
+    assert "_fts" not in sizes
+    assert "chunk_vecs" not in sizes
+    assert "table not present" not in sizes
 
 
 def test_staleness_stale_when_disk_newer(tmp_path):
@@ -273,6 +289,54 @@ def test_chunker_version_mixed_reported(tmp_path):
 
     report = _report_for(tmp_path / "test.db")
     assert "mixed:" in report
+    assert "force re-index" in report
+
+
+def test_language_set_not_recorded(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "language_set: not recorded in this DB" in report
+
+
+def test_language_set_matches(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps(language_set(), sort_keys=True, separators=(",", ":")),
+    )
+    store.commit()
+    store.close()
+
+    current = json.dumps(language_set(), sort_keys=True, separators=(",", ":"))
+    report = _report_for(tmp_path / "test.db")
+    assert f"language_set: {current} (matches code)" in report
+
+
+def test_language_set_differs(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta("language_set", json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":")))
+    store.commit()
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert '{"python":"0"}' in report
+    assert "code is at" in report
+    assert "re-index to refresh" in report
+
+
+def test_language_set_mixed_reported(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        "mixed: {\"python\":\"0\"}+{\"python\":\"1\"} (1 unchanged file(s) retain old chunk boundaries)",
+    )
+    store.commit()
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "language_set: mixed:" in report
     assert "force re-index" in report
 
 
@@ -443,7 +507,7 @@ def test_set_model_relabels_and_unblocks_store(tmp_path, capsys):
     variant, relabel via `chonks doctor --set-model`, and confirm the store
     accepts the new name without re-embedding."""
     import pytest
-    from chonks.doctor import main
+    from chonks.ops.doctor import main
 
     db = tmp_path / "test.db"
     store = Store(db)
@@ -475,7 +539,49 @@ def test_set_model_relabels_and_unblocks_store(tmp_path, capsys):
 
 def test_set_model_missing_db_errors(tmp_path):
     import pytest
-    from chonks.doctor import main
+    from chonks.ops.doctor import main
     with pytest.raises(SystemExit):
         main(["--db", str(tmp_path / "nope.db"), "--set-model", "x"])
     assert not (tmp_path / "nope.db").exists()
+
+
+def test_languages_section_lists_every_language(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "== Languages ==" in report
+    assert f"{'language':<12} {'refs':<5} {'literals':<9} {'macro':<6} {'pairing':<8} extensions" in report
+    assert f"{'C++':<12} {'y':<5} {'y':<9} {'y':<6} {'y':<8} .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm" in report
+    assert f"{'HLSL':<12} {'-':<5} {'y':<9} {'-':<6} {'-':<8} .fx .fxh .hlsl" in report
+    assert report.endswith(
+        "refs: typed calls/imports/inherits edges. literals: find_by_message. "
+        "macro: C macro self-heal. pairing: header/impl pairing.\n"
+    )
+
+
+def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch, capsys):
+    from chonks.ops.doctor import main
+
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+    (tmp_path / ".chonks.json").write_text(json.dumps({"db": str(tmp_path / "test.db")}))
+    monkeypatch.chdir(tmp_path)
+
+    main([])
+    out = capsys.readouterr().out
+    assert "== Vitals ==" in out
+
+
+def test_main_unreadable_config_is_an_argparse_error(tmp_path, monkeypatch, capsys):
+    import pytest
+    from chonks.ops.doctor import main
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text("{ broken")
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([])
+    assert exc_info.value.code == 2
+    err = capsys.readouterr().err
+    assert "config not readable:" in err

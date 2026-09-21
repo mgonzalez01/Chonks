@@ -1,0 +1,633 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 10,
+            "kind": "abstract_class_declaration",
+            "language": "typescript",
+            "name": "Base",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "abstract_class_declaration",
+          "content": "abstract class Base {\n  abstract doIt(): void;\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n\n}",
+          "end_line": 10,
+          "literals": [],
+          "name": "Base",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 10,
+          "kind": "abstract_class_declaration",
+          "language": "typescript",
+          "name": "Base",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_ts_abstract_class_declaration_detected_and_named",
+    "language": "typescript",
+    "source": "export abstract class Base {\n  abstract doIt(): void;\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "enum_declaration",
+            "language": "typescript",
+            "name": "Color",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "enum_declaration",
+          "content": "enum Color {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nRed, Green, Blue\n}",
+          "end_line": 9,
+          "literals": [],
+          "name": "Color",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "enum_declaration",
+          "language": "typescript",
+          "name": "Color",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_ts_enum_declaration_detected_and_named",
+    "language": "typescript",
+    "source": "export enum Color {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nRed, Green, Blue\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 10,
+            "kind": "class_declaration",
+            "language": "typescript",
+            "name": "Other",
+            "start_line": 1
+          },
+          {
+            "end_line": 9,
+            "kind": "method_definition",
+            "language": "typescript",
+            "name": "m",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "class_declaration",
+          "content": "class Other {\n  m() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n}",
+          "end_line": 10,
+          "literals": [],
+          "name": "Other",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 10,
+          "kind": "class_declaration",
+          "language": "typescript",
+          "name": "Other",
+          "start_line": 1
+        },
+        {
+          "end_line": 9,
+          "kind": "method_definition",
+          "language": "typescript",
+          "name": "m",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_ts_exported_class_still_detected",
+    "language": "typescript",
+    "source": "export default class Other {\n  m() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 9,
+            "kind": "interface_declaration",
+            "language": "typescript",
+            "name": "Foo",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "interface_declaration",
+          "content": "interface Foo {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  bar: string;\n}",
+          "end_line": 9,
+          "literals": [],
+          "name": "Foo",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 9,
+          "kind": "interface_declaration",
+          "language": "typescript",
+          "name": "Foo",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_ts_interface_declaration_detected_and_named",
+    "language": "typescript",
+    "source": "export interface Foo {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  bar: string;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 1,
+            "kind": "type_alias_declaration",
+            "language": "typescript",
+            "name": "Alias",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "type_alias_declaration",
+          "content": "type Alias = \"variant_0\" | \"variant_1\" | \"variant_2\" | \"variant_3\" | \"variant_4\" | \"variant_5\" | \"variant_6\" | \"variant_7\" | \"variant_8\" | \"variant_9\" | \"variant_10\" | \"variant_11\" | \"variant_12\" | \"variant_13\" | \"variant_14\" | \"variant_15\" | \"variant_16\" | \"variant_17\" | \"variant_18\" | \"variant_19\" | \"variant_20\" | \"variant_21\" | \"variant_22\" | \"variant_23\" | \"variant_24\" | \"variant_25\" | \"variant_26\" | \"variant_27\" | \"variant_28\" | \"variant_29\" | \"variant_30\" | \"variant_31\" | \"variant_32\" | \"variant_33\" | \"variant_34\" | \"variant_35\" | \"variant_36\" | \"variant_37\" | \"variant_38\" | \"variant_39\" | \"variant_40\" | \"variant_41\" | \"variant_42\" | \"variant_43\" | \"variant_44\" | \"variant_45\" | \"variant_46\" | \"variant_47\" | \"variant_48\" | \"variant_49\" | \"variant_50\" | \"variant_51\" | \"variant_52\" | \"variant_53\" | \"variant_54\" | \"variant_55\" | \"variant_56\" | \"variant_57\" | \"variant_58\" | \"variant_59\";",
+          "end_line": 1,
+          "literals": [
+            [
+              "variant_0",
+              1
+            ],
+            [
+              "variant_1",
+              1
+            ],
+            [
+              "variant_2",
+              1
+            ],
+            [
+              "variant_3",
+              1
+            ],
+            [
+              "variant_4",
+              1
+            ],
+            [
+              "variant_5",
+              1
+            ],
+            [
+              "variant_6",
+              1
+            ],
+            [
+              "variant_7",
+              1
+            ],
+            [
+              "variant_8",
+              1
+            ],
+            [
+              "variant_9",
+              1
+            ],
+            [
+              "variant_10",
+              1
+            ],
+            [
+              "variant_11",
+              1
+            ],
+            [
+              "variant_12",
+              1
+            ],
+            [
+              "variant_13",
+              1
+            ],
+            [
+              "variant_14",
+              1
+            ],
+            [
+              "variant_15",
+              1
+            ],
+            [
+              "variant_16",
+              1
+            ],
+            [
+              "variant_17",
+              1
+            ],
+            [
+              "variant_18",
+              1
+            ],
+            [
+              "variant_19",
+              1
+            ],
+            [
+              "variant_20",
+              1
+            ],
+            [
+              "variant_21",
+              1
+            ],
+            [
+              "variant_22",
+              1
+            ],
+            [
+              "variant_23",
+              1
+            ],
+            [
+              "variant_24",
+              1
+            ],
+            [
+              "variant_25",
+              1
+            ],
+            [
+              "variant_26",
+              1
+            ],
+            [
+              "variant_27",
+              1
+            ],
+            [
+              "variant_28",
+              1
+            ],
+            [
+              "variant_29",
+              1
+            ],
+            [
+              "variant_30",
+              1
+            ],
+            [
+              "variant_31",
+              1
+            ],
+            [
+              "variant_32",
+              1
+            ],
+            [
+              "variant_33",
+              1
+            ],
+            [
+              "variant_34",
+              1
+            ],
+            [
+              "variant_35",
+              1
+            ],
+            [
+              "variant_36",
+              1
+            ],
+            [
+              "variant_37",
+              1
+            ],
+            [
+              "variant_38",
+              1
+            ],
+            [
+              "variant_39",
+              1
+            ],
+            [
+              "variant_40",
+              1
+            ],
+            [
+              "variant_41",
+              1
+            ],
+            [
+              "variant_42",
+              1
+            ],
+            [
+              "variant_43",
+              1
+            ],
+            [
+              "variant_44",
+              1
+            ],
+            [
+              "variant_45",
+              1
+            ],
+            [
+              "variant_46",
+              1
+            ],
+            [
+              "variant_47",
+              1
+            ],
+            [
+              "variant_48",
+              1
+            ],
+            [
+              "variant_49",
+              1
+            ],
+            [
+              "variant_50",
+              1
+            ],
+            [
+              "variant_51",
+              1
+            ],
+            [
+              "variant_52",
+              1
+            ],
+            [
+              "variant_53",
+              1
+            ],
+            [
+              "variant_54",
+              1
+            ],
+            [
+              "variant_55",
+              1
+            ],
+            [
+              "variant_56",
+              1
+            ],
+            [
+              "variant_57",
+              1
+            ],
+            [
+              "variant_58",
+              1
+            ],
+            [
+              "variant_59",
+              1
+            ]
+          ],
+          "name": "Alias",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "1\u001fvariant_0",
+              "1\u001fvariant_1",
+              "1\u001fvariant_2",
+              "1\u001fvariant_3",
+              "1\u001fvariant_4",
+              "1\u001fvariant_5",
+              "1\u001fvariant_6",
+              "1\u001fvariant_7",
+              "1\u001fvariant_8",
+              "1\u001fvariant_9",
+              "1\u001fvariant_10",
+              "1\u001fvariant_11",
+              "1\u001fvariant_12",
+              "1\u001fvariant_13",
+              "1\u001fvariant_14",
+              "1\u001fvariant_15",
+              "1\u001fvariant_16",
+              "1\u001fvariant_17",
+              "1\u001fvariant_18",
+              "1\u001fvariant_19",
+              "1\u001fvariant_20",
+              "1\u001fvariant_21",
+              "1\u001fvariant_22",
+              "1\u001fvariant_23",
+              "1\u001fvariant_24",
+              "1\u001fvariant_25",
+              "1\u001fvariant_26",
+              "1\u001fvariant_27",
+              "1\u001fvariant_28",
+              "1\u001fvariant_29",
+              "1\u001fvariant_30",
+              "1\u001fvariant_31",
+              "1\u001fvariant_32",
+              "1\u001fvariant_33",
+              "1\u001fvariant_34",
+              "1\u001fvariant_35",
+              "1\u001fvariant_36",
+              "1\u001fvariant_37",
+              "1\u001fvariant_38",
+              "1\u001fvariant_39",
+              "1\u001fvariant_40",
+              "1\u001fvariant_41",
+              "1\u001fvariant_42",
+              "1\u001fvariant_43",
+              "1\u001fvariant_44",
+              "1\u001fvariant_45",
+              "1\u001fvariant_46",
+              "1\u001fvariant_47",
+              "1\u001fvariant_48",
+              "1\u001fvariant_49",
+              "1\u001fvariant_50",
+              "1\u001fvariant_51",
+              "1\u001fvariant_52",
+              "1\u001fvariant_53",
+              "1\u001fvariant_54",
+              "1\u001fvariant_55",
+              "1\u001fvariant_56",
+              "1\u001fvariant_57",
+              "1\u001fvariant_58",
+              "1\u001fvariant_59"
+            ]
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 1,
+          "kind": "type_alias_declaration",
+          "language": "typescript",
+          "name": "Alias",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "test_ts_type_alias_declaration_detected_and_named",
+    "language": "typescript",
+    "source": "export type Alias = \"variant_0\" | \"variant_1\" | \"variant_2\" | \"variant_3\" | \"variant_4\" | \"variant_5\" | \"variant_6\" | \"variant_7\" | \"variant_8\" | \"variant_9\" | \"variant_10\" | \"variant_11\" | \"variant_12\" | \"variant_13\" | \"variant_14\" | \"variant_15\" | \"variant_16\" | \"variant_17\" | \"variant_18\" | \"variant_19\" | \"variant_20\" | \"variant_21\" | \"variant_22\" | \"variant_23\" | \"variant_24\" | \"variant_25\" | \"variant_26\" | \"variant_27\" | \"variant_28\" | \"variant_29\" | \"variant_30\" | \"variant_31\" | \"variant_32\" | \"variant_33\" | \"variant_34\" | \"variant_35\" | \"variant_36\" | \"variant_37\" | \"variant_38\" | \"variant_39\" | \"variant_40\" | \"variant_41\" | \"variant_42\" | \"variant_43\" | \"variant_44\" | \"variant_45\" | \"variant_46\" | \"variant_47\" | \"variant_48\" | \"variant_49\" | \"variant_50\" | \"variant_51\" | \"variant_52\" | \"variant_53\" | \"variant_54\" | \"variant_55\" | \"variant_56\" | \"variant_57\" | \"variant_58\" | \"variant_59\";\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_declaration",
+            "language": "typescript",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_declaration",
+          "content": "function load(name: string, code: number): void {\n    const s = `failed to load ${name}: ${code}`;\n}",
+          "end_line": 4,
+          "literals": [
+            [
+              "failed to load ${name}: ${code}",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffailed to load ${name}: ${code}"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_declaration",
+          "language": "typescript",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_typescript_template_literal_holes_survive",
+    "language": "typescript",
+    "source": "\nfunction load(name: string, code: number): void {\n    const s = `failed to load ${name}: ${code}`;\n}\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "lexical_declaration",
+            "language": "typescript",
+            "name": "double",
+            "start_line": 1
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "lexical_declaration",
+          "content": "const double = (x: number): number => {\n    return x * 2;\n};",
+          "end_line": 3,
+          "literals": [],
+          "name": "double",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "lexical_declaration",
+          "language": "typescript",
+          "name": "double",
+          "start_line": 1
+        }
+      ]
+    },
+    "id": "ts_arrow_variable",
+    "language": "typescript",
+    "source": "const double = (x: number): number => {\n    return x * 2;\n};\n"
+  }
+]

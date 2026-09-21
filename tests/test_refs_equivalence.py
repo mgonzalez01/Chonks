@@ -1,48 +1,23 @@
 """Refactor safety net: _extract_refs moved from a per-language if/elif walk
-to declarative specs (LANG_REFS_SPECS + a generic walker). Proves the new
-version is output-identical to main's by diffing node by node over a fixture
-corpus gnarlier than test_chunking.py's."""
+to declarative specs (LANG_REFS_SPECS + a generic walker). Proves the live
+version still matches the golden recorded from main's per-language walk,
+node by node over a fixture corpus gnarlier than test_chunking.py's."""
 
-import importlib.util
-import sys
+import json
 from pathlib import Path
 
 import pytest
 from tree_sitter_language_pack import get_parser
 
-import chonks.chunking as new_chunking
+import chonks.index.refs_extract as new_chunking
 
-
-def _load_main_chunking():
-    # Loaded under a private module name so both implementations can be
-    # imported side by side. Skips when `main` can't be resolved (detached CI
-    # checkouts), where the test is vacuous anyway.
-    import subprocess
-
-    # Package path first, flat pre-reorg path as fallback.
-    src = ""
-    for ref_path in ("main:chonks/chunking.py", "main:chunking.py"):
-        proc = subprocess.run(
-            ["git", "show", ref_path],
-            cwd=Path(__file__).parent,
-            capture_output=True,
-            text=True,
-        )
-        if proc.returncode == 0 and proc.stdout:
-            src = proc.stdout
-            break
-    if not src:
-        pytest.skip("local `main` ref unavailable (detached/shallow checkout)")
-    spec = importlib.util.spec_from_loader("chunking_main_reference", loader=None)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["chunking_main_reference"] = mod
-    exec(compile(src, "chunking_main_reference.py", "exec"), mod.__dict__)
-    return mod
+GOLDEN_PATH = Path(__file__).parent / "data" / "refs_equivalence_golden.json"
 
 
 @pytest.fixture(scope="module")
-def old_chunking():
-    return _load_main_chunking()
+def golden():
+    with open(GOLDEN_PATH) as f:
+        return json.load(f)
 
 
 # ---------------------------------------------------------------------------
@@ -175,44 +150,41 @@ def _normalize(refs: dict) -> dict:
 
 
 @pytest.mark.parametrize("lang", sorted(CASES))
-def test_extract_refs_matches_main_node_by_node(old_chunking, lang):
+def test_extract_refs_matches_golden_node_by_node(golden, lang):
     src = CASES[lang]
     parser = get_parser(lang)
     tree = parser.parse(src)
 
     mismatches = []
-    for node in _walk_all_nodes(tree.root_node):
-        # main may predate literals/fingerprints or already carry them; a
-        # fast-forwarded main must not read as a mismatch against itself.
-        old = _normalize(old_chunking._extract_refs(node, lang, src))
+    for node, (gtype, gstart, gend, gref) in zip(
+            _walk_all_nodes(tree.root_node), golden["nodes"][lang], strict=True):
         new = _normalize(new_chunking._extract_refs(node, lang, src))
-        if old != new:
-            mismatches.append((node.type, node.start_byte, node.end_byte, old, new))
+        if node.type != gtype or node.start_byte != gstart or node.end_byte != gend or gref != new:
+            mismatches.append((node.type, node.start_byte, node.end_byte, gref, new))
 
     assert not mismatches, mismatches
 
 
 @pytest.mark.parametrize("lang", sorted(CASES))
-def test_extract_refs_matches_main_at_root(old_chunking, lang):
+def test_extract_refs_matches_golden_at_root(golden, lang):
     src = CASES[lang]
     parser = get_parser(lang)
     tree = parser.parse(src)
-    old = _normalize(old_chunking._extract_refs(tree.root_node, lang, src))
+    gref = golden["nodes"][lang][0][3]
     new = _normalize(new_chunking._extract_refs(tree.root_node, lang, src))
-    assert old == new
+    assert gref == new
 
 
-def test_extract_refs_matches_main_cap_and_dedup_cpp(old_chunking):
+def test_extract_refs_matches_golden_cap_and_dedup_cpp(golden):
     src = _many_calls_src(300)
     parser = get_parser("cpp")
     tree = parser.parse(src)
-    old = _normalize(old_chunking._extract_refs(tree.root_node, "cpp", src))
     new = _normalize(new_chunking._extract_refs(tree.root_node, "cpp", src))
-    assert old == new
-    assert len(new["calls"]) == old_chunking._REFS_MAX_NAMES
+    assert golden["cap_dedup"] == new
+    assert len(new["calls"]) == golden["max_names"]
 
 
-def test_extract_refs_matches_main_unsupported_language(old_chunking):
+def test_extract_refs_matches_golden_unsupported_language(golden):
     # HLSL has no refs spec; must fall back to empty refs on both sides.
     src = b'''
 struct VSOut { float4 pos : SV_Position; };
@@ -220,12 +192,11 @@ VSOut main(float3 p : POSITION) { VSOut o; o.pos = float4(p, 1); return o; }
 '''
     parser = get_parser("hlsl")
     tree = parser.parse(src)
-    old = _normalize(old_chunking._extract_refs(tree.root_node, "hlsl", src))
     new = _normalize(new_chunking._extract_refs(tree.root_node, "hlsl", src))
-    assert old == new == {"calls": [], "imports": [], "inherits": []}
+    assert golden["unsupported_hlsl"] == new == {"calls": [], "imports": [], "inherits": []}
 
 
-def test_lang_refs_specs_covers_same_languages_as_before(old_chunking):
+def test_lang_refs_specs_covers_same_languages_as_before(golden):
     # Guards monotonic growth (new languages can be added, none can silently
     # lose a refs spec), not that the set is frozen.
-    assert old_chunking._REFS_LANGS <= set(new_chunking._REFS_LANGS)
+    assert set(golden["refs_langs"]) <= set(new_chunking._REFS_LANGS)

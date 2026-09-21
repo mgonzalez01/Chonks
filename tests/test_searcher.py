@@ -1,15 +1,15 @@
 """Tests for _sanitize_fts_query."""
 import pytest
-from chonks.searcher import (
+from chonks.retrieval.results import (
     NEAR_DUP_MAX_CHUNKS,
     NEAR_DUP_MIN_RESULTS,
     NEAR_DUP_TAU,
     NEAR_DUP_WALL_SHARE_THRESHOLD,
-    Searcher,
-    _sanitize_fts_query,
+    detect_near_dup_wall,
     rank_files,
 )
-from chonks.store import Store
+from chonks.retrieval.searcher import Searcher, _sanitize_fts_query
+from chonks.storage.store import Store
 
 
 def test_plain_words_are_quoted():
@@ -64,7 +64,7 @@ def test_cjk_token_survives_sanitization():
 
 
 class _FakeEmbedder:
-    """Stand-in for chonks.embedder.Embedder: returns a fixed query vector,
+    """Stand-in for chonks.embed.client.Embedder: returns a fixed query vector,
     no network calls."""
 
     def __init__(self, vec):
@@ -127,7 +127,7 @@ def test_split_identifier_camelcase_only():
     """Only genuine mixed-case tokens split; snake_case is left alone because
     unicode61 already indexes its parts and the whole-token phrase matches, so
     splitting it adds only common-word noise."""
-    from chonks.searcher import _split_identifier
+    from chonks.retrieval.searcher import _split_identifier
     assert _split_identifier("fileCap") == ["file", "Cap"]
     assert _split_identifier("getHTTPResponse") == ["get", "HTTP", "Response"]
     assert _split_identifier("parse_one") == []
@@ -251,7 +251,7 @@ def test_near_dup_wall_fires_on_identical_vectors(tmp_path):
     _insert_vecs(store, {cid: v for cid in ids})
 
     searcher = Searcher(store, embedder=None)
-    result = searcher.detect_near_dup_wall(_chunk_dicts(ids))
+    result = detect_near_dup_wall(searcher.store, _chunk_dicts(ids))
 
     assert result is not None
     assert result["wall_share"] == 1.0
@@ -269,7 +269,7 @@ def test_near_dup_wall_diverse_vectors_dont_fire(tmp_path):
     _insert_vecs(store, vecs)
 
     searcher = Searcher(store, embedder=None)
-    result = searcher.detect_near_dup_wall(_chunk_dicts(ids))
+    result = detect_near_dup_wall(searcher.store, _chunk_dicts(ids))
 
     assert result is not None
     assert result["wall_share"] == pytest.approx(1 / 5)
@@ -285,14 +285,14 @@ def test_near_dup_wall_skips_below_min_results(tmp_path):
     _insert_vecs(store, {cid: v for cid in ids})
 
     searcher = Searcher(store, embedder=None)
-    assert searcher.detect_near_dup_wall(_chunk_dicts(ids)) is None
+    assert detect_near_dup_wall(searcher.store, _chunk_dicts(ids)) is None
     store.close()
 
 
 def test_near_dup_wall_empty_chunks_returns_none(tmp_path):
     store = Store(tmp_path / "test.db")
     searcher = Searcher(store, embedder=None)
-    assert searcher.detect_near_dup_wall([]) is None
+    assert detect_near_dup_wall(searcher.store, []) is None
     store.close()
 
 
@@ -306,13 +306,13 @@ def test_near_dup_wall_skips_missing_vector_rows_gracefully(tmp_path):
     _insert_vecs(store, {cid: v for cid in ids})
     searcher = Searcher(store, embedder=None)
 
-    result = searcher.detect_near_dup_wall(_chunk_dicts(ids + ["ghost-id"]))
+    result = detect_near_dup_wall(searcher.store, _chunk_dicts(ids + ["ghost-id"]))
     assert result is not None
     assert result["wall_share"] == 1.0
     assert result["wall_size"] == 5
 
     few_ids = ids[:3]
-    result2 = searcher.detect_near_dup_wall(_chunk_dicts(few_ids + ["ghost-a", "ghost-b"]))
+    result2 = detect_near_dup_wall(searcher.store, _chunk_dicts(few_ids + ["ghost-a", "ghost-b"]))
     assert result2 is None
     store.close()
 
@@ -505,7 +505,7 @@ def test_tiebreak_equal_score_equal_chunks_earlier_rank_wins():
 
 import math
 
-from chonks.searcher import OR_FALLBACK_MAX_RANK, _or_fts_query
+from chonks.retrieval.searcher import OR_FALLBACK_MAX_RANK, _or_fts_query
 
 
 def test_or_fts_query_dedupes_case_insensitively():
@@ -628,7 +628,7 @@ def test_query_truncated_false_for_short_query(tmp_path):
 
 
 def test_query_truncated_true_for_over_budget_query(tmp_path):
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     embedder = Embedder("http://x/v1/embeddings", "qwen3-embedding", query_token_budget=3)
@@ -638,7 +638,7 @@ def test_query_truncated_true_for_over_budget_query(tmp_path):
 
 
 def test_query_truncated_uses_embedder_configured_budget(tmp_path):
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     embedder = Embedder("http://x/v1/embeddings", "qwen3-embedding", query_token_budget=1000)
@@ -752,7 +752,7 @@ def test_reformulate_survives_query_budget_truncation(tmp_path):
     """On a query long enough to hit the embed truncation cutoff, the
     appended identifier must still land in the embedded text, not get
     sliced off."""
-    from chonks.embedder import QUERY_CHARS_PER_TOKEN
+    from chonks.embed.client import QUERY_CHARS_PER_TOKEN
 
     store = Store(tmp_path / "test.db")
     budget_tokens = 50
@@ -774,7 +774,7 @@ def test_reformulate_survives_query_budget_truncation(tmp_path):
 def test_hybrid_fts_branch_sees_full_query_text_even_when_over_embed_budget(tmp_path):
     """Only the embed side truncates; the FTS branch must see the full
     query text (verified by spying on the fts() call)."""
-    from chonks.embedder import Embedder
+    from chonks.embed.client import Embedder
 
     store = Store(tmp_path / "test.db")
     store.insert_chunks(

@@ -36,7 +36,7 @@ cuda = [
 ]
 
 [project.scripts]
-chonks = "chonks.cli:main"
+chonks = "chonks.ops.cli:main"
 
 [project.urls]
 Repository = "https://github.com/mgonzalez01/Chonks"
@@ -46,8 +46,8 @@ Documentation = "https://github.com/mgonzalez01/Chonks/blob/main/DOCS.md"
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["chonks", "chonks.repomap"]
+[tool.setuptools.packages.find]
+include = ["chonks*"]
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,379 @@
+[
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "_ready",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "# A note about this function.\nfunc _ready():\n    pass",
+          "end_line": 3,
+          "literals": [],
+          "name": "_ready",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "_ready",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "gdscript_comment_only_span",
+    "language": "gdscript",
+    "source": "# A note about this function.\nfunc _ready():\n    pass\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 16,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "run_pipeline",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "# The leading note this fixture exists to exercise.\nfunc run_pipeline():\n    var step_0 := compute_step(0, \"phase-0\")\n    var step_1 := compute_step(1, \"phase-1\")\n    var step_2 := compute_step(2, \"phase-2\")\n    var step_3 := compute_step(3, \"phase-3\")\n    var step_4 := compute_step(4, \"phase-4\")\n    var step_5 := compute_step(5, \"phase-5\")\n    var step_6 := compute_step(6, \"phase-6\")\n    var step_7 := compute_step(7, \"phase-7\")\n    var step_8 := compute_step(8, \"phase-8\")\n    var step_9 := compute_step(9, \"phase-9\")\n    var step_10 := compute_step(10, \"phase-10\")\n    var step_11 := compute_step(11, \"phase-11\")\n    var step_12 := compute_step(12, \"phase-12\")\n    var step_13 := compute_step(13, \"phase-13\")",
+          "end_line": 16,
+          "literals": [],
+          "name": "run_pipeline",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 1
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 16,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "run_pipeline",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "gdscript_comment_only_span_above_merge_min",
+    "language": "gdscript",
+    "source": "# The leading note this fixture exists to exercise.\nfunc run_pipeline():\n    var step_0 := compute_step(0, \"phase-0\")\n    var step_1 := compute_step(1, \"phase-1\")\n    var step_2 := compute_step(2, \"phase-2\")\n    var step_3 := compute_step(3, \"phase-3\")\n    var step_4 := compute_step(4, \"phase-4\")\n    var step_5 := compute_step(5, \"phase-5\")\n    var step_6 := compute_step(6, \"phase-6\")\n    var step_7 := compute_step(7, \"phase-7\")\n    var step_8 := compute_step(8, \"phase-8\")\n    var step_9 := compute_step(9, \"phase-9\")\n    var step_10 := compute_step(10, \"phase-10\")\n    var step_11 := compute_step(11, \"phase-11\")\n    var step_12 := compute_step(12, \"phase-12\")\n    var step_13 := compute_step(13, \"phase-13\")\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 11,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "_process",
+            "start_line": 10
+          },
+          {
+            "end_line": 8,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "_ready",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "extends Node2D\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()\n    x.do_thing()\n    other.nested.chained_call()\nfunc _process(delta):\n    helper_fn()",
+          "end_line": 11,
+          "literals": [],
+          "name": "_ready",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "get_node",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "do_thing",
+                "receiver": "x"
+              },
+              {
+                "arity": 0,
+                "name": "chained_call",
+                "receiver": "nested"
+              },
+              {
+                "arity": 0,
+                "name": "helper_fn",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [
+              "Node2D"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 11,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "_process",
+          "start_line": 10
+        },
+        {
+          "end_line": 8,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "_ready",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "refs_equivalence_gdscript",
+    "language": "gdscript",
+    "source": "\nextends Node2D\n\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()\n    x.do_thing()\n    other.nested.chained_call()\n\nfunc _process(delta):\n    helper_fn()\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 4,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "func driver():\n    f(1,  # note\n      2)",
+          "end_line": 4,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 2,
+                "name": "f",
+                "receiver": null
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 4,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_arity_skips_comment_gdscript",
+    "language": "gdscript",
+    "source": "\nfunc driver():\n    f(1,  # note\n      2)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "driver",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "func driver():\n    a.b.c.d(1)",
+          "end_line": 3,
+          "literals": [],
+          "name": "driver",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "d",
+                "receiver": "c"
+              }
+            ],
+            "imports": [],
+            "inherits": [],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "driver",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_call_receiver_is_immediate_not_root_gdscript",
+    "language": "gdscript",
+    "source": "\nfunc driver():\n    a.b.c.d(1)\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 6,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "_ready",
+            "start_line": 4
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "extends Node2D\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()",
+          "end_line": 6,
+          "literals": [],
+          "name": "_ready",
+          "refs": {
+            "calls": [
+              {
+                "arity": 1,
+                "name": "get_node",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "do_thing",
+                "receiver": "x"
+              }
+            ],
+            "imports": [],
+            "inherits": [
+              "Node2D"
+            ],
+            "literals": []
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 6,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "_ready",
+          "start_line": 4
+        }
+      ]
+    },
+    "id": "test_extract_refs_gdscript",
+    "language": "gdscript",
+    "source": "\nextends Node2D\n\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()\n"
+  },
+  {
+    "expected": {
+      "counters": {
+        "symbols": [
+          {
+            "end_line": 3,
+            "kind": "function_definition",
+            "language": "gdscript",
+            "name": "load",
+            "start_line": 2
+          }
+        ]
+      },
+      "definer_param_arity": [],
+      "segments": [
+        {
+          "chunk_type": "function_definition",
+          "content": "func load(name):\n    var s = \"failed to load %s: %d\" % [name, 0]",
+          "end_line": 3,
+          "literals": [
+            [
+              "failed to load %s: %d",
+              3
+            ]
+          ],
+          "name": "load",
+          "refs": {
+            "calls": [],
+            "imports": [],
+            "inherits": [],
+            "literals": [
+              "3\u001ffailed to load %s: %d"
+            ]
+          },
+          "start_line": 2
+        }
+      ],
+      "symbols": [
+        {
+          "end_line": 3,
+          "kind": "function_definition",
+          "language": "gdscript",
+          "name": "load",
+          "start_line": 2
+        }
+      ]
+    },
+    "id": "test_gdscript_percent_format_literal_kept_verbatim",
+    "language": "gdscript",
+    "source": "\nfunc load(name):\n    var s = \"failed to load %s: %d\" % [name, 0]\n"
+  }
+]

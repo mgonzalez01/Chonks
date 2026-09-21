@@ -26,8 +26,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from chonks.repomap import build_neighbors  # noqa: E402
-from chonks.store import Store  # noqa: E402
+from chonks.index.graph.knn import build_neighbors  # noqa: E402
+from chonks.storage.store import Store  # noqa: E402
 
 
 def _ordered_edges(store: Store) -> list[tuple[str, str, float]]:

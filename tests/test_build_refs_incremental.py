@@ -14,9 +14,10 @@ from collections import Counter
 
 import pytest
 
-import chonks.repomap.refs as repomap
-from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES, build_refs
-from chonks.store import Store
+import chonks.index.graph.refs as repomap
+from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
+from chonks.index.graph.refs import build_refs
+from chonks.storage.store import Store
 
 
 @pytest.fixture(autouse=True)
@@ -82,7 +83,7 @@ def _assert_incremental_ran(caplog) -> None:
 
 
 def _delete_tracked(store: Store, path: str, deleted_ids: set[str], deleted_names: set[str]) -> None:
-    """Mirrors chunker.py's capture-before-delete pattern."""
+    """Mirrors chonks/index/pipeline.py's capture-before-delete pattern."""
     deleted_names.update(store.get_names_for_path(path))
     deleted_ids.update(store.delete_file(path))
 
@@ -199,7 +200,7 @@ def test_incremental_modify_reuses_same_id_for_untouched_sibling_chunk():
 
 def test_incremental_modify_matches_full_rebuild():
     """delete-then-insert of the same logical file, the mutation shape
-    chunker.py actually performs on a changed file."""
+    chonks/index/pipeline.py actually performs on a changed file."""
     store = _mk_store()
     initial = [
         _chunk("a", "a.cpp", name="driver", content="void driver() { helper(); }"),

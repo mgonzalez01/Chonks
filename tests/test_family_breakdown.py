@@ -1,6 +1,6 @@
 """Regression context: a committed docs/ mirror (sqlglot's pdoc output) was
 84% of the index and poisoned retrieval, with nothing surfacing it."""
-from chonks.chunking import dominance_warning, family_breakdown, path_family
+from chonks.ops.diagnostics import dominance_warning, family_breakdown, path_family
 
 
 def test_path_family_top_level_dir():

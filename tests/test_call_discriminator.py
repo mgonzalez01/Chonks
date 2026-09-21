@@ -1,14 +1,14 @@
 """Tests for the receiver/arity call-site discriminator:
-chonks.repomap._discriminate_definers and its supporting helpers, plus
+chonks.index.graph.call_resolve._discriminate_definers and its supporting helpers, plus
 their wiring into _build_graph's typed 'calls' pass.
 """
-from chonks.repomap import (
+from chonks.index.graph.call_resolve import (
     _arity_compatible,
-    _build_graph,
     _call_entry_fields,
     _definer_qualifiers,
     _discriminate_definers,
 )
+from chonks.index.graph.refs import _build_graph
 
 
 # ---------------------------------------------------------------------------

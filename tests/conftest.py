@@ -8,5 +8,5 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _healthy_embedder_probe(monkeypatch):
-    import chonks.server as server
-    monkeypatch.setattr(server, "probe_embedder", lambda embedder, timeout=10.0: None)
+    import chonks.serve.main as serve_main
+    monkeypatch.setattr(serve_main, "probe_embedder", lambda embedder, timeout=10.0: None)

@@ -4,19 +4,19 @@ no test here touches a live embedder.
 """
 import json
 
-from chonks.init import (
+from chonks.ops.init import (
     JUNK_DIR_NAMES,
     ask,
     ask_yes_no,
     build_config,
     format_size,
-    ping_embedder,
     render_mcp_add,
     render_mcp_json,
     run_wizard,
     scan_junk_candidates,
     write_config,
 )
+from chonks.embed.client import ping_embedder
 
 
 # ---- format_size ------------------------------------------------------
@@ -365,7 +365,7 @@ def test_interactive_flow_aborts_on_existing_config_declined(tmp_path):
 # ---- embed_model: the name selects the prefix preset ----------------------
 
 def test_build_config_defaults_to_recommended_model():
-    from chonks.embedder import RECOMMENDED_EMBED_MODEL, matched_prefix_preset
+    from chonks.embed.client import RECOMMENDED_EMBED_MODEL, matched_prefix_preset
     config = build_config(codebase="/x", db="d", embed_url="http://h", exclude=[])
     assert config["embed_model"] == RECOMMENDED_EMBED_MODEL
     assert matched_prefix_preset(config["embed_model"]) == "jina-code"
@@ -398,7 +398,7 @@ def test_ping_embedder_sends_configured_model():
 # ---- GPU install hint (pure) ----------------------------------------------
 
 def test_gpu_hint_only_when_nvidia_smi_present_and_cupy_missing():
-    from chonks.init import gpu_install_hint
+    from chonks.ops.init import gpu_install_hint
     assert gpu_install_hint(which_fn=lambda n: None, cupy_importable=False) is None
     assert gpu_install_hint(which_fn=lambda n: "/usr/bin/nvidia-smi", cupy_importable=True) is None
     hint = gpu_install_hint(which_fn=lambda n: "/usr/bin/nvidia-smi", cupy_importable=False)

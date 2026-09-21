@@ -1,7 +1,7 @@
 import httpx
 
-from chonks.chunker import _embed_isolating, _embed_one_isolating
-from chonks.embedder import EMBED_MIN_CHARS
+from chonks.index.embed_retry import _embed_isolating, _embed_one_isolating
+from chonks.index.embed_retry import EMBED_MIN_CHARS
 
 # Sized so a halve or two still lands above the floor; max_len=400 (> floor) means
 # an oversized chunk can be truncated to fit, max_len below the floor means it

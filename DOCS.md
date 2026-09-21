@@ -32,7 +32,7 @@ The MCP server returns ranked chunks with `path:line` citations and the calling 
 | `chonks init` | Interactive first-run setup wizard |
 | `chonks index` | Parse and embed source files into a chunks DB |
 | `chonks serve` | Run the HTTP search, research, and index server |
-| `chonks doctor` | Read-only index health report. Its flags are `--db`, `--config`, and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
+| `chonks doctor` | Read-only index health report. Its flags are `--db`, `--config` (default: the first of `config.json`, `chonks/config.json`, `.chonks.json` present), and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
 | `chonks report` | Generate `INDEX_REPORT.md` |
 
 Each subcommand's module is internal and the CLI is the only supported entry point. `chonks init` writes `config.json` and offers to run the first index; the Docker compose stack does neither, it runs the backend and the MCP adapter against a `chonks.db` and a `config.json` that already exist (see [DEPLOY.md](DEPLOY.md)).
@@ -46,17 +46,20 @@ Each subcommand's module is internal and the CLI is the only supported entry poi
 
 **Supported languages:**
 
+<!-- generated:language-extensions:begin -->
 | Language | Extensions |
 |---|---|
-| C++ | .cpp .h .hpp .hxx .inl .cc .cxx .cu .cuh .mm .metal |
 | C | .c |
-| HLSL | .hlsl .fx .fxh |
-| Python | .py .pyi |
 | C# | .cs |
+| C++ | .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm |
 | GDScript | .gd |
-| TypeScript | .ts .tsx |
-| JavaScript | .js .jsx .mjs .cjs |
+| HLSL | .fx .fxh .hlsl |
+| JavaScript | .cjs .js .jsx .mjs |
 | Lua | .lua |
+| Python | .py .pyi |
+| TSX | .tsx |
+| TypeScript | .ts |
+<!-- generated:language-extensions:end -->
 
 CUDA (`.cu`/`.cuh`) and Objective-C++/Metal (`.mm`/`.metal`) are parsed best-effort under the C++ grammar, and Lua best-effort under its own. `.h` stays on the C++ grammar. Any other text extension is skipped by default; the config's `fallback_extensions` allowlist (HTML, Vue, Svelte, Markdown, YAML, TOML, and JSON by default) admits markup, docs, and config files through a line-based chunker, as described under [Configuration](#configuration).
 
@@ -66,14 +69,14 @@ CUDA (`.cu`/`.cuh`) and Objective-C++/Metal (`.mm`/`.metal`) are parsed best-eff
 ```mermaid
 flowchart TD
     CC["Claude Code / any MCP client"] -->|"MCP: JSON-RPC over stdio"| PROXY["mcp-server (Node/TypeScript)&#10;codebase_search &middot; codebase_research &middot; codebase_map&#10;codebase_status &middot; find_symbol &middot; find_usages &middot; investigate &middot; trace_path &middot; find_by_message"]
-    PROXY -->|"HTTP :11438, loopback"| API["chonks/server.py (FastAPI) &mdash; chonks serve&#10;/search /research /repomap /symbol /usages /outgoing /investigate /trace&#10;/index /status /find_by_message /impact /hubs"]
-    API --> SEARCHER["chonks/searcher.py&#10;search API"]
-    API --> RESEARCH["chonks/research.py&#10;candidate collection"]
-    API --> REPOMAP["chonks/repomap/&#10;symbol graph + persisted PageRank"]
-    API --> CHUNKER["chonks/chunker.py&#10;indexing &mdash; chonks index"]
-    CHUNKER --> SUMM["chonks/summaries.py&#10;folder summaries"]
+    PROXY -->|"HTTP :11438, loopback"| API["chonks/serve/ (FastAPI) &mdash; chonks serve&#10;/search /research /repomap /symbol /usages /outgoing /investigate /trace&#10;/index /status /find_by_message /impact /hubs"]
+    API --> SEARCHER["chonks/retrieval/searcher.py&#10;search API"]
+    API --> RESEARCH["chonks/retrieval/research.py&#10;candidate collection"]
+    API --> REPOMAP["chonks/index/graph/&#10;symbol graph + persisted PageRank"]
+    API --> CHUNKER["chonks/index/&#10;indexing &mdash; chonks index"]
+    CHUNKER --> SUMM["chonks/index/summaries.py&#10;folder summaries"]
     SUMM -.->|"reads persisted PageRank"| REPOMAP
-    SEARCHER --> STORE["chonks/store.py&#10;sqlite-vec DB"]
+    SEARCHER --> STORE["chonks/storage/&#10;sqlite-vec DB"]
     RESEARCH --> STORE
     REPOMAP --> STORE
     CHUNKER --> STORE
@@ -116,22 +119,22 @@ The tables:
 - `symbols`, the decoupled named-boundary index, since the chunker sometimes folds several named things into one `chunks` row while `find_symbol` and `find_usages` need every name individually addressable.
 - `chunk_literals`, mirrored into `literals_fts`, holding every decoded string literal a chunk contains plus a hole-collapsed skeleton, populated at parse time and consumed only by `find_by_message`.
 - `folder_summaries`, one row per folder with its summary text and embedding.
-- `meta`, key-value: `schema_version`, `chunker_version`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
+- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
 - `graph_nodes` and `graph_edges`, the directory and file containment hierarchy (`dir:` and `file:` nodes plus `contains` edges), kept separate from `chunks` and `chunk_refs`.
 
 ---
 
 ## Components
 
-### init.py — First-Run Setup Wizard
+### chonks/ops/init.py — First-Run Setup Wizard
 
-Writes `config.json` for a new install, from `uv run chonks init` or `make init`. It prompts for the codebase path, then scans it for junk-directory candidates by name heuristic (`node_modules`, `.venv`, `venv`, `.git`, `__pycache__`, `dist`, `build`, `target`, `packages`, `coverage`, `DerivedData`, `Intermediate`, `Saved`) and offers each as a yes/no toggle with a file count and a size, excluded by default and confirmed one at a time. Then come a fallback-extensions toggle (defaulting to `chunker.DEFAULT_FALLBACK_EXTENSIONS`), a DB path prompt, an embedding-server URL prompt whose `ping_embedder` reports reachability and dimension, and an embedding model name prompt (defaulting to `jina-code-embeddings-0.5b`, which selects the query and document prefixes and must match the model the server runs). It writes `config.json`, refusing to clobber an existing one without confirmation, prints the `claude mcp add` command, and offers to start the first index.
+Writes `config.json` for a new install, from `uv run chonks init` or `make init`. It prompts for the codebase path, then scans it for junk-directory candidates by name heuristic (`node_modules`, `.venv`, `venv`, `.git`, `__pycache__`, `dist`, `build`, `target`, `packages`, `coverage`, `DerivedData`, `Intermediate`, `Saved`) and offers each as a yes/no toggle with a file count and a size, excluded by default and confirmed one at a time. Then come a fallback-extensions toggle (defaulting to `chonks.index.admission.DEFAULT_FALLBACK_EXTENSIONS`), a DB path prompt, an embedding-server URL prompt whose `ping_embedder` reports reachability and dimension, and an embedding model name prompt (defaulting to `jina-code-embeddings-0.5b`, which selects the query and document prefixes and must match the model the server runs). It writes `config.json`, refusing to clobber an existing one without confirmation, prints the `claude mcp add` command, and offers to start the first index.
 
 **Non-interactive mode.** `--yes` with `--codebase`, `--db`, `--embed-url`, `--embed-model`, and `--exclude` (repeatable) skips every prompt. Scan-detected exclude suggestions apply there only when `--auto-exclude` is passed as well.
 
 ---
 
-### chunker.py — Indexing Pipeline
+### chonks/index/ — Indexing Pipeline
 
 In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
 
@@ -166,7 +169,9 @@ In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus 
 
 Merge-time comparisons are in UTF-8 bytes, since `_Segment.size()` and `_SyntheticSegment.size()` both return bytes. Line-fallback accumulation stops when the summed `len(line)`, a character count, reaches `CHUNK_TARGET`, so its segments can be slightly larger in bytes for multi-byte content.
 
-**Chunker versioning (`CHUNKER_VERSION = 3`).** `meta.chunker_version` records it and `chonks doctor` warns on a mixed-version DB. Version 3 absorbs identity-free trivia fragments into a neighbouring named chunk, line-slices oversized module residue with real per-piece line numbers through `_enforce_ceiling`, and salvages individually the intact boundaries a parse failure glued into an error-recovery node.
+**Chunker versioning (`CHUNKER_VERSION = 4`).** `meta.chunker_version` records it and `chonks doctor` warns on a mixed-version DB. Version 4 recognises `#` in GDScript and `--` in Lua as comments; before it, both fell to the C-style default, so a span of nothing but comments was not seen as one and stayed a chunk of its own instead of folding into the code it labels. Version 3 absorbs identity-free trivia fragments into a neighbouring named chunk, line-slices oversized module residue with real per-piece line numbers through `_enforce_ceiling`, and salvages individually the intact boundaries a parse failure glued into an error-recovery node.
+
+**Language-set provenance (`meta.language_set`).** A `{name: version}` map of every registered language, written beside `chunker_version`. It makes a boundary change in one language visible even when `CHUNKER_VERSION` has not moved. `Store` logs one warning when a DB's recorded set differs from the code's; a DB indexed before the key existed records nothing and is not treated as a mismatch.
 
 **Parse failure is graded, not binary.** tree-sitter always returns a tree, and "failed" means one of three things:
 
@@ -174,9 +179,9 @@ Merge-time comparisons are in UTF-8 bytes, since `_Segment.size()` and `_Synthet
 2. **Partial** (`root_node.has_error` after the heal loop), which ticks `parse_error` in the summary. Boundaries come from what parsed cleanly and the gap-fill backstop captures the error regions as `module` or `block` chunks, so the content stays searchable while symbols, typed edges, `find_symbol`, `find_usages`, and `trace_path` thin out there. `parse_error_files` and `chonks doctor` name the candidates.
 3. **Clean**, no errors and full structure.
 
-**Macro self-heal (C++ only).** Annotation macros such as `GDCLASS` or `UCLASS` make tree-sitter-cpp set `has_error`, so self-heal finds their names structurally, blanks them, reparses, and keeps a candidate only when the error count dropped. A macro that heals at least two distinct files in a run is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it.
+**Macro self-heal (C and C++).** Annotation macros such as `GDCLASS` or `UCLASS` make tree-sitter-cpp set `has_error`, so self-heal finds their names structurally, blanks them, reparses, and keeps a candidate only when the error count dropped. A macro that heals at least two distinct files in a run is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it.
 
-**Dominance warning.** `chonks doctor` groups chunks into path families by top-level path segment (root files as `(root)`), reporting per family the chunk count, corpus share, file count, chunks per file, and docs share, where docs means "not one of `chonks.chunking.CODE_LANGUAGES`", the split `chunk_kind` also uses. `chonks index` prints a one-line warning at the end of a run when one family is both mostly docs (80% or more within it) and large (40% or more of the corpus), or when corpus-wide docs chunks reach 50%; it names the family and prints a ready-to-paste `exclude` snippet, changing nothing itself.
+**Dominance warning.** `chonks doctor` groups chunks into path families by top-level path segment (root files as `(root)`), reporting per family the chunk count, corpus share, file count, chunks per file, and docs share, where docs means "not one of `chonks.index.segment.CODE_LANGUAGES`", the split `chunk_kind` also uses. `chonks index` prints a one-line warning at the end of a run when one family is both mostly docs (80% or more within it) and large (40% or more of the corpus), or when corpus-wide docs chunks reach 50%; it names the family and prints a ready-to-paste `exclude` snippet, changing nothing itself.
 
 #### Include / exclude paths
 
@@ -191,57 +196,76 @@ Excluded directories are pruned from the walk, include-aware, so a directory is 
 
 **Boundary nodes by language:**
 
+<!-- generated:language-boundaries:begin -->
 | Language | Extensions | Detected boundaries |
 |---|---|---|
-| C++ | .cpp .h .hpp .hxx .inl .cc .cxx .cu .cuh .mm .metal | function_definition, class_specifier, struct_specifier, template_declaration |
-| C | .c | function_definition, struct_specifier, union_specifier, enum_specifier, type_definition |
-| HLSL | .hlsl .fx .fxh | function_definition, struct_specifier, cbuffer* |
-| Python | .py .pyi | function_definition, class_definition, decorated_definition |
-| C# | .cs | method_declaration, constructor_declaration, destructor_declaration, property_declaration, class_declaration, struct_declaration, interface_declaration, enum_declaration, operator_declaration, conversion_operator_declaration |
-| GDScript | .gd | function_definition, class_definition |
-| JavaScript | .js .jsx .mjs .cjs | function_declaration, generator_function_declaration, method_definition, class_declaration, `const/let/var NAME = (...) => ...`† |
-| TypeScript | .ts .tsx | everything JavaScript detects, plus interface_declaration, enum_declaration, type_alias_declaration, abstract_class_declaration |
-| Lua | .lua | function_declaration (best-effort tier, registry-only via tree-sitter-language-pack) |
+| C | .c | enum_specifier, function_definition, struct_specifier, type_definition, union_specifier |
+| C# | .cs | class_declaration, constructor_declaration, conversion_operator_declaration, destructor_declaration, enum_declaration, interface_declaration, method_declaration, operator_declaration, property_declaration, struct_declaration |
+| C++ | .cc .cpp .cu .cuh .cxx .h .hpp .hxx .inl .metal .mm | class_specifier, function_definition, struct_specifier, template_declaration |
+| GDScript | .gd | class_definition, function_definition |
+| HLSL | .fx .fxh .hlsl | function_definition, struct_specifier |
+| JavaScript | .cjs .js .jsx .mjs | class_declaration, function_declaration, generator_function_declaration, method_definition |
+| Lua | .lua | function_declaration |
+| Python | .py .pyi | class_definition, decorated_definition, function_definition |
+| TSX | .tsx | abstract_class_declaration, class_declaration, enum_declaration, function_declaration, generator_function_declaration, interface_declaration, method_definition, type_alias_declaration |
+| TypeScript | .ts | abstract_class_declaration, class_declaration, enum_declaration, function_declaration, generator_function_declaration, interface_declaration, method_definition, type_alias_declaration |
+<!-- generated:language-boundaries:end -->
 
-\*HLSL `cbuffer`/`tbuffer` are detected via a custom predicate, because tree-sitter-hlsl parses them as generic `declaration` nodes.
+HLSL also detects `cbuffer` and `tbuffer` blocks. A custom predicate finds them, because tree-sitter-hlsl parses them as generic `declaration` nodes.
 
-†JS/TS grammars have no node type for a function assigned to a variable (`const foo = () => {...}`). `_is_arrow_var_decl` detects the pattern and boundaries the whole `lexical_declaration` or `variable_declaration`, naming it after the assigned variable.
+JavaScript, TypeScript and TSX also detect `const/let/var NAME = (...) => ...`. The grammars have no node type for a function assigned to a variable, so `is_arrow_var_decl` detects the pattern and makes the whole `lexical_declaration` or `variable_declaration` one chunk, named after the variable.
+
+Lua is a best-effort tier: its grammar comes from the `tree-sitter-language-pack` registry only.
 
 #### Adding a language
 
 Two tiers, and the first needs no new dependency: `tree-sitter-language-pack` (1.4.1) lists 248 grammars and downloads each into a per-user cache on first use, so Go, Rust, Java, Kotlin, Ruby, Swift, PHP, Zig, Scala, Dart, Elixir, and OCaml already load with `get_parser(name)`. An air-gapped machine needs that cache populated in advance, once per language.
 
-**Tier 1, best-effort**, which is what Lua received in 28 lines of `chunking.py` plus tests:
+**Tier 1, best-effort**, which is what Lua has. It is one new file, `chonks/languages/<name>.py`, that holds one `LanguageSpec` in a module-level `LANGUAGES` tuple. The registry finds the module by itself, so there is no registry line to add.
 
-1. `_EXT_TO_LANG` maps the extensions to the grammar name. Use the pack's name; if it differs from the internal one, add the pair to `_LANG_PACK_NAME` in `segment_file`, the way `c_sharp` maps to `csharp`.
-2. `_BOUNDARY_NODES` lists the node types that become chunks. Find them with a parse probe, since grammars differ (`function_declaration` against `function_definition`, `method_definition` against `method_declaration`).
-3. `_CONTAINER_NODES` lists the node types to recurse through for inner boundaries, such as namespaces and declaration lists; an empty set is acceptable.
-4. `_SALVAGE_ELIGIBLE_BOUNDARY_TYPES` lists the boundary types salvageable out of an error-recovery node, usually the function type.
-5. If the grammar's name field is not a plain identifier, add a branch to the chunk-naming function next to the Lua one, since Lua's `name` can be a `dot_index_expression` for `function M.foo()`.
+1. `name`, `grammar`, and `extensions`. `grammar` is the pack's name for the grammar, which can differ from `name`, the way `c_sharp` uses `csharp`. Extensions are lower-case with a leading dot, and each extension belongs to one language.
+2. `boundary_nodes` lists the node types that become chunks. Find them with a parse probe, since grammars differ (`function_declaration` against `function_definition`, `method_definition` against `method_declaration`).
+3. `kind_labels` gives each boundary type the label that the map prints. `display_name` is the name that the tables here and `chonks doctor` print.
+4. `container_nodes` lists the node types to recurse through for inner boundaries, such as namespaces and declaration lists; the default is empty. `salvage_nodes` lists the boundary types salvageable out of an error-recovery node, usually the function type.
+5. If the grammar's name field is not a plain identifier, add a `NameRule` to `name_rules`, the way `lua.py` does, since Lua's `name` can be a `dot_index_expression` for `function M.foo()`.
 
-This tier gives chunks, symbols, search, `mentions` edges, PageRank, and the repomap. Finish by bumping `CHUNKER_VERSION`, updating the docstring at the top of `chunking.py` and the two language tables here, and adding three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error.
+Every other field has a default, and the defaults give no typed edges, no literals, and C-style comments. This tier gives chunks, symbols, search, `mentions` edges, PageRank, and the repomap.
 
-**Tier 2, full fidelity**, three more tables, each independent:
+Then run `uv run pytest -q`. The registry refuses the module at import when a boundary type has no label, when another language owns the extension, or when a label conflicts with another language's label for the same node type. Run `uv run python scripts/gen_language_tables.py` to rewrite the language tables here and in README.md; a test fails while they are stale. Add three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error. Bump `CHUNKER_VERSION` only when an existing corpus would chunk differently. A new extension causes that only when the text fallback indexed it before.
 
-- `LANG_REFS_SPECS` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`_Field`, `_FieldChildren`, or `_Children`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
-- `_LITERAL_SPECS` gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
-- `_DEF_SIGNATURE_KEYWORD` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+**Tier 2, full fidelity**, three more fields on the same spec, each independent:
 
-`_NODE_TYPE_PREFIX` in `repomap/render.py` maps node types to display labels for the map, and unknown types render with the name only, so it is cosmetic. Nothing outside `chunking.py` and `repomap/` carries a language list, because `CODE_LANGUAGES` derives from `_EXT_TO_LANG`.
+- `refs_spec` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`Field`, `FieldChildren`, or `Children` from `chonks/languages/spec.py`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
+- `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
+- `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+
+Nothing outside `chonks/languages/` carries a language list. `chonks/index/`, `chonks/index/graph/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
+
+#### Loading a language as a plugin
+
+`language_plugins` in `config.json` is a flat list of importable dotted module names, default `[]`, each holding the same `LANGUAGES` tuple contract as a file in `chonks/languages/`. `chonks.index.plugins.load_plugins` imports each one, merges its specs into the registry, and rebuilds the nineteen registry-derived values, called once at the top of `chonks index`, `chonks serve`, `chonks doctor`, and `chonks report`, right after config loads. An empty list, the default, imports nothing and logs nothing.
+
+A plugin extension already claimed by one of the indexer's admission sets — `DEFAULT_FALLBACK_EXTENSIONS`, the effective `config["fallback_extensions"]`, `DATA_BLOB_EXTENSIONS`, `MINIFIED_GUARD_EXTENSIONS` (all `chonks/index/admission.py`), or `_MARKDOWN_EXTS` (`chonks/index/text_segment.py`) — is refused, with one allowlisted exception: `.js`/`.mjs`/`.cjs`, already owned by the built-in `javascript` spec and already in `MINIFIED_GUARD_EXTENSIONS`. `.css` is owned by no built-in language and is not on that allowlist; a plugin claiming it is refused. A module with no `LANGUAGES` attribute is refused by name, not a bare `AttributeError`. Every plugin in the list has to pass before any of them is loaded: one rejection leaves the process on its original, pre-plugin registry.
+
+`language_plugins` is top-level only; a `projects[name].language_plugins` entry is refused and logged, because the registry is one process-global object and `chonks serve` can hold several projects in one process (see [Multi-project mode](#chonksserve--fastapi-http-server)), so a per-project plugin set is not something the architecture can offer.
+
+`chonks init` does not offer this key. Loading a plugin is a trust decision, not a first-run default; see [DEPLOY.md](DEPLOY.md).
+
+`chain_base_fields`, `identifier_leaf_types`, `variadic_arg_types`, and `keyword_arg_types` on `LanguageSpec` are validated at registry-build time but never read by the chunking or refs-extraction code, built-in language or plugin alike (the engine uses literals instead, in `chonks/index/refs_extract.py` and `chonks/index/_ast.py`); a plugin can set them without any effect.
 
 #### Typed edges (calls, imports, inherits)
 
-At parse time `chunking._extract_refs` walks each boundary node in cpp, c, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, deduplicated on the full fingerprint and capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (HLSL, JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
+At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, deduplicated on the full fingerprint and capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (HLSL, JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
 
-`repomap.refs.build_refs` resolves the buckets against the symbol-name index and writes `'calls'`, `'imports'`, or `'inherits'` into `chunk_refs.edge_type`. For `calls`, `_discriminate_definers` narrows a multi-definer name collision to the definers whose owning qualifier or class matches the call's receiver token, then to those arity-compatible with the argument count, falling back to the full name-index fan-out only when the call site carries no receiver or arity evidence. Content-scan edges are `'mentions'`, or its high-PMI slice `'associated'`; cross-language same-name pairing is `'xlang'`. A typed edge supersedes a `'mentions'` or `'associated'` edge for the same `(from_id, to_id)` pair.
+`index.graph.refs.build_refs` resolves the buckets against the symbol-name index and writes `'calls'`, `'imports'`, or `'inherits'` into `chunk_refs.edge_type`. For `calls`, `_discriminate_definers` narrows a multi-definer name collision to the definers whose owning qualifier or class matches the call's receiver token, then to those arity-compatible with the argument count, falling back to the full name-index fan-out only when the call site carries no receiver or arity evidence. Content-scan edges are `'mentions'`, or its high-PMI slice `'associated'`; cross-language same-name pairing is `'xlang'`. A typed edge supersedes a `'mentions'` or `'associated'` edge for the same `(from_id, to_id)` pair.
 
-**PMI-scored `associated` edges (`associated_top_frac`, default `0.02`).** The mentions pass yields a `(chunk, referenced name)` pair for every name a chunk's `_WORD_RE` scan finds among the indexed symbol names, after `cap_mentions_fanout`. `repomap.refs._classify_mentions` scores each pair corpus-wide as `PMI(A, n) = log2(T / (|referenced(A)| * df(n)))`, where `T` is the total pair count, `df(n)` the number of chunks referencing `n`, and `|referenced(A)|` chunk `A`'s distinct-name count, and relabels the top `associated_top_frac` fraction as `'associated'`, every definer edge of a promoted pair inheriting the label. Only the full-rebuild path computes PMI, so existing labels stand until `chonks index --rebuild-graphs`.
+**PMI-scored `associated` edges (`associated_top_frac`, default `0.02`).** The mentions pass yields a `(chunk, referenced name)` pair for every name a chunk's `_WORD_RE` scan finds among the indexed symbol names, after `cap_mentions_fanout`. `index.graph.refs._classify_mentions` scores each pair corpus-wide as `PMI(A, n) = log2(T / (|referenced(A)| * df(n)))`, where `T` is the total pair count, `df(n)` the number of chunks referencing `n`, and `|referenced(A)|` chunk `A`'s distinct-name count, and relabels the top `associated_top_frac` fraction as `'associated'`, every definer edge of a promoted pair inheriting the label. Only the full-rebuild path computes PMI, so existing labels stand until `chonks index --rebuild-graphs`.
 
-**Typed-edge weighting (`edge_type_weights`).** One top-level config key, every type at 1.0 by default, with two consumers. `repomap.pagerank._compute_pagerank_live` weights its networkx edges by it, so a change lands at the next index run, PageRank being persisted by `persist_pagerank`. In research, `_graph_expand` drops an edge type entirely when its weight is 0 or below and `_apply_structural_boost` multiplies each contributing edge's `seed_cosine` by its weight; both read the weights on every `/research` call through the `research_cfg` plumbing in `server.py` (`_projects[name]["edge_type_weights"]`). `chunk_neighbors` edges have no `edge_type` and are never weighted by this map, unknown or missing keys fall back to 1.0, and `DEFAULT_EDGE_TYPE_WEIGHTS` in `repomap/_shared.py` is the single source of the default.
+**Typed-edge weighting (`edge_type_weights`).** One top-level config key, every type at 1.0 by default, with two consumers. `index.graph.pagerank._compute_pagerank_live` weights its networkx edges by it, so a change lands at the next index run, PageRank being persisted by `persist_pagerank`. In research, `_graph_expand` drops an edge type entirely when its weight is 0 or below and `_apply_structural_boost` multiplies each contributing edge's `seed_cosine` by its weight; both read the weights on every `/research` call through the `research_cfg` plumbing in `chonks/serve/` (`_projects[name]["edge_type_weights"]`). `chunk_neighbors` edges have no `edge_type` and are never weighted by this map, unknown or missing keys fall back to 1.0, and `DEFAULT_EDGE_TYPE_WEIGHTS` in `chonks/core/edges.py` is the single source of the default.
 
 ---
 
-### store.py — Vector Database
+### chonks/storage/ — Vector Database
 
 A sqlite-vec database with int8-quantized embeddings, holding the vector index, the FTS5 keyword index, and the relational chunk and graph metadata in one file with one write path and one transaction boundary.
 
@@ -255,7 +279,7 @@ A sqlite-vec database with int8-quantized embeddings, holding the vector index, 
 
 **File-level metadata.** `chunks.metadata` is open JSON for context not derivable from the content, such as namespace, module, language version, or tags, serialised by `Store.insert_chunks` and deserialised by the search methods through `_row_to_dict`, so callers see a dict or `None`. Today only Python files populate it, with `{"module": "foo.bar.baz"}` from the path.
 
-**Graph accessors.** `chunk_refs(from_id, to_id)` is written by `repomap.build_refs(store)` at the end of every `index_paths()` run that indexed or pruned a file, holding the content-scan edges plus bidirectional cross-language edges between chunks defining the same name in different languages, for example a GDScript call and the C++ method it binds through `ClassDB::bind_method`; a name with more than 8 cross-language definitions (`_MAX_CROSS_LANG_OCCURRENCES`) is skipped. `store.get_all_refs()` returns every edge for the whole-index repomap, `store.get_refs_for_chunks(ids)` the edges of a chunk subset for the scoped repomap, and `store.clear_refs()` and `store.insert_refs()` are the write primitives. `chunk_neighbors(chunk_id, neighbor_id, distance)` holds the top-K semantic neighbours per chunk, K=10 by default. `folder_summaries(path, summary, summary_embedding, content_hash, generated_at)` holds one row per folder, its embedding packed as float32 through `_pack_f32` and `_unpack_f32`; `store.get_folder_embeddings(paths)` bulk-fetches a candidate set, batching the IN clause at 900 to stay under SQLite's variable limit.
+**Graph accessors.** `chunk_refs(from_id, to_id)` is written by `chonks.index.graph.refs.build_refs` at the end of every `index_paths()` run that indexed or pruned a file, holding the content-scan edges plus bidirectional cross-language edges between chunks defining the same name in different languages, for example a GDScript call and the C++ method it binds through `ClassDB::bind_method`; a name with more than 8 cross-language definitions (`_MAX_CROSS_LANG_OCCURRENCES`) is skipped. `store.get_all_refs()` returns every edge for the whole-index repomap, `store.get_refs_for_chunks(ids)` the edges of a chunk subset for the scoped repomap, and `store.clear_refs()` and `store.insert_refs()` are the write primitives. `chunk_neighbors(chunk_id, neighbor_id, distance)` holds the top-K semantic neighbours per chunk, K=10 by default. `folder_summaries(path, summary, summary_embedding, content_hash, generated_at)` holds one row per folder, its embedding packed as float32 through `_pack_f32` and `_unpack_f32`; `store.get_folder_embeddings(paths)` bulk-fetches a candidate set, batching the IN clause at 900 to stay under SQLite's variable limit.
 
 **Path LIKE safety.** Every `path_prefix` passes through `_escape_like()` before it reaches a SQL `LIKE`, paired with `ESCAPE '\\'`, so a prefix containing `%` or `_` cannot match unintended paths.
 
@@ -279,7 +303,7 @@ final_score = α · cosine(query, chunk) + β · cosine(query, folder_summary)
 
 **`file_cap`** oversamples `4 × top_k`, or `max(4, blend oversample) × top_k` alongside `folder_blend`, then admits at most `file_cap` chunks per path while walking the rank-ordered pool. A chunk over its file's cap is skipped and its slot goes to the next chunk in rank order, so top_k backfills with distinct files in unchanged relative order; too few distinct files means fewer than top_k results.
 
-**Query reformulation (`query_reformulate.py`, `search.reformulate_query`).** A rule-based, no-LLM pass pulling identifier-bearing terms, such as a function name in backticks or a path from a stack trace, out of symptom-language query text. The raw query stays verbatim at the front and the extracted terms are capped and appended after it. It is off by default and `search.reformulate_query` is not in `config.example.json`.
+**Query reformulation (`chonks/retrieval/query_reformulate.py`, `search.reformulate_query`).** A rule-based, no-LLM pass pulling identifier-bearing terms, such as a function name in backticks or a path from a stack trace, out of symptom-language query text. The raw query stays verbatim at the front and the extracted terms are capped and appended after it. It is off by default and `search.reformulate_query` is not in `config.example.json`.
 
 **Result format:**
 ````
@@ -319,11 +343,11 @@ Ranks every named symbol by PageRank over the structural reference graph and ren
 
 **Primary path (symbol index present).** `build_repomap` reads symbols from `store.get_all_symbols(path_prefix)`, which surfaces methods folded into whole-class chunks and members merged into trivia runs that never appear as chunk names, and scores them by `compute_pagerank_global`. Output is grouped by file, files ordered by aggregate score. For a DB indexed before the symbol index existed (`store.symbols_count() == 0`), `_build_repomap_from_chunks` reads named-chunk metadata and `chunk_refs`, runs PageRank (α=0.85) live on the in-scope graph, and groups by file the same way. The map renders names and line numbers only, so `get_named_chunks_meta` skips the `content` column, as `compute_pagerank_global` and `build_folder_summaries` do; the content-bearing `get_named_chunks` is for `build_refs`, which scans text.
 
-**Index-time ref computation.** `repomap.build_refs(store)` runs at the end of every `index_paths()` run. It fetches all named chunks, scans each for word-boundary occurrences of other symbols' names, and writes those edges to `chunk_refs` along with the cross-language pairs and the typed edges resolved from the AST metadata. An incremental path updates only the names and chunks a small change batch could have touched, through damaged-row repair and a scoped re-resolve, while the batch is at most 20% of the corpus (`_REFS_INCREMENTAL_MAX_FRACTION`) and a graph exists; bigger batches rebuild fully.
+**Index-time ref computation.** `chonks.index.graph.refs.build_refs` runs at the end of every `index_paths()` run. It fetches all named chunks, scans each for word-boundary occurrences of other symbols' names, and writes those edges to `chunk_refs` along with the cross-language pairs and the typed edges resolved from the AST metadata. An incremental path updates only the names and chunks a small change batch could have touched, through damaged-row repair and a scoped re-resolve, while the batch is at most 20% of the corpus (`_REFS_INCREMENTAL_MAX_FRACTION`) and a graph exists; bigger batches rebuild fully.
 
-**Persisted PageRank.** `persist_pagerank(store, edge_type_weights=...)` runs `_compute_pagerank_live`, a weighted `networkx nx.pagerank`, once at index time and writes the result through `Store.save_pagerank`. It is called from `chunker.index_paths` at the end of every run and always after `--force` or `--rebuild-graphs`. A cumulative-churn gate at 20% of corpus size skips the recompute and reuses the persisted scores, skipped batches accumulating so that staleness stays bounded. `compute_pagerank_global(store)` returns `store.load_pagerank()` when the table is populated and otherwise falls back to a live computation, logging a warning to re-index.
+**Persisted PageRank.** `persist_pagerank(store, edge_type_weights=...)` runs `_compute_pagerank_live`, a weighted `networkx nx.pagerank`, once at index time and writes the result through `Store.save_pagerank`. It is called from `index_paths` in `chonks/index/pipeline.py` at the end of every run and always after `--force` or `--rebuild-graphs`. A cumulative-churn gate at 20% of corpus size skips the recompute and reuses the persisted scores, skipped batches accumulating so that staleness stays bounded. `compute_pagerank_global(store)` returns `store.load_pagerank()` when the table is populated and otherwise falls back to a live computation, logging a warning to re-index.
 
-**Symbol-kind prefixes,** from `_NODE_TYPE_PREFIX`, which maps tree-sitter node types (as stored in `chunk_type`) to display names across the Python, C, C++, HLSL, C#, and JS/TS grammars:
+**Symbol-kind prefixes,** from `_NODE_TYPE_PREFIX`, which maps tree-sitter node types (as stored in `chunk_type`) to display names across the grammars in the [Supported languages](#overview) table:
 
 | tree-sitter node type | display prefix |
 |---|---|
@@ -370,7 +394,7 @@ src/math/Vector.py
 
 ---
 
-### summaries.py — Folder Summary Generation
+### chonks/index/summaries.py — Folder Summary Generation
 
 The index-time generator for `folder_summaries`. For every folder holding indexed files it produces a short structural summary, namely the top-N PageRank-ranked symbols in the folder, the file count, the extension distribution, and the parent path token, embeds it through the same endpoint used for chunks, and persists it. It runs after `build_refs` at the end of every `index_paths()` run. There is no clustering and no LLM summarization.
 
@@ -388,13 +412,13 @@ The top symbols come from `compute_pagerank_global`, ranked against the whole co
 
 **Failure mode.** An unreachable embedding server is logged and indexing continues, since chunks and search work without summaries. Pruning runs before the embed step, so a deleted folder's row does not survive an outage, and a summary that missed regeneration is retried next run, its `content_hash` still not matching.
 
-**Subsystem suggestion (CLI).** `chonks index --suggest-subsystems` calls `summaries.suggest_subsystems(store, distance_threshold=0.30, min_cluster_size=2)`, which clusters the folder embeddings with SciPy's agglomerative clustering under cosine distance, `--subsystem-threshold` overriding the distance. It prints a `{"subsystems": {...}}` JSON snippet with placeholder cluster names, singletons filtered out, ready to rename and paste into `config.json`, and applies nothing itself.
+**Subsystem suggestion (CLI).** `chonks index --suggest-subsystems` calls `suggest_subsystems` in `chonks/ops/subsystems.py` (`suggest_subsystems(store, distance_threshold=0.30, min_cluster_size=2)`), which clusters the folder embeddings with SciPy's agglomerative clustering under cosine distance, `--subsystem-threshold` overriding the distance. It prints a `{"subsystems": {...}}` JSON snippet with placeholder cluster names, singletons filtered out, ready to rename and paste into `config.json`, and applies nothing itself.
 
 One tree level ships today, the per-folder summaries; recursive parent-folder summaries are future work, and the table can already hold those rows.
 
 ---
 
-### server.py — FastAPI HTTP Server
+### chonks/serve/ — FastAPI HTTP Server
 
 Wraps the backend behind the endpoints under [HTTP API](#http-api) and manages the DB connection lifecycle:
 
@@ -418,9 +442,11 @@ It loads `exclude`, `include`, `subsystems`, `codebase`, `search`, `repomap`, an
 }
 ```
 
-Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard.
+Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard. `language_plugins` is not a per-project key at all: the language registry is one process-global object for the whole server, so a `projects[name].language_plugins` entry is refused and logged rather than applied to just that project.
 
 **`--db` resolution order.** `chonks serve --db PATH` takes the config's `db` key when set, and the `--db` flag otherwise, which itself defaults to `.db/chonks.db`. `chonks index`, `chonks doctor`, and `chonks report` go the other way, taking an explicitly passed CLI flag first, then the config key, then the built-in default, since their own `--db` default is `None`. So `--db` is authoritative for `serve` only when the config has no `db` key, or no `--config` is passed.
+
+**Config discovery.** `chonks serve`, `chonks index`, `chonks doctor`, and `chonks report` share one search order when `--config` is absent: `config.json`, then `chonks/config.json`, then `.chonks.json`, all resolved against the working directory. Passing `--config` names one file and turns the search off. Among the search candidates, the first one that parses wins. `chonks doctor` and `chonks report` stop with an error when a config file cannot be read or parsed, while `chonks serve` and `chonks index` log a warning and go on to the next candidate, or to an empty config when there is none. The absolute-`codebase` guard described above applies to `chonks serve` only.
 
 **Team deployment.** `mcp.team.example.json`, a committed `.mcp.json` template using `${VAR}` placeholders, and `chonks-subsystems.example.json`, a shareable `subsystems` map, are the reference pattern for pointing several machines at one shared backend. See [DEPLOY.md](DEPLOY.md).
 
@@ -435,7 +461,7 @@ A Node.js and TypeScript MCP server wrapping the HTTP backend as tools callable 
 
 Base URL: `http://localhost:11438`
 
-There is no authentication, and the server binds loopback by default; see [server.py](#serverpy--fastapi-http-server). Every POST endpoint takes an optional `project: string` field (max 100 characters) selecting a configured project in multi-project mode, defaulting to the default project when omitted and returning 404 for an unknown name.
+There is no authentication, and the server binds loopback by default; see [chonks/serve/](#chonksserve--fastapi-http-server). Every POST endpoint takes an optional `project: string` field (max 100 characters) selecting a configured project in multi-project mode, defaulting to the default project when omitted and returning 404 for an unknown name.
 
 ### GET /
 
@@ -486,7 +512,7 @@ Response: `{ chunks: [...], formatted: "...", count: N, docs_in_results: N, near
 
 `docs_in_results` counts how many returned chunks are text-fallback chunks (docs) rather than AST-tier chunks (code), which lets a caller detect a result set where docs drown out code and retry with `chunk_kind: "code"`.
 
-`files` is a file-level ranking of the returned chunks, produced by `rank_files` in `chonks/searcher.py`, with one `{path, score, n_chunks, best_rank}` entry per distinct file, ordered by best-chunk score descending and then by first appearance ascending. A file's own top-scoring chunk stands in for the whole file.
+`files` is a file-level ranking of the returned chunks, produced by `rank_files` in `chonks/retrieval/results.py`, with one `{path, score, n_chunks, best_rank}` entry per distinct file, ordered by best-chunk score descending and then by first appearance ascending. A file's own top-scoring chunk stands in for the whole file.
 
 `near_dup` flags a near-duplicate wall in the returned set. It is `null` when fewer than 5 vector-bearing chunks are available to evaluate, that is `chunks.length < 5` or too few with a `chunk_vecs` row, and otherwise `{ wall_share: float, wall_size: int, tau: float }`, where `wall_share` is the share of the evaluated chunks held by the largest connected component in a graph with edges at pairwise cosine at or above `tau` (`NEAR_DUP_TAU`, 0.85, with `NEAR_DUP_WALL_SHARE_THRESHOLD` at 0.6). It is an observation only, never changes the ranking, and is capped at the first 50 returned chunks.
 
@@ -668,9 +694,9 @@ Response when not found: `{ "found": false, "error": "...", "used_semantic": boo
 
 The lookup against the literal and message index. Given a runtime message, log line, or error string, it finds the source literal that emitted it, including through format holes: a concrete message such as `"failed to load foo.png: 404"` never appears verbatim in the source, so the endpoint walks each literal's skeleton, in which format holes are collapsed to a sentinel, fragment by fragment against the pasted message. `message` is limited to 2000 characters and `limit` to 1 to 100, default 20.
 
-There are two tiers, direct hits first. In the exact tier the literal's raw text is a substring of the message or vice versa, where a short unshaped literal such as an error code counts only when the message is that literal verbatim, and a multi-line literal also matches on its first line alone. In the skeleton tier a format-hole literal counts when all its constant fragments verify against the message within a bounded gap per hole, prefiltered on its longest constant fragment and ranked by fragment length, with the same first-line fallback; its FTS candidate pool is capped at 20,000 rows ordered by bm25 relevance. Results sharing the same path, line, and text are deduplicated to one hit. The index is populated at index time by AST string-literal extraction (`chunking._collect_literals`) for python, cpp, c, c_sharp, gdscript, javascript, typescript, tsx, and lua.
+There are two tiers, direct hits first. In the exact tier the literal's raw text is a substring of the message or vice versa, where a short unshaped literal such as an error code counts only when the message is that literal verbatim, and a multi-line literal also matches on its first line alone. In the skeleton tier a format-hole literal counts when all its constant fragments verify against the message within a bounded gap per hole, prefiltered on its longest constant fragment and ranked by fragment length, with the same first-line fallback; its FTS candidate pool is capped at 20,000 rows ordered by bm25 relevance. Results sharing the same path, line, and text are deduplicated to one hit. The index is populated at index time by AST string-literal extraction (`chonks/index/refs_extract.py`'s `_collect_literals`) for python, cpp, c, c_sharp, gdscript, hlsl, javascript, typescript, tsx, and lua.
 
-The caps: a template with more than 8 format holes is stored without a skeleton at all, excluded at index time; skeleton verification is skipped for messages over 600 characters; each candidate's verification is bounded by a hard work budget (`_SKELETON_MAX_HOLES`, `_SKELETON_MAX_MESSAGE_LEN`, and `_SKELETON_WORK_BUDGET` in `chonks/store.py`); the substring tier is skipped above 2000 characters; and the token and skeleton candidate query uses only the message's 12 longest significant tokens. When a cap excludes or skips something that would have mattered for a query with few or no results, the response `note` says so.
+The caps: a template with more than 8 format holes is stored without a skeleton at all, excluded at index time; skeleton verification is skipped for messages over 600 characters; each candidate's verification is bounded by a hard work budget (`_SKELETON_MAX_HOLES`, `_SKELETON_MAX_MESSAGE_LEN`, and `_SKELETON_WORK_BUDGET` in `chonks/core/skeleton.py`); the substring tier is skipped above 2000 characters; and the token and skeleton candidate query uses only the message's 12 longest significant tokens. When a cap excludes or skips something that would have mattered for a query with few or no results, the response `note` says so.
 
 Response: `{ "results": [{"path", "line", "chunk_id", "name", "matched_literal", "match_kind": "exact"|"skeleton", "skeleton"?}], "count": N, "truncated": bool, "note"? }`, where `skeleton` is present only when `match_kind` is `"skeleton"`. `note` always explains an empty or truncated result, whether a genuine miss, a truncated set, a degraded token or skeleton tier because the FTS query could not parse the message shape, a skeleton-cap exclusion, or one of two notes for a DB the `literal_index_version` meta flag does not cover: `"index predates literal extraction — run \`chonks index --force <paths>\` ..."` when `chunk_literals` is entirely empty, and `"literal index incomplete — ..."` when it has some rows but the flag is not set, because a partial or incremental run covered only some files. A plain re-index does not populate literals for unchanged files, so `--force` is required there. The flag means every chunk in the DB was produced by literal-aware code, and it is set only at the end of a full or `--force` run, never by a single incremental write.
 
@@ -922,12 +948,12 @@ find_by_message({
 })
 ```
 
-Given a runtime message, log line, or error string, this finds the source literal that emitted it, including through format holes, by matching the message against each literal's hole-collapsed skeleton. It renders one line per hit, as `path:line  [exact|template]  literal  (name)`, verbatim-substring matches before format-hole ones. Against this repository's own index, where `_load_config` in `chonks/server.py` emits `logger.info("Loaded config from %s", path)`:
+Given a runtime message, log line, or error string, this finds the source literal that emitted it, including through format holes, by matching the message against each literal's hole-collapsed skeleton. It renders one line per hit, as `path:line  [exact|template]  literal  (name)`, verbatim-substring matches before format-hole ones. Against this repository's own index, where `main` in `chonks/serve/main.py` and `main` in `chonks/ops/index_cmd.py` each emit `logger.info("Loaded config from %s", loaded.path)`:
 
 ```
 2 match(es):
-chonks/chunker.py:1922  [template]  Loaded config from ␀*  (main)
-chonks/server.py:914  [template]  Loaded config from ␀*  (_load_config)
+chonks/serve/main.py:78  [template]  Loaded config from ␀*  (main)
+chonks/ops/index_cmd.py:163  [template]  Loaded config from ␀*  (main)
 ```
 
 `␀*` marks the collapsed `%s` format hole. A split boundary's pieces each inherit the parent's extracted-literal set, and hits sharing the same path, line, and text are deduplicated to one, preferring whichever sibling chunk's line span contains the literal's line.
@@ -940,7 +966,7 @@ Moved to [DEPLOY.md](DEPLOY.md), together with the backend lifecycle modes, the 
 
 ## Configuration
 
-`uv run chonks init` (see [init.py](#initpy--first-run-setup-wizard)) provides an interactive, scan-informed setup; alternatively `config.example.json` is copied to `config.json` and the paths are filled in by hand. `config.json` is in `.gitignore` so personal paths stay out of source control.
+`uv run chonks init` (see [chonks/ops/init.py](#chonksopsinitpy--first-run-setup-wizard)) provides an interactive, scan-informed setup; alternatively `config.example.json` is copied to `config.json` and the paths are filled in by hand. `config.json` is in `.gitignore` so personal paths stay out of source control.
 
 ```json
 {
@@ -999,7 +1025,7 @@ Moved to [DEPLOY.md](DEPLOY.md), together with the backend lifecycle modes, the 
 
 Subsystem paths must be arrays, even for a single path. There are no hardcoded default excludes in the code; `config.example.json` ships a recommended and editable starting list (`.venv/`, `node_modules/`, `__pycache__/`, `build/`, and others) to copy and curate per project. Excluded directories are pruned out of the filesystem walk as well as filtered file by file; see [Include / exclude paths](#include--exclude-paths).
 
-**Top-level keys** (read by `server.py` and `chunker.py`):
+**Top-level keys** (read by `serve`, `index`, `doctor`, and `report`):
 
 | Key | Default | Description |
 |---|---|---|
@@ -1009,8 +1035,9 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `include` | `[]` | List of path prefixes that override matching excludes when strictly more specific. A pure exception mechanism, not an allowlist; see [Include / exclude paths](#include--exclude-paths). |
 | `subsystems` | `{}` | Named path sets referenced by `@subsystem` prefixes in the MCP server |
 | `macros` | `[]` | Seed C++ engine macro names to pre-blank before parsing (unioned with the auto-discovered, persisted vocabulary) |
-| `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chunking.py`'s `_EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. |
-| `data_blob_size_limit` | `262144` (256KB) | Byte threshold above which a file is skipped instead of chunked. Two families share it: data files (`chunker.DATA_BLOB_EXTENSIONS`, that is `.json`/`.yaml`/`.yml`/`.toml`/`.html`), skipped on size alone; and minified bundles (`chunker.MINIFIED_GUARD_EXTENSIONS`, that is `.js`/`.mjs`/`.cjs`/`.css`), skipped only when oversize *and* line-density says minified. Counted in `data_blob_skipped`, logged at the end of every indexing run. `0` disables the guard. Prose fallback extensions (`.md`, `.markdown`, ...) are never affected. |
+| `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chonks/languages/`'s `EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. |
+| `language_plugins` | `[]` | Dotted module names to import and merge into the language registry as third-party languages; see [Loading a language as a plugin](#loading-a-language-as-a-plugin). Top-level only — not read per-project. Importing a name here runs its module-level code in every `chonks` process that loads this config; see [DEPLOY.md](DEPLOY.md). |
+| `data_blob_size_limit` | `262144` (256KB) | Byte threshold above which a file is skipped instead of chunked. Two families share it: data files (`chonks.index.admission.DATA_BLOB_EXTENSIONS`, that is `.json`/`.yaml`/`.yml`/`.toml`/`.html`), skipped on size alone; and minified bundles (`chonks.index.admission.MINIFIED_GUARD_EXTENSIONS`, that is `.js`/`.mjs`/`.cjs`/`.css`), skipped only when oversize *and* line-density says minified. Counted in `data_blob_skipped`, logged at the end of every indexing run. `0` disables the guard. Prose fallback extensions (`.md`, `.markdown`, ...) are never affected. |
 | `edge_type_weights` | `{"calls": 1.0, "imports": 1.0, "inherits": 1.0, "xlang": 1.0, "associated": 1.0, "mentions": 1.0}` | Per-edge-type weight feeding index-time PageRank (`persist_pagerank`) and `research.py`'s graph expansion and structural boost. All-1.0 reproduces unweighted behaviour exactly; weighting an edge type ≤0 excludes it from research's graph expansion entirely. Overridable per-request on `POST /research`; the MCP `codebase_research` tool's `scope: "explore"` sends a typed-edge-heavy override. |
 | `cap_mentions_fanout` | `false` | When true, `build_refs`' mentions pass skips a referenced name with more than 8 definer chunks entirely, the same skip-the-whole-name rule the xlang and typed passes apply, instead of fanning out to every definer. Takes effect on the next full graph rebuild (`chonks index --rebuild-graphs`). |
 | `associated_top_frac` | `0.02` | Fraction of the mentions pass' (chunk, referenced name) pairs, ranked by pointwise mutual information, relabelled `associated` instead of `mentions`. `0` disables entirely (bit-identical `chunk_refs` to no PMI labeling). Purely a label: the `associated` default in `edge_type_weights` (`1.0`, same as `mentions`) keeps PageRank and research scoring unaffected until they are weighted apart. Only the full-rebuild path applies PMI labeling, so an index's `associated` labels reflect the last full graph build until the next `chonks index --rebuild-graphs`. |
@@ -1021,7 +1048,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `embed_inflight` | `2` | Embedding requests in flight at once (`--embed-inflight`) |
 | `embed_query_token_budget` | `3800` | Per-slot token budget used to truncate an over-long query before embedding; settable globally or per project |
 
-**Search keys** (read by `server.py`, used by `searcher.py`):
+**Search keys** (read by `serve`, used by `searcher.py`):
 
 | Key | Default | Description |
 |---|---|---|
@@ -1030,7 +1057,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `file_cap` | 0 (off) | (semantic only) Cap chunks per path in the returned top_k, backfilling freed slots from the next-ranked chunks of other files. 0 reproduces the uncapped behaviour exactly. Overridable per-request on `POST /search`'s `file_cap` field. |
 | `reformulate_query` | false | Rule-based, no-LLM extraction of identifier-bearing terms from symptom-style query text, appended to the query before embedding. Not set in `config.example.json`; see [searcher.py](#searcherpy--query-processing). |
 
-**Research keys** (read by `server.py`, used by `research.py`):
+**Research keys** (read by `serve`, used by `research.py`):
 
 | Key | Default | Description |
 |---|---|---|

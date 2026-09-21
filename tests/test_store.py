@@ -1,10 +1,13 @@
 """Tests for chunks_fts trigger-based alignment."""
+import json
+import logging
 import sqlite3
 
 import numpy as np
 import pytest
-from chonks.chunking import CODE_LANGUAGES
-from chonks.store import Store, _chunk_kind_clause
+from chonks.languages import CODE_LANGUAGES, language_set
+from chonks.retrieval.graph_queries import find_outgoing, find_usages, get_hubs, get_impact
+from chonks.storage.store import Store, _chunk_kind_clause
 
 
 def _make_store(tmp_path) -> Store:
@@ -393,7 +396,7 @@ def test_find_usages_resolves_via_symbol_index(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c2", "c1"), ("c3", "c1")])
 
-    hits = store.find_usages("applyStep")["results"]
+    hits = find_usages(store, "applyStep")["results"]
     assert {(h["path"], h["chunk_id"]) for h in hits} == {
         ("caller.cpp", "c2"), ("other_caller.cpp", "c3"),
     }
@@ -419,7 +422,7 @@ def test_find_usages_row_provenance_by_edge_type(tmp_path):
         ("c4", "c1", "some_future_edge_type"),
     ])
 
-    hits = {h["chunk_id"]: h["provenance"] for h in store.find_usages("applyStep")["results"]}
+    hits = {h["chunk_id"]: h["provenance"] for h in find_usages(store, "applyStep")["results"]}
     assert hits == {"c2": "extracted", "c3": "inferred", "c4": "inferred"}
 
 
@@ -442,7 +445,7 @@ def test_find_usages_associated_ranks_between_xlang_and_mentions(tmp_path):
         ("c4", "c1", "mentions"),
     ])
 
-    hits = store.find_usages("applyStep")["results"]
+    hits = find_usages(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c2", "c3", "c4"]
     provenance = {h["chunk_id"]: h["provenance"] for h in hits}
     assert provenance["c3"] == "inferred"
@@ -465,7 +468,7 @@ def test_find_usages_unknown_edge_type_falls_back_below_associated(tmp_path):
         ("c3", "c1", "some_future_edge_type"),
     ])
 
-    hits = store.find_usages("applyStep")["results"]
+    hits = find_usages(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c2", "c3"]
 
 
@@ -485,10 +488,10 @@ def test_find_usages_quality_ordering_beats_alphabetical(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c2", "c1", "mentions"), ("c3", "c1", "calls")])
 
-    hits = store.find_usages("applyStep")["results"]
+    hits = find_usages(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c3", "c2"]
 
-    limited = store.find_usages("applyStep", limit=1)["results"]
+    limited = find_usages(store, "applyStep", limit=1)["results"]
     assert [h["chunk_id"] for h in limited] == ["c3"]
 
 
@@ -510,7 +513,7 @@ def test_find_usages_limit_truncation_notes_typed_vs_mentions(tmp_path):
         ("c4", "c1", "mentions"),
     ])
 
-    result = store.find_usages("applyStep", limit=1)
+    result = find_usages(store, "applyStep", limit=1)
     assert [h["chunk_id"] for h in result["results"]] == ["c2"]
     assert result["note"] == \
         "limit=1 truncated 2 result(s): 1 typed, 0 xlang, 0 associated, 1 mentions"
@@ -533,7 +536,7 @@ def test_find_usages_limit_truncation_notes_associated_separately_from_typed(tmp
         ("c3", "c1", "associated"),
     ])
 
-    result = store.find_usages("applyStep", limit=1)
+    result = find_usages(store, "applyStep", limit=1)
     assert [h["chunk_id"] for h in result["results"]] == ["c2"]
     assert result["note"] == \
         "limit=1 truncated 1 result(s): 0 typed, 0 xlang, 1 associated, 0 mentions"
@@ -541,7 +544,7 @@ def test_find_usages_limit_truncation_notes_associated_separately_from_typed(tmp
 
 def test_find_usages_unknown_symbol_returns_empty(tmp_path):
     store = _make_store(tmp_path)
-    result = store.find_usages("doesNotExist")
+    result = find_usages(store, "doesNotExist")
     assert result["results"] == []
     assert result["note"] == "symbol not found"
     assert result["content_matches"] == []
@@ -558,7 +561,7 @@ def test_find_usages_path_prefix_scopes_referencing_chunks(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c2", "c1"), ("c3", "c1")])
 
-    hits = store.find_usages("applyStep", path_prefix="src/")["results"]
+    hits = find_usages(store, "applyStep", path_prefix="src/")["results"]
     assert [h["chunk_id"] for h in hits] == ["c2"]
 
 
@@ -573,7 +576,7 @@ def test_find_usages_limit(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c2", "c1"), ("c3", "c1")])
 
-    hits = store.find_usages("applyStep", limit=1)["results"]
+    hits = find_usages(store, "applyStep", limit=1)["results"]
     assert len(hits) == 1
 
 
@@ -585,7 +588,7 @@ def test_find_usages_qualified_miss_suggests_bare_name(tmp_path):
     store.insert_chunks([_chunk("c1", "manager.cpp", "Manager")], [_fake_embedding()])
     store.insert_symbols([_sym("manager.cpp", "Init", chunk_id="c1")])
 
-    result = store.find_usages("Manager::Init")
+    result = find_usages(store, "Manager::Init")
     assert result["results"] == []
     assert result["note"] == "symbol not found — try the bare name 'Init'"
     assert result["content_matches"] == []
@@ -595,16 +598,16 @@ def test_find_usages_qualified_miss_with_no_bare_match_is_generic(tmp_path):
     """A qualified miss with no resolvable bare name gets the plain note, not
     a suggestion pointing nowhere."""
     store = _make_store(tmp_path)
-    result = store.find_usages("Nope::AlsoNope")
+    result = find_usages(store, "Nope::AlsoNope")
     assert result["note"] == "symbol not found"
 
 
 def test_find_usages_ubiquitous_name_above_cap_notes_and_falls_back_to_fts(tmp_path):
     """build_refs skips edge creation for a name above
-    _MAX_CROSS_LANG_OCCURRENCES (repomap/_shared.py), so find_usages resolves the
+    _MAX_CROSS_LANG_OCCURRENCES (chonks/core/edges.py), so find_usages resolves the
     symbol but walks chunk_refs into nothing. That must be disclosed, not
     indistinguishable from "no callers", and backed by a labeled FTS scan."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
     store = _make_store(tmp_path)
     n = _MAX_CROSS_LANG_OCCURRENCES + 1
     # Definer content deliberately omits "init" literally, so the FTS scan
@@ -622,7 +625,7 @@ def test_find_usages_ubiquitous_name_above_cap_notes_and_falls_back_to_fts(tmp_p
               "end_line": 3, "content": "void run() { init(); }"}
     store.insert_chunks([caller], [_fake_embedding()])
 
-    result = store.find_usages("init")
+    result = find_usages(store, "init")
     assert result["results"] == []
     assert f"{n} definers" in result["note"]
     assert str(_MAX_CROSS_LANG_OCCURRENCES) in result["note"]
@@ -632,7 +635,7 @@ def test_find_usages_ubiquitous_name_above_cap_notes_and_falls_back_to_fts(tmp_p
 
 def test_get_impact_ubiquitous_name_above_cap_gets_note(tmp_path):
     """Same disclosure as find_usages, on the aggregate path."""
-    from chonks.repomap import _MAX_CROSS_LANG_OCCURRENCES
+    from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES
     store = _make_store(tmp_path)
     n = _MAX_CROSS_LANG_OCCURRENCES + 1
     def_chunks = [
@@ -644,7 +647,7 @@ def test_get_impact_ubiquitous_name_above_cap_gets_note(tmp_path):
     store.insert_chunks(def_chunks, [_fake_embedding()] * n)
     store.insert_symbols([_sym(f"def{i}.cpp", "init", chunk_id=f"def{i}") for i in range(n)])
 
-    result = store.get_impact("init")
+    result = get_impact(store, "init")
     assert result["total_references"] == 0
     assert f"{n} definers" in result["note"]
 
@@ -663,7 +666,7 @@ def test_find_outgoing_resolves_via_symbol_index(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c1", "c2"), ("c1", "c3")])
 
-    hits = store.find_outgoing("applyStep")["results"]
+    hits = find_outgoing(store, "applyStep")["results"]
     assert {(h["path"], h["chunk_id"]) for h in hits} == {
         ("helper.cpp", "c2"), ("other.cpp", "c3"),
     }
@@ -689,7 +692,7 @@ def test_find_outgoing_edge_type_collapse_picks_least_uncertain(tmp_path):
     ])
     store.insert_refs([("c1a", "c2", "mentions"), ("c1b", "c2", "calls")])
 
-    hits = {h["chunk_id"]: h["provenance"] for h in store.find_outgoing("applyStep")["results"]}
+    hits = {h["chunk_id"]: h["provenance"] for h in find_outgoing(store, "applyStep")["results"]}
     assert hits == {"c2": "extracted"}
 
 
@@ -711,7 +714,7 @@ def test_find_outgoing_associated_ranks_between_xlang_and_mentions(tmp_path):
         ("src", "c3", "mentions"),
     ])
 
-    hits = store.find_outgoing("applyStep")["results"]
+    hits = find_outgoing(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c1", "c2", "c3"]
     provenance = {h["chunk_id"]: h["provenance"] for h in hits}
     assert provenance["c2"] == "inferred"
@@ -733,7 +736,7 @@ def test_find_outgoing_excludes_definer_set_self_edges(tmp_path):
     ])
     store.insert_refs([("c1", "c2"), ("c1", "c3")])
 
-    hits = store.find_outgoing("applyStep")["results"]
+    hits = find_outgoing(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c3"]
 
 
@@ -748,7 +751,7 @@ def test_find_outgoing_path_prefix_scopes_target_chunks(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c1", "c2"), ("c1", "c3")])
 
-    hits = store.find_outgoing("applyStep", path_prefix="src/")["results"]
+    hits = find_outgoing(store, "applyStep", path_prefix="src/")["results"]
     assert [h["chunk_id"] for h in hits] == ["c2"]
 
 
@@ -763,13 +766,13 @@ def test_find_outgoing_limit(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c1", "c2"), ("c1", "c3")])
 
-    hits = store.find_outgoing("applyStep", limit=1)["results"]
+    hits = find_outgoing(store, "applyStep", limit=1)["results"]
     assert len(hits) == 1
 
 
 def test_find_outgoing_unknown_symbol_returns_empty(tmp_path):
     store = _make_store(tmp_path)
-    result = store.find_outgoing("doesNotExist")
+    result = find_outgoing(store, "doesNotExist")
     assert result["results"] == []
     assert result["note"] == "symbol not found"
 
@@ -787,7 +790,7 @@ def test_find_outgoing_edge_type_field(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c1", "c2", "calls"), ("c1", "c3", "mentions")])
 
-    hits = {h["chunk_id"]: h["edge_type"] for h in store.find_outgoing("applyStep")["results"]}
+    hits = {h["chunk_id"]: h["edge_type"] for h in find_outgoing(store, "applyStep")["results"]}
     assert hits == {"c2": "calls", "c3": "mentions"}
 
 
@@ -805,10 +808,10 @@ def test_find_outgoing_quality_ordering_beats_alphabetical(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c1", "c2", "mentions"), ("c1", "c3", "calls")])
 
-    hits = store.find_outgoing("applyStep")["results"]
+    hits = find_outgoing(store, "applyStep")["results"]
     assert [h["chunk_id"] for h in hits] == ["c3", "c2"]
 
-    limited = store.find_outgoing("applyStep", limit=1)["results"]
+    limited = find_outgoing(store, "applyStep", limit=1)["results"]
     assert [h["chunk_id"] for h in limited] == ["c3"]
 
 
@@ -819,7 +822,7 @@ def test_find_outgoing_resolved_with_no_outgoing_edges_is_valid_empty(tmp_path):
     store.insert_chunks([_chunk("c1", "widget.cpp", "Widget")], [_fake_embedding()])
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
 
-    result = store.find_outgoing("applyStep")
+    result = find_outgoing(store, "applyStep")
     assert result["results"] == []
     assert result["note"] is None
 
@@ -828,7 +831,7 @@ def test_find_outgoing_resolved_with_no_outgoing_edges_is_valid_empty(tmp_path):
 
 def test_get_impact_unknown_symbol_returns_empty_shape(tmp_path):
     store = _make_store(tmp_path)
-    result = store.get_impact("doesNotExist")
+    result = get_impact(store, "doesNotExist")
     assert result == {
         "symbol": "doesNotExist", "definitions": [], "total_references": 0,
         "by_edge_type": {}, "by_provenance": {}, "rank_by": "pagerank_sum",
@@ -852,7 +855,7 @@ def test_get_impact_multiple_definitions_and_edge_types(tmp_path):
     ])
     store.insert_refs([("c2", "c1", "calls"), ("c3", "c1b", "mentions")])
 
-    result = store.get_impact("applyStep")
+    result = get_impact(store, "applyStep")
     assert {(d["path"], d["name"]) for d in result["definitions"]} == {
         ("a.cpp", "Widget"), ("b.cpp", "Gadget"),
     }
@@ -867,7 +870,7 @@ def test_get_impact_multiple_definitions_and_edge_types(tmp_path):
 def test_get_impact_by_provenance_sums_match_by_edge_type(tmp_path):
     """by_provenance's counts, summed, always equal by_edge_type's counts,
     summed: the rollup redistributes, never drops or double-counts."""
-    from chonks.repomap import edge_provenance
+    from chonks.core.edges import edge_provenance
     store = _make_store(tmp_path)
     store.insert_chunks(
         [_chunk("def", "widget.cpp", "Widget"),
@@ -881,7 +884,7 @@ def test_get_impact_by_provenance_sums_match_by_edge_type(tmp_path):
         ("c3", "def", "mentions"), ("c4", "def", "xlang"),
     ])
 
-    result = store.get_impact("applyStep")
+    result = get_impact(store, "applyStep")
     assert sum(result["by_provenance"].values()) == sum(result["by_edge_type"].values())
     expected: dict[str, int] = {}
     for et, n in result["by_edge_type"].items():
@@ -901,7 +904,7 @@ def test_get_impact_path_prefix_scopes_referencing_files(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="c1")])
     store.insert_refs([("c2", "c1"), ("c3", "c1")])
 
-    result = store.get_impact("applyStep", path_prefix="src/")
+    result = get_impact(store, "applyStep", path_prefix="src/")
     assert [f["path"] for f in result["files"]] == ["src/caller.cpp"]
     assert result["total_references"] == 1
 
@@ -921,7 +924,7 @@ def test_get_impact_empty_pagerank_degrades_to_count_desc_path_asc(tmp_path):
     store.insert_refs([("c1", "def"), ("c2", "def"), ("c3", "def")])
     assert store.load_pagerank() == {}
 
-    result = store.get_impact("applyStep")
+    result = get_impact(store, "applyStep")
     assert [f["path"] for f in result["files"]] == ["a.cpp", "z.cpp"]
     assert [f["count"] for f in result["files"]] == [2, 1]
     assert all(f["pagerank_sum"] == 0.0 for f in result["files"])
@@ -939,7 +942,7 @@ def test_get_impact_truncation_and_files_total(tmp_path):
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="def")])
     store.insert_refs([("c1", "def"), ("c2", "def"), ("c3", "def")])
 
-    result = store.get_impact("applyStep", limit=2)
+    result = get_impact(store, "applyStep", limit=2)
     assert result["files_total"] == 3
     assert len(result["files"]) == 2
     # deterministic tie-break (equal pagerank_sum=0, equal count=1) -> path ASC
@@ -959,7 +962,7 @@ def test_get_impact_top_referrers_ranked_by_pagerank_then_start_line(tmp_path):
     store.insert_refs([("r1", "def"), ("r2", "def"), ("r3", "def")])
     # All three referrers tie on pagerank (table empty -> 0.0 each), so the
     # top_referrers tie-break is start_line ASC.
-    result = store.get_impact("applyStep")
+    result = get_impact(store, "applyStep")
     file_ = result["files"][0]
     assert [r["name"] for r in file_["top_referrers"]] == ["second", "third", "first"]
 
@@ -976,7 +979,7 @@ def test_get_impact_top_referrers_capped_at_three(tmp_path):
     )
     store.insert_symbols([_sym("widget.cpp", "applyStep", chunk_id="def")])
     store.insert_refs([("r1", "def"), ("r2", "def"), ("r3", "def"), ("r4", "def")])
-    result = store.get_impact("applyStep")
+    result = get_impact(store, "applyStep")
     assert len(result["files"][0]["top_referrers"]) == 3
     assert result["files"][0]["count"] == 4
 
@@ -999,7 +1002,7 @@ def test_get_hubs_ranks_by_indegree_then_pagerank(tmp_path):
     ])
     store.save_pagerank({"hub": 0.9, "minor": 0.1})
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert [h["path"] for h in result["hubs"]] == ["base.cpp", "util.cpp"]
     assert result["hubs"][0]["in_degree"] == 3
     assert result["hubs"][0]["edge_types"] == {"calls": 2, "inherits": 1}
@@ -1016,7 +1019,7 @@ def test_get_hubs_path_prefix_scopes_hub_chunk_not_referrer(tmp_path):
     )
     store.insert_refs([("r1", "hub_in"), ("r1", "hub_out")])
 
-    result = store.get_hubs(path_prefix="src/")
+    result = get_hubs(store, path_prefix="src/")
     assert [h["path"] for h in result["hubs"]] == ["src/base.cpp"]
 
 
@@ -1029,7 +1032,7 @@ def test_get_hubs_excludes_nameless_chunks(tmp_path):
     )
     store.insert_refs([("r1", "hub"), ("r2", "hub")])
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert result["hubs"] == []
 
 
@@ -1046,7 +1049,7 @@ def test_get_hubs_deterministic_tie_break_path_then_start_line(tmp_path):
     # All three hub candidates tie on in_degree=1 and pagerank=0.0 (unset).
     store.insert_refs([("r1", "z1"), ("r1", "a2"), ("r2", "a1")])
 
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert [(h["path"], h["start_line"]) for h in result["hubs"]] == [
         ("a.cpp", 1), ("a.cpp", 5), ("z.cpp", 1),
     ]
@@ -1058,7 +1061,7 @@ def test_get_hubs_zero_indegree_chunks_excluded(tmp_path):
         [_chunk("lonely", "solo.cpp", "Solo")],
         [_fake_embedding()],
     )
-    result = store.get_hubs()
+    result = get_hubs(store)
     assert result["hubs"] == []
 
 
@@ -1070,7 +1073,7 @@ def test_get_hubs_limit(tmp_path):
         [_fake_embedding()] * 4,
     )
     store.insert_refs([("r1", "h1"), ("r1", "h2"), ("r1", "h3")])
-    result = store.get_hubs(limit=2)
+    result = get_hubs(store, limit=2)
     assert len(result["hubs"]) == 2
 
 
@@ -1078,7 +1081,7 @@ def test_find_symbols_bare_name_matches_qualified(tmp_path):
     """Observed in practice on a large corpus: out-of-line C++ definitions
     store 'Class::method'; a bare 'method' lookup must fall back to
     last-component suffix matching instead of zero-hitting an indexed symbol."""
-    from chonks.store import Store
+    from chonks.storage.store import Store
     store = Store(tmp_path / "t.db")
     try:
         store.insert_symbols([
@@ -1143,7 +1146,7 @@ def test_like_metacharacters_in_path_prefix_dont_leak_scope(tmp_path):
         [_fake_embedding(), _fake_embedding()],
     )
     store.insert_refs([("caller_ab", "c1"), ("caller_x", "c1")])
-    usage_hits = store.find_usages("shared_fn", path_prefix="a_b/")["results"]
+    usage_hits = find_usages(store, "shared_fn", path_prefix="a_b/")["results"]
     assert [h["path"] for h in usage_hits] == ["a_b/caller.cpp"], usage_hits
 
 
@@ -1307,17 +1310,17 @@ def test_get_hubs_global_guard_large_corpus(tmp_path, monkeypatch):
     """Unscoped get_hubs on a large corpus must refuse loudly (measured >10
     min at 385k chunks, store lock held for the whole walk) rather than wedge
     the server; scoped calls stay allowed."""
-    import chonks.store as store_mod
+    import chonks.retrieval.graph_queries as graph_queries
     store = _make_store(tmp_path)
     store.insert_chunks(
         [_chunk("h1", "src/core.cpp", "Core"), _chunk("h2", "src/user.cpp", "use")],
         [_fake_embedding()] * 2,
     )
     store.insert_refs([("h2", "h1", "calls")])
-    monkeypatch.setattr(store_mod, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
+    monkeypatch.setattr(graph_queries, "_HUBS_GLOBAL_MAX_CHUNKS", 1)
     with pytest.raises(ValueError, match="path_prefix"):
-        store.get_hubs()
-    assert store.get_hubs(path_prefix="src")["hubs"]  # scoped branch unaffected
+        get_hubs(store)
+    assert get_hubs(store, path_prefix="src")["hubs"]  # scoped branch unaffected
 
 
 # ---------------------------------------------------------------------------
@@ -1480,3 +1483,93 @@ def test_chunk_kind_code_matches_ast_language_regardless_of_parse_health(tmp_pat
     )
     assert store.search_regex("garbage", chunk_kind="code")
     assert not store.search_regex("garbage", chunk_kind="docs")
+
+
+def test_hub_edge_types_and_collapse_rank_are_shared_with_core_edges():
+    """Guards the chonks.core.edges import: both names must be the same
+    objects as chonks.retrieval.graph_queries reads, not copies."""
+    import chonks.core.edges as edges
+    import chonks.retrieval.graph_queries as store_mod
+    assert edges._HUB_EDGE_TYPES == frozenset(
+        {"calls", "imports", "inherits", "mentions", "xlang", "associated"}
+    )
+    assert edges._COLLAPSE_RANK == {
+        "calls": 0, "imports": 0, "inherits": 0,
+        "xlang": 1,
+        "associated": 2,
+        "mentions": 3,
+    }
+    assert store_mod._HUB_EDGE_TYPES is edges._HUB_EDGE_TYPES
+    assert store_mod._COLLAPSE_RANK is edges._COLLAPSE_RANK
+
+
+def test_batched():
+    from chonks.core.batching import batched
+    assert list(batched([0, 1, 2, 3, 4], 2)) == [[0, 1], [2, 3], [4]]
+    assert list(batched([0, 1, 2, 3], 2)) == [[0, 1], [2, 3]]
+    assert list(batched([], 2)) == []
+
+
+def test_store_open_with_no_language_set_key_logs_nothing(tmp_path, caplog):
+    """Every pre-C2 DB, and every Store built directly as in this test suite,
+    has no language_set row. A missing key is unknown, not a mismatch, and
+    must not warn."""
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        _make_store(tmp_path)
+    assert caplog.records == []
+
+
+def test_store_open_with_matching_language_set_logs_nothing(tmp_path, caplog):
+    store = _make_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps(language_set(), sort_keys=True, separators=(",", ":")),
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert caplog.records == []
+
+
+def test_store_open_with_differing_language_set_logs_one_warning(tmp_path, caplog):
+    store = _make_store(tmp_path)
+    store.set_meta(
+        "language_set",
+        json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":")),
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
+    assert caplog.records[0].name == "chonks.store"
+    assert "language_set" in caplog.records[0].message
+
+
+def test_store_open_with_mixed_language_set_logs_one_warning(tmp_path, caplog):
+    """A `mixed:` value is not JSON and must not be parsed as JSON. It records a
+    DB whose files were chunked under two different language sets, so it is a
+    mismatch and warns."""
+    store = _make_store(tmp_path)
+    current = json.dumps(language_set(), sort_keys=True, separators=(",", ":"))
+    store.set_meta(
+        "language_set",
+        f'mixed: {json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":"))}'
+        f"+{current} (2 unchanged file(s) retain old chunk boundaries)",
+    )
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
+    assert caplog.records[0].name == "chonks.store"
+    assert "language_set" in caplog.records[0].message
+
+
+def test_store_open_with_unparseable_language_set_does_not_raise(tmp_path, caplog):
+    """A corrupt meta row must not stop a query: treat it as differing, warn,
+    but never raise."""
+    store = _make_store(tmp_path)
+    store.set_meta("language_set", "not valid json {{{")
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
