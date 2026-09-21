@@ -4,6 +4,8 @@
 
 Chonks indexes a large codebase into one local SQLite file and serves it to Claude Code, or any MCP harness, as retrieval tools. There is no LLM inside the pipeline. Retrieval is embeddings, BM25, and graph traversal, and the coding agent does the thinking.
 
+The index is built, not live. Re-indexing is explicit and incremental, updating from the changed and deleted chunks, with a full rebuild above 20% churn. Every MCP response carries the index age, so an agent can see how old its answer is. There is no file watcher
+
 Agentic search with grep, glob, and repo maps works well until the codebase outgrows it. A large codebase has tens of thousands of files, coupling that crosses language boundaries, and names that cannot be guessed, so at that scale an agent spends its context window walking directories. Chonks gives it sharper questions to ask:
 
 - "Where is the thing that does X?" Hybrid semantic and keyword search over AST-boundary chunks (`codebase_search`).
@@ -38,7 +40,7 @@ Everything else is skipped. Adding an AST language is one new file under `chonks
 
 ## When not to use it
 
-On a small or mid-sized repo the agent's built-in search is usually enough, and an index that must be refreshed by hand is a liability there. A stale index is worse than no index. Chonks is for a corpus that is too big to walk and stable enough to index. See [When this helps, and when it doesn't](DESIGN.md#when-this-helps-and-when-it-doesnt) before committing to it.
+On a small or mid-sized repo the agent's built-in search is usually enough, and an index that must be refreshed by hand is a liability there. Chonks is for a corpus that is too big to walk and stable enough to index. See [When this helps, and when it doesn't](DESIGN.md#when-this-helps-and-when-it-doesnt) before committing to it.
 
 Reference: [`DOCS.md`](DOCS.md) · Installing, running, serving a team, containers, failure modes: [`DEPLOY.md`](DEPLOY.md) · Design reasoning and measurements: [`DESIGN.md`](DESIGN.md) · Measurement record: [`eval/FREEZES.md`](eval/FREEZES.md) · Literature: [`RELATED.md`](RELATED.md)
 
