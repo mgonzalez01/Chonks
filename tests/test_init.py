@@ -120,7 +120,7 @@ def test_write_config_creates_valid_json(tmp_path):
     config = build_config(codebase="/x", db="d", embed_url="http://h", exclude=[])
     written, msg = write_config(path, config)
     assert written
-    assert json.loads(path.read_text()) == config
+    assert json.loads(path.read_text(encoding="utf-8")) == config
 
 
 def test_write_config_refuses_to_clobber_without_force(tmp_path):
@@ -129,7 +129,7 @@ def test_write_config_refuses_to_clobber_without_force(tmp_path):
     written, msg = write_config(path, {"new": True}, force=False)
     assert not written
     assert "already exists" in msg
-    assert json.loads(path.read_text()) == {"existing": True}
+    assert json.loads(path.read_text(encoding="utf-8")) == {"existing": True}
 
 
 def test_write_config_overwrites_with_force(tmp_path):
@@ -137,7 +137,7 @@ def test_write_config_overwrites_with_force(tmp_path):
     path.write_text('{"existing": true}')
     written, msg = write_config(path, {"new": True}, force=True)
     assert written
-    assert json.loads(path.read_text()) == {"new": True}
+    assert json.loads(path.read_text(encoding="utf-8")) == {"new": True}
 
 
 # ---- render_mcp_json ------------------------------------------------------
@@ -246,7 +246,7 @@ def test_yes_mode_writes_config_with_defaults(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 0
-    config = json.loads(config_path.read_text())
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     assert config["codebase"] == str(codebase)
     assert config["exclude"] == []
 
@@ -263,7 +263,7 @@ def test_yes_mode_auto_exclude_applies_scan_suggestions(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 0
-    config = json.loads(config_path.read_text())
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     assert "node_modules/" in config["exclude"]
 
 
@@ -279,7 +279,7 @@ def test_yes_mode_manual_exclude_flags_used_without_auto_exclude(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 0
-    config = json.loads(config_path.read_text())
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     assert config["exclude"] == ["custom/"]
 
 
@@ -294,7 +294,7 @@ def test_yes_mode_respects_clobber_protection(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 1
-    assert json.loads(config_path.read_text()) == {"existing": True}
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {"existing": True}
 
 
 def test_yes_mode_force_overwrites_existing_config(tmp_path):
@@ -308,7 +308,7 @@ def test_yes_mode_force_overwrites_existing_config(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 0
-    config = json.loads(config_path.read_text())
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     assert config["codebase"] == str(codebase)
 
 
@@ -341,7 +341,7 @@ def test_interactive_flow_writes_config_end_to_end(tmp_path):
         print_fn=lambda *a: lines.append(" ".join(str(x) for x in a)),
     )
     assert rc == 0
-    config = json.loads(config_path.read_text())
+    config = json.loads(config_path.read_text(encoding="utf-8"))
     assert config["codebase"] == str(codebase)
     assert "node_modules/" in config["exclude"]
     assert config["embed_url"] == "http://localhost:11437/v1/embeddings"
@@ -359,7 +359,7 @@ def test_interactive_flow_aborts_on_existing_config_declined(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 1
-    assert json.loads(config_path.read_text()) == {"existing": True}
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {"existing": True}
 
 
 # ---- embed_model: the name selects the prefix preset ----------------------
@@ -380,7 +380,7 @@ def test_noninteractive_embed_model_flag(tmp_path):
         print_fn=lambda *a: None,
     )
     assert rc == 0
-    assert json.loads(config_path.read_text())["embed_model"] == "qwen3-embedding"
+    assert json.loads(config_path.read_text(encoding="utf-8"))["embed_model"] == "qwen3-embedding"
 
 
 def test_ping_embedder_sends_configured_model():

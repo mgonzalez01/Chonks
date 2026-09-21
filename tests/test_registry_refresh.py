@@ -47,7 +47,7 @@ class _ModuleInfo:
     def __init__(self, path: Path):
         self.path = path
         self.name = _module_name(path)
-        self.tree = ast.parse(path.read_text(), filename=str(path))
+        self.tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         self.is_init = path.name == "__init__.py"
         self.assigns: dict[str, ast.expr] = {}
         self.funcdefs: set[str] = set()

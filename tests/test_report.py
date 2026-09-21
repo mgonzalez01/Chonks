@@ -181,7 +181,7 @@ def test_cli_writes_report(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert out_path.exists()
-    text = out_path.read_text()
+    text = out_path.read_text(encoding="utf-8")
     assert text.startswith("# INDEX_REPORT:")
     assert "## Index vitals" in text
 
@@ -196,7 +196,7 @@ def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch):
 
     out_path = tmp_path / "R.md"
     main(["-o", str(out_path)])
-    text = out_path.read_text()
+    text = out_path.read_text(encoding="utf-8")
     assert text.startswith("# INDEX_REPORT:")
     assert "## Index vitals" in text
 

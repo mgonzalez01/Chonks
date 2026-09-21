@@ -63,7 +63,7 @@ def _resolve_relative(current: str, dots: int, tail: str, is_init: bool) -> str:
 def _module_imports(path: Path) -> set[str]:
     mod = _module_name(path)
     is_init = path.name == "__init__.py"
-    tree = ast.parse(path.read_text(), filename=str(path))
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     skip: set[ast.AST] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.If) and _is_type_checking_guard(node):

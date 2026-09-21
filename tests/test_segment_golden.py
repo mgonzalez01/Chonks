@@ -76,13 +76,13 @@ def _case_files() -> list[Path]:
 def _load_cases() -> list[dict]:
     cases = []
     for path in _case_files():
-        cases.extend(json.loads(path.read_text()))
+        cases.extend(json.loads(path.read_text(encoding="utf-8")))
     return cases
 
 
 def regen() -> None:
     for path in _case_files():
-        cases = json.loads(path.read_text())
+        cases = json.loads(path.read_text(encoding="utf-8"))
         for case in cases:
             case["expected"] = build_record(case["source"], case["language"])
         path.write_text(json.dumps(cases, indent=2, sort_keys=True) + "\n")

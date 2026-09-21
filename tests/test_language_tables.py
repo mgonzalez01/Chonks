@@ -20,17 +20,17 @@ def _between_markers(text, name):
 
 
 def test_docs_extensions_table_matches_generator():
-    text = (REPO_ROOT / "DOCS.md").read_text()
+    text = (REPO_ROOT / "DOCS.md").read_text(encoding="utf-8")
     assert _between_markers(text, "language-extensions") == gen_language_tables.extensions_table()
 
 
 def test_docs_boundaries_table_matches_generator():
-    text = (REPO_ROOT / "DOCS.md").read_text()
+    text = (REPO_ROOT / "DOCS.md").read_text(encoding="utf-8")
     assert _between_markers(text, "language-boundaries") == gen_language_tables.boundaries_table()
 
 
 def test_readme_ast_cell_matches_generator():
-    text = (REPO_ROOT / "README.md").read_text()
+    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     line = next(line for line in text.split("\n") if line.startswith("| AST-aware"))
     assert line.split("|")[2].strip() == gen_language_tables.readme_ast_cell()
 
