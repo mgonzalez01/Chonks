@@ -41,7 +41,7 @@ logger = logging.getLogger("chunking")
 # Bump when a change here would alter chunk boundaries for already-indexed
 # content. Provenance only (meta table, doctor.py); nothing reads it back
 # to gate behavior.
-CHUNKER_VERSION = 3
+CHUNKER_VERSION = 4
 
 # Chunk-size constants: CHUNK_TARGET is UTF-8 characters; CHUNK_MIN/MAX are
 # UTF-8 bytes. Don't mix the two when comparing.
