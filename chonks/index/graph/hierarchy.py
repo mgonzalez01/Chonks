@@ -35,16 +35,15 @@ def rebuild_hierarchy(store) -> dict[str, int]:
             d = posixpath.dirname(fp) or "."
             while True:
                 dir_paths.add(d)
-                if d == ".":
-                    break
                 parent = posixpath.dirname(d) or "."
+                # "." for a relative path, "/" for an absolute one.
+                if parent == d:
+                    break
                 d = parent
 
         def _dir_parent_id(d: str) -> str | None:
-            if d == ".":
-                return None
             parent = posixpath.dirname(d) or "."
-            return "dir:" + parent
+            return None if parent == d else "dir:" + parent
 
         dir_rows = [
             ("dir:" + d, "dir", d, _dir_parent_id(d))
