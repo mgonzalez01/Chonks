@@ -13,6 +13,7 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { SERVER_URL } from "./config.js";
+import { buildAllowedHosts, isAllowedHost, localMachineNames } from "./hosts.js";
 import { ensureBackend, shutdownBackend } from "./backend.js";
 import { withStalenessHeader } from "./client.js";
 import { INSTRUCTIONS, TOOLS } from "./contract.js";
@@ -151,33 +152,20 @@ async function main(): Promise<void> {
   console.error(`[chonks-mcp] ready (backend: ${SERVER_URL})`);
 }
 
-// DNS-rebinding allowlist: loopback names always accepted, plus bind host
-// and CHONKS_MCP_ALLOWED_HOSTS for LAN binds.
-function buildAllowedHosts(port: number): string[] {
-  const names = new Set<string>(["127.0.0.1", "localhost"]);
-  if (HTTP_HOST !== "0.0.0.0") names.add(HTTP_HOST);
-  const extra = (process.env.CHONKS_MCP_ALLOWED_HOSTS ?? "")
-    .split(",").map((s) => s.trim()).filter(Boolean);
-  for (const name of extra) names.add(name);
-  const hosts: string[] = [];
-  for (const name of names) {
-    hosts.push(name, `${name}:${port}`);
-  }
-  return hosts;
-}
-
 async function startHttp(port: number): Promise<void> {
   if (!LOOPBACK_HOSTS.has(HTTP_HOST)) {
     console.error(
       `[chonks-mcp] WARNING: HTTP mode bound to ${HTTP_HOST} with no authentication. ` +
       "Anyone who can reach this port can query the index. Trusted networks only.");
-    if (!process.env.CHONKS_MCP_ALLOWED_HOSTS) {
-      console.error(
-        "[chonks-mcp] WARNING: Host header validation only accepts loopback names. " +
-        "Set CHONKS_MCP_ALLOWED_HOSTS to the hostname or IP clients will use, or requests will be rejected.");
-    }
   }
-  const allowedHosts = buildAllowedHosts(port);
+  const allowedHosts = buildAllowedHosts({
+    port,
+    bindHost: HTTP_HOST,
+    extra: (process.env.CHONKS_MCP_ALLOWED_HOSTS ?? "").split(","),
+    machineNames: localMachineNames(),
+  });
+  console.error(
+    `[chonks-mcp] accepted Host names: ${[...allowedHosts].filter((h) => !h.endsWith(`:${port}`)).join(", ")}`);
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     if (url.pathname === "/healthz") {
@@ -189,11 +177,21 @@ async function startHttp(port: number): Promise<void> {
       res.writeHead(404).end();
       return;
     }
+    // 421, not 403: Claude Code reads a 403 as an OAuth challenge and caches
+    // the server as needing authentication.
+    if (!isAllowedHost(req.headers.host, allowedHosts)) {
+      const msg = `Host '${req.headers.host ?? ""}' is not allowed. ` +
+        "Add it to CHONKS_MCP_ALLOWED_HOSTS on the Chonks host.";
+      console.error(`[chonks-mcp] rejected request: ${msg}`);
+      res.writeHead(421, { "content-type": "application/json" });
+      res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: msg }, id: null }));
+      return;
+    }
+    // The SDK's Node adapter rejects a Host whose case differs from the parsed URL's.
+    req.headers.host = req.headers.host!.toLowerCase();
     const server = buildServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
-      enableDnsRebindingProtection: true,
-      allowedHosts,
     });
     res.on("close", () => {
       transport.close().catch(() => {});

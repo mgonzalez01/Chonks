@@ -9,7 +9,7 @@
     claude mcp add --transport http chonks http://<this-host>:11439/mcp
 
   This script:
-    1. builds mcp-server\dist if missing (needs node >= 18)
+    1. builds mcp-server\dist if missing or older than its sources (needs node >= 18)
     2. starts the MCP proxy on 0.0.0.0:<Port>; the proxy spawns the Python
        backend on 127.0.0.1:11438 itself (managed mode) and restarts it if it dies.
 
@@ -51,7 +51,15 @@ if (-not (Test-Path $Db)) { throw "DB not found: $Db — index first (uv run cho
 $Db = (Resolve-Path $Db).Path
 $ConfigAbs = if (Test-Path $Config) { (Resolve-Path $Config).Path } else { "" }
 
-if (-not (Test-Path "mcp-server\dist\index.js")) {
+# Rebuild when missing or older than its sources, so a pulled fix is not served from a stale build.
+$dist = "mcp-server\dist\index.js"
+$stale = -not (Test-Path $dist)
+if (-not $stale) {
+  $built = (Get-Item $dist).LastWriteTime
+  $stale = [bool](Get-ChildItem "mcp-server\src", "mcp-server\package-lock.json" -Recurse -File |
+    Where-Object { $_.LastWriteTime -gt $built } | Select-Object -First 1)
+}
+if ($stale) {
   Write-Host "[host] building mcp-server ..."
   Push-Location mcp-server
   npm install --no-audit --no-fund | Out-Null
@@ -80,10 +88,6 @@ if ($LlamaServer) {
 
 $env:CHONKS_MCP_HTTP_PORT = "$Port"
 $env:CHONKS_MCP_HOST      = $BindHost
-# Host-header allowlist for the adapter. Default to this machine's hostname, which is
-# the name the printed `claude mcp add` line uses; set CHONKS_MCP_ALLOWED_HOSTS yourself
-# to add an IP or a second name.
-if (-not $env:CHONKS_MCP_ALLOWED_HOSTS) { $env:CHONKS_MCP_ALLOWED_HOSTS = [System.Net.Dns]::GetHostName() }
 $env:CHONKS_URL           = "http://127.0.0.1:11438"
 $env:CHONKS_SERVER_PY     = (Join-Path $Root "chonks\server.py")
 $env:CHONKS_DB            = $Db

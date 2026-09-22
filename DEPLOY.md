@@ -122,7 +122,7 @@ uv run chonks index C:\src --db C:\src\.db\chonks.db --config .\config.json
 
 The host script builds the proxy on first run, starts the proxy and the backend, restarts the backend if it dies, and prints the `claude mcp add` line for the other machines. It binds `0.0.0.0` because its purpose is to serve other machines, and since there is no authentication it must run only on a trusted network. The firewall needs to allow the port.
 
-The proxy checks the `Host` header of every request. It accepts its own hostname and the loopback names, and the host scripts set that default for it. If other machines reach it by an IP address or by a different name, list those in `CHONKS_MCP_ALLOWED_HOSTS`, comma-separated, before starting the script.
+The proxy checks the `Host` header of every request, ignoring case. It accepts the loopback names, this machine's hostname in full and short form, and its network addresses, and prints the list at startup. A client that reaches it by any other name, such as a DNS alias, needs that name in `CHONKS_MCP_ALLOWED_HOSTS`, comma-separated, before starting the script. A rejected request gets HTTP 421 with a message naming the host, and the proxy logs it.
 
 The window must stay open, since it is the service. To survive logout and reboot, register it as a scheduled task; section 9 gives a Windows example.
 
@@ -309,7 +309,7 @@ The compose file builds two images from the Dockerfile, `--target backend` for t
 docker compose up -d
 ```
 
-Only the MCP proxy is published, and by default only on 127.0.0.1. `CHONKS_MCP_BIND=0.0.0.0` in `.env` publishes it to the LAN. Inside the container the proxy accepts only loopback names by default, so for a LAN deployment `CHONKS_MCP_ALLOWED_HOSTS` in `.env` must list the hostname or IP address the other machines will use.
+Only the MCP proxy is published, and by default only on 127.0.0.1. `CHONKS_MCP_BIND=0.0.0.0` in `.env` publishes it to the LAN. Inside the container the proxy's own hostname and addresses are the container's, not the host machine's, so for a LAN deployment `CHONKS_MCP_ALLOWED_HOSTS` in `.env` must list the hostname or IP address the other machines will use.
 
 Forgetting the DB does not fail. `serve` creates a valid empty one and the stack reports healthy, so `/status` should be checked for `"never_indexed": true` and `chunks: 0`. The host scripts refuse to start on a missing DB; only the raw `serve` and container paths have this trap.
 
@@ -337,6 +337,8 @@ EMBED ERROR src/core/crc.cpp:12: ...   # only if a chunk fails even at the floor
 The `isolating` line is a recovery, and its truncations are silent apart from the summary's `batch_failures` and `truncated` counts. `EMBED ERROR` means the chunk was skipped, either because it failed even at the floor or because of an error truncation cannot fix. Repeated `EMBED ERROR` lines with `httpx.ConnectError` or similar mean the embedding server is probably down and should be restarted before the index continues.
 
 The end-of-run summary reports `chunks_per_s` and four counts: `batch_failures`, the batches that hit the bisection retry; `oversize_chunks` and `oversize_files`, the chunks over `CHUNK_MAX` that the chunker byte-split, which come from long-line or data files and in quantity mean that `CHUNK_MAX` is too tight or that those files should be excluded; `truncated`, the chunks whose embedding came from a shrunk-input retry; and `errors`, the chunks dropped entirely. If `batch_failures` or `truncated` is a non-trivial fraction of the run, the per-slot context budget is too tight: raise `--ctx-size`, lower `--parallel`, since each slot gets `--ctx-size / --parallel` tokens, or lower `CHUNK_MAX`. A larger `embed_batch` raises the cost of each failure, so fix the budget before raising the batch.
+
+**A client shows `chonks` as needing authentication.** Chonks has no authentication, so the prompt cannot succeed. Proxy builds before the 421 change answered a rejected `Host` header with 403, which Claude Code takes as an OAuth challenge: it attempts client registration, fails with a 404, and records the server in `~/.claude/mcp-needs-auth-cache.json` under its name. `claude mcp remove` and a new `claude mcp add` do not clear that record. Update and restart the host, which rebuilds the proxy, then on each affected client delete the `chonks` entry from that file and restart Claude Code.
 
 **An auto-discovered config with an absolute `codebase` is ignored.** `resolve_codebase` in `chonks/core/config.py`, called by `serve` only, rejects an absolute `codebase` path from a config file it auto-discovered, that is, the cwd's `config.json`, `.chonks.json`, or `chonks/config.json` — the same search list shared by `serve`, `index`, `doctor`, and `report` — since a config dropped there could otherwise scope the `/index` endpoint to arbitrary locations. Passing `--config <path>` explicitly makes it an opt-in, and relative paths are always honoured, resolved against the cwd.
 

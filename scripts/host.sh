@@ -21,12 +21,11 @@ done
 for t in node uv; do command -v "$t" >/dev/null || { echo "$t not found on PATH" >&2; exit 1; }; done
 [[ -f "$DB" ]] || { echo "DB not found: $DB — index first" >&2; exit 1; }
 DB="$(cd "$(dirname "$DB")" && pwd)/$(basename "$DB")"
-[[ -f mcp-server/dist/index.js ]] || (cd mcp-server && npm install --no-audit --no-fund >/dev/null && npm run build >/dev/null)
+# Rebuild when missing or older than its sources, so a pulled fix is not served from a stale build.
+if [[ ! -f mcp-server/dist/index.js || -n "$(find mcp-server/src mcp-server/package-lock.json -newer mcp-server/dist/index.js | head -1)" ]]; then
+  (cd mcp-server && npm install --no-audit --no-fund >/dev/null && npm run build >/dev/null)
+fi
 export CHONKS_MCP_HTTP_PORT="$PORT" CHONKS_MCP_HOST="$BIND"
-# Host-header allowlist for the adapter. Default to this machine's hostname, which is
-# the name the printed `claude mcp add` line uses; set CHONKS_MCP_ALLOWED_HOSTS yourself
-# to add an IP or a second name.
-export CHONKS_MCP_ALLOWED_HOSTS="${CHONKS_MCP_ALLOWED_HOSTS:-$(hostname)}"
 export CHONKS_URL="http://127.0.0.1:11438" CHONKS_SERVER_PY="$ROOT/chonks/server.py" CHONKS_DB="$DB" CHONKS_PY_CMD="uv run python"
 [[ -f "$CONFIG" ]] && export CHONKS_CONFIG="$(cd "$(dirname "$CONFIG")" && pwd)/$(basename "$CONFIG")"
 embedder_up() { curl -sf -m 2 "http://127.0.0.1:$EMBED_PORT/health" >/dev/null; }
