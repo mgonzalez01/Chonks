@@ -138,6 +138,14 @@ def template_inner_name(node: Node, src: bytes) -> str | None:
     return None
 
 
+def namespace_body_name(node: Node, src: bytes) -> str | None:
+    """A namespace body chunked on its own is named by its namespace."""
+    parent = node.parent
+    if parent is not None and parent.type == "namespace_definition":
+        return namespace_name(parent, src)
+    return None
+
+
 def arrow_var_name(node: Node, src: bytes) -> str | None:
     # Boundary is the whole declaration statement (`is_arrow_var_decl`); name
     # lives on the variable_declarator whose value is the function.

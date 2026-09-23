@@ -95,6 +95,14 @@ def test_validate_missing_kind_label():
         languages.Registry((unlabeled,))
 
 
+@pytest.mark.parametrize("spec", languages._discover(), ids=lambda spec: spec.name)
+def test_every_boundary_and_container_has_a_name_rule(spec):
+    # Both become chunks, and a chunk is named only through a name rule.
+    named = {t for rule in spec.name_rules for t in rule.types}
+    unnamed = (spec.boundary_nodes | spec.container_nodes) - named
+    assert not unnamed, f"{spec.name}: {sorted(unnamed)} have no name rule"
+
+
 def test_describe_has_one_row_per_spec():
     rows = languages.describe()
     assert [row["name"] for row in rows] == [s.name for s in languages.REGISTRY.specs]

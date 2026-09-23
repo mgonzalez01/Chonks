@@ -4,7 +4,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ._ast import name_last_or_text, name_strip_angle_brackets, name_text, terminal_identifier
-from ._naming import cpp_function_declarator_name, namespace_name, tag_specifier_name, template_inner_name
+from ._naming import (
+    cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
+    template_inner_name,
+)
 from .spec import (
     ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED,
 )
@@ -48,7 +51,7 @@ BASES = Children((
 CPP = LanguageSpec(
     name="cpp",
     grammar="cpp",
-    version="2",
+    version="3",
     display_name="C++",
     # .h stays on "cpp" not "c": remapping would churn boundaries across
     # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
@@ -67,6 +70,7 @@ CPP = LanguageSpec(
         NameRule(("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"),
                  tag_specifier_name),
         NameRule(("namespace_definition",), namespace_name),
+        NameRule(("declaration_list",), namespace_body_name),
         NameRule(("template_declaration",), template_inner_name),
     ),
     kind_labels={

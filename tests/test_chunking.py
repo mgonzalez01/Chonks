@@ -2,6 +2,8 @@
 noise tables and giant single lines, and named-method preservation."""
 from pathlib import Path
 
+import pytest
+
 from chonks.index.rows import _chunk_id
 from chonks.index.macro_heal import _blank_macros
 from chonks.index.segment import segment_file, CHUNK_MAX
@@ -1860,6 +1862,24 @@ struct V {
     names = {s["name"] for s in _collect_symbols_from_root(root, "c_sharp", src)}
     assert names == {"V", "operator+", "operator==", "operator-",
                      "operator int", "operator Foo.Bar"}, names
+
+
+@pytest.mark.parametrize("src,name", [
+    (b"namespace render {\nint draw_count();\nextern int frame_index;\n}\n", "render"),
+    (b"namespace render::detail {\nconstexpr int kMax = 4;\n}\n", "render::detail"),
+    (b"namespace a {\nnamespace b {\nint x;\n}\n}\n", "b"),
+    (b"namespace {\nint hidden;\n}\n", None),
+    (b'extern "C" {\nint c_api();\n}\n', None),
+], ids=["plain", "qualified", "nested", "anonymous", "extern-c"])
+def test_cpp_namespace_body_chunk_takes_the_namespace_name(src, name):
+    chunks = segment_file(src, "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("declaration_list", name)]
+
+
+def test_c_sharp_namespace_chunk_is_named():
+    src = b"namespace Game.Events\n{\n    public delegate void Hit(int damage);\n}\n"
+    chunks = segment_file(src, "c_sharp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("namespace_declaration", "Game.Events")]
 
 
 def test_cpp_names_look_through_pointer_reference_and_cast_declarators():
