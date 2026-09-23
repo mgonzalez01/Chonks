@@ -139,7 +139,9 @@ export const TOOLS = [
       "codebase_search for this because it resolves against a decoupled symbol index, so it " +
       "still finds a method folded into a merged chunk that text search wouldn't surface by " +
       "name. Exact-name (or prefix) lookup covering every named boundary (functions, methods, " +
-      "classes, structs). Returns path:line definition sites. Boundary-only scope: " +
+      "classes, structs). Returns path:line definition sites; a C++ type the index only " +
+      "forward-declares (e.g. from an external SDK) returns its declarations, marked " +
+      "(forward_declaration). Boundary-only scope: " +
       "member fields, local variables, and other non-boundary names are NOT indexed here — " +
       "a miss on one of those is expected, not a tool failure; use codebase_search mode=fts " +
       "instead (it searches chunk content). Use find_symbol when you know a function/class " +
@@ -181,8 +183,9 @@ export const TOOLS = [
       "row. A zero-result response is not necessarily \"no callers\": qualified names " +
       "(Foo::Bar) that miss exact " +
       "resolution and names indexed above the edge cap both render as empty with a `note` " +
-      "explaining why, and the above-cap case includes labeled FTS content-scan matches " +
-      "(not graph edges) as a fallback. Edges carry a provenance label: extracted (AST " +
+      "explaining why; the above-cap case and a type that is only forward-declared both " +
+      "include labeled FTS content-scan matches (whole-word, not graph edges) as a " +
+      "fallback. Edges carry a provenance label: extracted (AST " +
       "fact — note: name-resolved, ambiguous names fan out to every definer), inferred " +
       "(name co-occurrence / embedding similarity), paired (cross-language name match). " +
       "List mode's per-usage `provenance` and aggregate mode's `by_provenance` rollup " +

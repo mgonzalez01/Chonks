@@ -50,3 +50,22 @@ def name_call_target(n: Node, src: bytes) -> str | None:
 
 def name_strip_angle_brackets(n: Node, src: bytes) -> str:
     return name_text(n, src).strip("<>")
+
+
+def has_body(node: Node, src: bytes) -> bool:
+    return node.child_by_field_name("body") is not None
+
+
+def is_forward_declaration(node: Node, src: bytes) -> bool:
+    """`struct X;` on its own. `struct stat st;` and `struct X *f();` are
+    uses of the type, not declarations of it."""
+    nxt = node.next_sibling
+    return not has_body(node, src) and nxt is not None and nxt.type == ";"
+
+
+def is_opaque_typedef(node: Node, src: bytes) -> bool:
+    """`typedef struct X X;`: names a type whose layout is defined elsewhere."""
+    target = node.child_by_field_name("type")
+    return (target is not None and target.type in ("struct_specifier", "class_specifier",
+                                                   "union_specifier")
+            and not has_body(target, src))

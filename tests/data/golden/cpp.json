@@ -6029,13 +6029,6 @@
             "language": "cpp",
             "name": "get_id",
             "start_line": 3
-          },
-          {
-            "end_line": 1,
-            "kind": "class_specifier",
-            "language": "cpp",
-            "name": "RenderingDevice",
-            "start_line": 1
           }
         ]
       },
@@ -6056,18 +6049,18 @@
           "start_line": 1
         },
         {
-          "chunk_type": "class_specifier",
-          "content": "class RenderingDevice\nRID get_id() const { return id; }\n;",
+          "chunk_type": "function_definition",
+          "content": "RID get_id() const { return id; }\n;",
           "end_line": 4,
           "literals": [],
-          "name": "RenderingDevice",
+          "name": "get_id",
           "refs": {
             "calls": [],
             "imports": [],
             "inherits": [],
             "literals": []
           },
-          "start_line": 1
+          "start_line": 3
         }
       ],
       "symbols": [
@@ -6077,13 +6070,6 @@
           "language": "cpp",
           "name": "get_id",
           "start_line": 3
-        },
-        {
-          "end_line": 1,
-          "kind": "class_specifier",
-          "language": "cpp",
-          "name": "RenderingDevice",
-          "start_line": 1
         }
       ]
     },
@@ -6324,13 +6310,6 @@
             "language": "cpp",
             "name": "run",
             "start_line": 3
-          },
-          {
-            "end_line": 1,
-            "kind": "class_specifier",
-            "language": "cpp",
-            "name": "Broken",
-            "start_line": 1
           }
         ]
       },
@@ -6376,11 +6355,11 @@
           "start_line": 1
         },
         {
-          "chunk_type": "class_specifier",
-          "content": "class Broken\nvoid run() { do_thing(); }\n;",
+          "chunk_type": "function_definition",
+          "content": "void run() { do_thing(); }\n;",
           "end_line": 4,
           "literals": [],
-          "name": "Broken",
+          "name": "run",
           "refs": {
             "calls": [
               {
@@ -6393,7 +6372,7 @@
             "inherits": [],
             "literals": []
           },
-          "start_line": 1
+          "start_line": 3
         }
       ],
       "symbols": [
@@ -6403,13 +6382,6 @@
           "language": "cpp",
           "name": "run",
           "start_line": 3
-        },
-        {
-          "end_line": 1,
-          "kind": "class_specifier",
-          "language": "cpp",
-          "name": "Broken",
-          "start_line": 1
         }
       ]
     },
@@ -6608,13 +6580,6 @@
           "language": "cpp",
           "name": "Tick",
           "start_line": 4
-        },
-        {
-          "end_line": 2,
-          "kind": "class_specifier",
-          "language": "cpp",
-          "name": "MYGAME_API",
-          "start_line": 2
         }
       ]
     },

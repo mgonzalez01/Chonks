@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from chonks.core.refresh import register_refresh
+from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
@@ -189,6 +190,11 @@ def repomap(req: RepomapRequest) -> JSONResponse:
     return JSONResponse({"map": map_text})
 
 
+_FORWARD_ONLY_NOTE = (
+    "only forward declarations match: the definition is outside the indexed code"
+)
+
+
 @app.post("/symbol")
 def symbol(req: SymbolRequest) -> JSONResponse:
     """Exact-name (or prefix) lookup against the decoupled symbol index; see
@@ -205,6 +211,8 @@ def symbol(req: SymbolRequest) -> JSONResponse:
             "functions/classes/named AST boundaries; fields and locals live in "
             "chunk content, try codebase_search mode=fts"
         )
+    elif all(r["kind"] == FORWARD_DECLARATION for r in rows):
+        note = _FORWARD_ONLY_NOTE
     return JSONResponse({"symbols": rows, "count": len(rows), "note": note})
 
 
@@ -310,7 +318,9 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
         },
         "impact": impact_result,
         "notes": {
-            "definitions": None,
+            "definitions": (_FORWARD_ONLY_NOTE
+                            if all(d["kind"] == FORWARD_DECLARATION for d in definitions)
+                            else None),
             "usages": usages_result["note"],
             "outgoing": outgoing_result["note"],
             "impact": impact_result["note"],

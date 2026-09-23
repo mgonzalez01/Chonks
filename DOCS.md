@@ -580,9 +580,9 @@ Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\
 }
 ```
 
-An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
+An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. It also holds C++ forward declarations (`class X;`, `struct X;`, `typedef struct X X;`) with `kind` `forward_declaration`, which are returned only for a name nothing in the index defines, such as a type from an external SDK; a name that is defined returns its definitions alone. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
 
-Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N }`, with an empty list rather than an error when the name has no match.
+Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N, "note" }`, with an empty list rather than an error when the name has no match. `note` explains a miss, or that only forward declarations matched.
 
 ### POST /usages
 
@@ -596,7 +596,7 @@ Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end
 
 The counterpart to `/symbol`. It resolves `name` to its defining chunk ids through the same symbol-index lookup and walks `chunk_refs` backwards to every chunk that references it, across files and languages. `name` is limited to 2000 characters, `path_prefix` (500 characters) scopes the referencing chunks, not the definition, and `limit` (1 to 1000) caps the returned rows.
 
-Response: `{ "usages": [{"chunk_id", "path", "name", "chunk_type", "start_line", "end_line", "edge_type", "provenance"}], "count": N }`, sorted by `(edge-quality rank, path, start_line)`, in which the typed edges (`calls`, `imports`, `inherits`) come before `xlang`, then `associated`, then `mentions`, according to the module-level `_COLLAPSE_RANK` shared with `find_outgoing`. `limit` applies after that sort, so it keeps the highest-signal edges, and when it truncates, `note` reports the omitted rows split by typed, xlang, associated, and mentions, each counted independently. `edge_type` carries the collapsed type behind each row's `provenance`. An empty list rather than an error is returned when the name has no match or no incoming references.
+Response: `{ "usages": [{"chunk_id", "path", "name", "chunk_type", "start_line", "end_line", "edge_type", "provenance"}], "count": N }`, sorted by `(edge-quality rank, path, start_line)`, in which the typed edges (`calls`, `imports`, `inherits`) come before `xlang`, then `associated`, then `mentions`, according to the module-level `_COLLAPSE_RANK` shared with `find_outgoing`. `limit` applies after that sort, so it keeps the highest-signal edges, and when it truncates, `note` reports the omitted rows split by typed, xlang, associated, and mentions, each counted independently. `edge_type` carries the collapsed type behind each row's `provenance`. An empty list rather than an error is returned when the name has no match or no incoming references. Two cases have no reference edges to walk, and both return `content_matches` instead, chunks whose content contains `name` as a whole word, each with `origin: "fts_scan"`: a name with more definers than the edge-indexing cap, and a name that is only forward-declared. They are text matches, not graph edges, and `note` says which case applies.
 
 ### POST /outgoing
 
@@ -876,12 +876,11 @@ find_symbol({
 An exact-name, or prefix, lookup against the decoupled symbol index. It returns `path:line` definition sites, including the methods of a folded small class and the members of a merged chunk that `codebase_search` and `codebase_map` do not surface by name. Use it when the symbol name is known; `codebase_search` is for concept or fuzzy queries.
 
 ```
-2 match(es):
+1 match(es):
 RenderingDevice  servers/rendering/rendering_device.h:67  (class_specifier)
-RenderingDevice  servers/rendering/rendering_server.h:62  (class_specifier)
 ```
 
-Both the class definition (`rendering_device.h:67`, a specifier too large to chunk whole) and a forward declaration come back.
+The class definition comes back, a specifier too large to chunk whole. The forward declaration at `rendering_server.h:62` does not, because the name has a definition; forward declarations answer only a name nothing defines, marked `(forward_declaration)`.
 
 ### Tool: find_usages
 

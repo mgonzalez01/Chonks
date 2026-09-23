@@ -90,6 +90,7 @@ class LanguageSpec:
     salvage_nodes: frozenset[str] = frozenset()
     salvage_extra: NodePred | None = None  # checked before salvage_nodes
     boundary_filters: Mapping[str, NodePred] = field(default_factory=dict)
+    forward_declarations: Mapping[str, NodePred] = field(default_factory=dict)
     extra_boundary: NodePred | None = None
     synthetic_chunk_type: NameFn | None = None
     name_rules: tuple[NameRule, ...] = ()

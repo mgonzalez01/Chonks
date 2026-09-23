@@ -1876,6 +1876,44 @@ def test_cpp_namespace_body_chunk_takes_the_namespace_name(src, name):
     assert [(c["chunk_type"], c["name"]) for c in chunks] == [("declaration_list", name)]
 
 
+@pytest.mark.parametrize("src,symbols", [
+    (b"class Node;\n", [("forward_declaration", "Node")]),
+    (b"struct Opaque;\n", [("forward_declaration", "Opaque")]),
+    (b"struct Foo *make_foo();\n", []),
+    (b"struct stat st;\n", []),
+    (b"typedef struct Foo Foo;\n", [("forward_declaration", "Foo")]),
+    (b"typedef struct _FcConfig FcConfig;\n", [("forward_declaration", "FcConfig")]),
+    (b"typedef int Id;\n", []),
+    (b"template <class T> class Vec;\n", [("forward_declaration", "Vec")]),
+    (b"class A {\n  friend class B;\n  class Inner;\n};\n",
+     [("class_specifier", "A"), ("forward_declaration", "Inner")]),
+    (b"class GODOT_API Node;\n", []),
+    (b"class Node {\n  int x;\n};\n", [("class_specifier", "Node")]),
+    (b"struct P { int x; } p;\n", [("struct_specifier", "P")]),
+    (b"template <class T> class Vec {\n  T* data;\n};\n",
+     [("template_declaration", "Vec"), ("class_specifier", "Vec")]),
+], ids=["fwd-class", "fwd-struct", "elaborated-return", "elaborated-var", "opaque-typedef",
+        "opaque-typedef-alias", "plain-typedef", "fwd-template", "nested-fwd-not-friend", "unhealed-macro-fwd", "class",
+        "struct-with-declarator", "template-class"])
+def test_cpp_only_a_class_with_a_body_is_a_definition(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    root = get_parser("cpp").parse(src).root_node
+    got = [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "cpp", src)]
+    assert sorted(got) == sorted(symbols)
+
+
+def test_cpp_anonymous_struct_with_a_body_stays_a_boundary():
+    chunks = segment_file(b"struct { int x; } s;\n", "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("struct_specifier", None)]
+
+
+def test_cpp_forward_declaration_does_not_name_the_chunk_around_it():
+    src = b"namespace render {\nint draw_count();\nextern int frame_index;\nstruct Opaque;\n}\n"
+    chunks = segment_file(src, "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("declaration_list", "render")]
+
+
 def test_c_sharp_namespace_chunk_is_named():
     src = b"namespace Game.Events\n{\n    public delegate void Hit(int damage);\n}\n"
     chunks = segment_file(src, "c_sharp")

@@ -404,6 +404,76 @@ def test_find_usages_resolves_via_symbol_index(tmp_path):
     assert {h["provenance"] for h in hits} == {"inferred"}
 
 
+def test_forward_declarations_answer_only_names_nothing_defines(tmp_path):
+    store = _make_store(tmp_path)
+    store.insert_chunks(
+        [_chunk("c1", "node.h", "Node"), _chunk("c2", "a.h", "a"), _chunk("c3", "outer.h", "x")],
+        [_fake_embedding(), _fake_embedding(), _fake_embedding()],
+    )
+    fwd = "forward_declaration"
+    store.insert_symbols([
+        _sym("node.h", "Node", kind="class_specifier", chunk_id="c1"),
+        _sym("a.h", "Node", kind=fwd, chunk_id="c2"),
+        _sym("a.h", "wl_surface", kind=fwd, chunk_id="c2"),
+        _sym("outer.h", "Inner", kind=fwd, chunk_id="c3"),
+        _sym("outer.h", "Outer::Inner", kind="class_specifier", chunk_id="c3"),
+    ])
+    assert [(r["path"], r["kind"]) for r in store.find_symbols("Node")] == [("node.h", "class_specifier")]
+    assert [r["kind"] for r in store.find_symbols("wl_surface")] == [fwd]
+    assert [r["name"] for r in store.find_symbols("Inner")] == ["Outer::Inner"]
+    assert [r["kind"] for r in store.find_symbols("No", prefix=True)] == ["class_specifier"]
+    # The graph and the repomap only ever see definitions.
+    assert store.resolve_symbol_chunk_ids("Node") == ["c1"]
+    assert store.resolve_symbol_chunk_ids("wl_surface") == []
+    assert "wl_surface" not in store.get_symbol_name_chunks()
+    assert store.get_symbol_chunk_ids_by_names(["Node", "wl_surface"]) == {"Node": ["c1"]}
+    assert "wl_surface" not in store.get_symbol_names_by_chunk_ids(["c2"])
+    assert fwd not in {r["kind"] for r in store.get_all_symbols()}
+
+
+def test_usages_of_a_forward_declared_name_are_whole_word_content_matches(tmp_path):
+    store = _make_store(tmp_path)
+    _insert_chunk_direct(store, "decl", "struct wl_surface;")
+    _insert_chunk_direct(store, "user", "void draw(struct wl_surface *s) { commit(s); }")
+    _insert_chunk_direct(store, "near", "wl_surface_commit(s);")
+    store.insert_symbols([_sym("decl.h", "wl_surface", kind="forward_declaration", chunk_id="decl")])
+
+    usages = find_usages(store, "wl_surface")
+    assert usages["results"] == []
+    assert "only forward-declared" in usages["note"]
+    assert {m["chunk_id"] for m in usages["content_matches"]} == {"decl", "user"}
+    assert all(m["origin"] == "fts_scan" for m in usages["content_matches"])
+    impact = get_impact(store, "wl_surface")
+    assert impact["files"] == [] and "only forward-declared" in impact["note"]
+
+
+def test_above_cap_content_scan_matches_the_whole_word_only(tmp_path):
+    # FTS splits on `_`, so the phrase for get_id alone would also match get_id_hash.
+    store = _make_store(tmp_path)
+    for i in range(10):
+        _insert_chunk_direct(store, f"def{i}", f"int get_id() {{ return {i}; }}")
+    _insert_chunk_direct(store, "near", "return get_id_hash(x);")
+    store.insert_symbols([_sym("d.cpp", "get_id", chunk_id=f"def{i}") for i in range(10)])
+
+    usages = find_usages(store, "get_id")
+    assert "above the edge-indexing cap" in usages["note"]
+    assert "near" not in {m["chunk_id"] for m in usages["content_matches"]}
+    assert len(usages["content_matches"]) == 10
+
+
+def test_forward_declaration_source_is_its_own_line(tmp_path):
+    from chonks.retrieval.source import _attach_definition_source
+    store = _make_store(tmp_path)
+    store.insert_chunks(
+        [{"id": "c1", "path": "a.h", "language": "cpp", "chunk_type": "module", "name": "a",
+          "start_line": 1, "end_line": 3, "content": "#include <x>\nclass Opaque;\nint helper();"}],
+        [_fake_embedding()],
+    )
+    defs = [_sym("a.h", "Opaque", kind="forward_declaration", s=2, e=2, chunk_id="c1")]
+    _attach_definition_source(store, defs, 4000)
+    assert defs[0]["source"] == "class Opaque;"
+
+
 def test_find_usages_row_provenance_by_edge_type(tmp_path):
     """An unknown edge_type (not in the provenance map) degrades to
     "inferred" rather than raising."""

@@ -5,6 +5,7 @@ from typing import Any
 
 from chonks.core.batching import batched
 from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
+from chonks.core.symbols import FORWARD_DECLARATION
 
 # Unscoped get_hubs scans all of chunk_refs under the store lock, which can
 # block every other request for minutes on a huge corpus. Above this size
@@ -22,10 +23,22 @@ def _provenance_rollup(edge_types: dict[str, int]) -> dict[str, int]:
     return out
 
 
+def _only_forward_declared(store, name: str) -> bool:
+    rows = store.find_symbols(name)
+    return bool(rows) and all(r["kind"] == FORWARD_DECLARATION for r in rows)
+
+
+def _forward_declared_note(name: str) -> str:
+    return (f"{name!r} is only forward-declared in the indexed code (its definition "
+            "is outside it), so no reference edges point at it")
+
+
 def _symbol_miss_note(store, name: str) -> str:
     """Diagnostic for a resolve_symbol_chunk_ids miss. A qualified query
     gets no suffix fallback, so this suggests the bare last component
     only when that bare name actually resolves to something."""
+    if _only_forward_declared(store, name):
+        return _forward_declared_note(name) + "; find_usages lists its content matches"
     if "::" in name or "." in name:
         bare = re.split(r"::|\.", name)[-1]
         if bare and bare != name and store.resolve_symbol_chunk_ids(bare):
@@ -39,7 +52,11 @@ def _fts_scan_for_name(store, name: str, path_prefix: str | None,
     exceeds _MAX_CROSS_LANG_OCCURRENCES. A pre-filter, not a proven
     reference; callers must label these as content matches, not edges."""
     phrase = '"' + name.replace('"', '""') + '"'
-    rows = store.search_fts(phrase, top_k=limit or 50, path_prefix=path_prefix)
+    # FTS splits on `_`, so the phrase for wl_surface also matches
+    # wl_surface_commit; keep whole-word hits only, over a wider fetch.
+    word = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])")
+    rows = store.search_fts(phrase, top_k=max((limit or 50) * 20, 1000), path_prefix=path_prefix)
+    rows = [r for r in rows if word.search(r.get("content") or "")][: limit or 50]
     return [
         {
             "chunk_id": r["id"], "path": r["path"], "name": r.get("name"),
@@ -57,6 +74,10 @@ def find_usages(store, name: str, path_prefix: str | None = None,
     truncates AFTER sorting by edge quality, not alphabetically."""
     chunk_ids = store.resolve_symbol_chunk_ids(name)
     if not chunk_ids:
+        if _only_forward_declared(store, name):
+            note = _forward_declared_note(name) + "; falling back to an FTS content scan"
+            return {"results": [], "note": note,
+                    "content_matches": _fts_scan_for_name(store, name, path_prefix, limit)}
         return {"results": [], "note": _symbol_miss_note(store, name), "content_matches": []}
 
     edges = store.get_refs_to_chunks_typed(chunk_ids)

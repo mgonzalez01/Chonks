@@ -10,6 +10,7 @@ from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
 from chonks.core.refresh import register_refresh
+from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.index.macro_heal import (
     _MACRO_LANGS,
     _MAX_MACRO_CANDIDATES,
@@ -93,6 +94,12 @@ def _is_boundary(node: Node, lang: str, src: bytes) -> bool:
     if spec is not None and spec.extra_boundary is not None:
         return spec.extra_boundary(node, src)
     return False
+
+
+def _is_forward_declaration(node: Node, lang: str, src: bytes) -> bool:
+    spec = _lang_spec(lang)
+    pred = spec.forward_declarations.get(node.type) if spec is not None else None
+    return pred is not None and pred(node, src)
 
 
 # Salvage-eligible: statement-body types only. Member-body types
@@ -713,11 +720,17 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
     while stack:
         node = stack.pop()
         if _is_boundary(node, lang, src):
+            kind = node.type
+        elif _is_forward_declaration(node, lang, src):
+            kind = FORWARD_DECLARATION
+        else:
+            kind = None
+        if kind is not None:
             name = _extract_name(node, lang, src)
             if name:
                 out.append({
                     "name":       name,
-                    "kind":       node.type,
+                    "kind":       kind,
                     "language":   lang,
                     "start_line": node.start_point[0] + 1,
                     "end_line":   node.end_point[0] + 1,

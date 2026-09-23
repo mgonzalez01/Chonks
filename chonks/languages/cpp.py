@@ -3,10 +3,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._ast import name_last_or_text, name_strip_angle_brackets, name_text, terminal_identifier
+from ._ast import (
+    has_body, is_forward_declaration, is_opaque_typedef, name_last_or_text,
+    name_strip_angle_brackets, name_text, terminal_identifier,
+)
 from ._naming import (
     cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
-    template_inner_name,
+    template_inner_name, typedef_name,
 )
 from .spec import (
     ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED,
@@ -30,6 +33,18 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
         else:
             break
     return terminal_identifier(cur.child_by_field_name("scope"), src, CPP.identifier_leaf_types)
+
+
+_CLASS_TYPES = ("class_specifier", "struct_specifier")
+
+
+def is_template_definition(node: Node, src: bytes) -> bool:
+    """`template <class T> class Vec;` declares a class template without
+    defining it. Other templates stay boundaries."""
+    for child in node.named_children:
+        if child.type in _CLASS_TYPES:
+            return has_body(child, src)
+    return True
 
 
 def classify_param(part: str) -> "str | object":
@@ -65,6 +80,16 @@ CPP = LanguageSpec(
     }),
     container_nodes=frozenset({"namespace_definition", "declaration_list"}),
     salvage_nodes=frozenset({"function_definition"}),
+    # `class X;`, `struct Foo *f();` and `struct stat st;` name a class
+    # without defining it; only a specifier with a body is a boundary.
+    boundary_filters={
+        **{t: has_body for t in _CLASS_TYPES},
+        "template_declaration": is_template_definition,
+    },
+    forward_declarations={
+        **{t: is_forward_declaration for t in _CLASS_TYPES},
+        "type_definition": is_opaque_typedef,
+    },
     name_rules=(
         NameRule(("function_definition",), cpp_function_declarator_name),
         NameRule(("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"),
@@ -72,6 +97,7 @@ CPP = LanguageSpec(
         NameRule(("namespace_definition",), namespace_name),
         NameRule(("declaration_list",), namespace_body_name),
         NameRule(("template_declaration",), template_inner_name),
+        NameRule(("type_definition",), typedef_name),
     ),
     kind_labels={
         "function_definition": "function",
