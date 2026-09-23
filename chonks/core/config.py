@@ -43,6 +43,10 @@ def load_config(explicit: str | None) -> ConfigLoad:
         except Exception as e:
             problems.append(ConfigProblem(candidate, str(e), False))
             continue
+        if not isinstance(data, dict):
+            reason = f"top level is a JSON {type(data).__name__}, not an object"
+            problems.append(ConfigProblem(candidate, reason, False))
+            continue
         return ConfigLoad(data, Path(candidate), tuple(problems))
     return ConfigLoad({}, None, tuple(problems))
 
