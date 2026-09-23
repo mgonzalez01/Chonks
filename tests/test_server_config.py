@@ -161,3 +161,16 @@ def test_serve_env_zero_does_not_allow_degraded(monkeypatch, tmp_path):
     monkeypatch.setenv("CHONKS_ALLOW_DEGRADED", "0")
     with pytest.raises(SystemExit):
         _main_with_probe(monkeypatch, tmp_path, "ConnectError: refused")
+
+
+def test_unparseable_explicit_config_is_not_also_reported_missing(monkeypatch, tmp_path, capsys):
+    # main() reconfigures logging with force=True, which drops caplog's
+    # handler; the log stream is sys.stderr, which capsys owns.
+    monkeypatch.setattr(serve_main.uvicorn, "run", lambda *a, **kw: None)
+    serve_projects._projects.clear()
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{ broken")
+    serve_main.main(["--config", str(config_path), "--db", str(tmp_path / "x.db")])
+    err = capsys.readouterr().err
+    assert "Failed to parse" in err
+    assert "Config file not found" not in err

@@ -157,7 +157,7 @@ def main(argv=None) -> None:
             logger.warning("Failed to load %s: %s", problem.path, problem.reason)
         else:
             logger.warning("Failed to parse %s: %s", problem.path, problem.reason)
-    if loaded.path is not None and not args.config:
+    if loaded.path is not None:
         logger.info("Loaded config from %s", loaded.path)
 
     load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
@@ -319,7 +319,9 @@ def main(argv=None) -> None:
             except Exception:
                 root = resolved[0].parent if resolved else Path.cwd()
 
-        with Store(args.db) as store:
+        # --force re-chunks every file, so a stale language_set warning would
+        # contradict the run that replaces it.
+        with Store(args.db, check_language_set=not args.force) as store:
             print(f"DB: {args.db}")
             print(f"Root: {root}")
             print(f"Embedding server: {embedder.url} ({embedder.model})")

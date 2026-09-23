@@ -121,7 +121,7 @@ def _chunk_kind_clause(chunk_kind: str | None, column: str = "language") -> tupl
 # ---------------------------------------------------------------------------
 
 class Store:
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, check_language_set: bool = True):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._dim: int | None = None
@@ -147,13 +147,13 @@ class Store:
         sqlite_vec.load(self._conn)
         self._conn.enable_load_extension(False)
 
-        self._init_schema()
+        self._init_schema(check_language_set)
 
     # ------------------------------------------------------------------
     # Schema
     # ------------------------------------------------------------------
 
-    def _init_schema(self) -> None:
+    def _init_schema(self, check_language_set: bool = True) -> None:
         # Runs only from __init__ before any other thread can hold a reference
         # to this Store, but kept under the lock for uniformity with the rest
         # of the conn-touching surface.
@@ -193,7 +193,7 @@ class Store:
             # unknown, not a mismatch, so say nothing. That is the common
             # case: every pre-C2 corpus and every Store built in a test.
             stored_language_set = self.get_meta("language_set")
-            if stored_language_set is not None:
+            if check_language_set and stored_language_set is not None:
                 current = _language_set()
                 mixed = stored_language_set.startswith("mixed: ")
                 try:

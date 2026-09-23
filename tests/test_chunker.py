@@ -1,8 +1,11 @@
 """Tests for chunker.py correctness fixes."""
 import json
+import logging
 import threading
 import time
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from chonks.retrieval.message_match import find_by_message
 from chonks.storage.store import Store
@@ -951,7 +954,7 @@ def test_index_db_resolution_prefers_cli_then_config(tmp_path, monkeypatch):
 
     captured = {}
     class FakeStore:
-        def __init__(self, db): captured["db"] = str(db)
+        def __init__(self, db, **kw): captured["db"] = str(db)
         def __enter__(self): return self
         def __exit__(self, *a): return False
         def stats(self): return {}
@@ -1176,7 +1179,7 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
     import chonks.ops.index_cmd as index_cmd
 
     class FakeStore:
-        def __init__(self, db): pass
+        def __init__(self, db, **kw): pass
         def __enter__(self): return self
         def __exit__(self, *a): return False
         def stats(self): return {}
@@ -1236,7 +1239,7 @@ def test_cuda_backend_without_cupy_fails_before_indexing(tmp_path, monkeypatch, 
     started = []
 
     class FakeStore:
-        def __init__(self, db): started.append("store")
+        def __init__(self, db, **kw): started.append("store")
         def __enter__(self): return self
         def __exit__(self, *a): return False
         def stats(self): return {}
@@ -1801,3 +1804,35 @@ def test_symlinked_file_does_not_duplicate_index_entry(tmp_path, caplog):
         "should be updated to assert on it directly"
     )
     store.close()
+
+
+def _run_index_main(tmp_path, monkeypatch, argv):
+    import collections
+    import chonks.ops.index_cmd as index_cmd
+    monkeypatch.setattr(index_cmd, "index_paths",
+                        lambda *a, **k: collections.defaultdict(int))
+    index_cmd.main(argv)
+
+
+def test_index_logs_an_explicit_config_it_loaded(tmp_path, monkeypatch, caplog):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"db": str(tmp_path / "t.db")}))
+    src = tmp_path / "src"; src.mkdir()
+    with caplog.at_level(logging.INFO, logger="chonks.ops.index_cmd"):
+        _run_index_main(tmp_path, monkeypatch, ["--config", str(cfg), str(src)])
+    assert any(f"Loaded config from {cfg}" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize("force, warns", [(False, True), (True, False)])
+def test_index_force_does_not_warn_about_the_language_set_it_replaces(
+        tmp_path, monkeypatch, caplog, force, warns):
+    db = tmp_path / "t.db"
+    store = Store(db)
+    store.set_meta("language_set", json.dumps({"python": "0"}, sort_keys=True, separators=(",", ":")))
+    store.close()
+    src = tmp_path / "src"; src.mkdir()
+    argv = ["--db", str(db), *(["--force"] if force else []), str(src)]
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        _run_index_main(tmp_path, monkeypatch, argv)
+    warned = any("language_set" in r.getMessage() for r in caplog.records if r.name == "chonks.store")
+    assert warned is warns

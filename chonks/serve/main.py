@@ -73,7 +73,8 @@ def main(argv=None) -> None:
     if loaded.path is not None:
         logger.info("Loaded config from %s", loaded.path)
     elif args.config:
-        logger.warning("Config file not found: %s", args.config)
+        if all(problem.missing for problem in loaded.problems):
+            logger.warning("Config file not found: %s", args.config)
     else:
         logger.warning("No config.json found — using defaults")
     full = loaded.data
