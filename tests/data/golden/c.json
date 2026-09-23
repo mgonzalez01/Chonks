@@ -300,6 +300,7 @@
           "DECLARE_ASN1_FUNCTIONS",
           "IMPLEMENT_ASN1_FUNCTIONS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -522,6 +523,7 @@
         "discovered_macros": [
           "MY_EXPORT_ANNOTATION"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {

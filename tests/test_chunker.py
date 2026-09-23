@@ -165,6 +165,24 @@ def test_macro_vocab_persists_when_recurring(tmp_path):
     )
 
 
+def test_macro_vocab_ignores_files_the_heal_left_mostly_broken(tmp_path):
+    """A heal that fixes only a sliver of a file's errors (Objective-C in a
+    .mm) is weak evidence: blanking a real type there can remove a few errors
+    by coincidence. Such files do not count toward persisting a macro."""
+    from chonks.index.pipeline import index_paths
+
+    objc = "".join(f"@interface Obj{i} : NSObject\n- (void)run{i}:(int)x;\n@end\n" for i in range(4))
+    (tmp_path / "a.cpp").write_text(_uclass_src("AThing") + objc)
+    (tmp_path / "b.cpp").write_text(_uclass_src("BThing") + objc)
+
+    store = Store(tmp_path / "test.db")
+    result = index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    assert result["macro_healed_files"] == 2 and result["parse_error_files"] == 2
+    vocab = set(json.loads(store.get_meta("macro_vocab") or "[]"))
+    store.close()
+    assert not vocab & {"UCLASS", "GENERATED_BODY"}
+
+
 def test_macro_vocab_persists_on_crlf_sources(tmp_path):
     """Same as above but with Windows line endings, written as bytes so the
     fixture is CRLF on every platform: discovery tell (e), the only tell that
@@ -225,6 +243,36 @@ def test_second_run_loads_persisted_vocab_and_preblanks(tmp_path):
         "persisted vocab was not pre-blanked on the second run "
         f"(macro_healed_files={second['macro_healed_files']})"
     )
+
+
+def test_unhealable_memo_from_older_heal_logic_is_dropped(tmp_path):
+    """A memo written before a heal-logic change must not keep skipping files
+    the new logic can heal, even on --force."""
+    import hashlib
+    import tree_sitter
+    from chonks.index.pipeline import index_paths
+
+    (tmp_path / "broken.cpp").write_text(
+        "NOT_A_FIX(1);\nclass Broken\nclass Other {\n    void run() { do_thing(); }\n};\n")
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    assert json.loads(store.get_meta("unhealable_hashes") or "[]")
+    # What the previous code stored: a fingerprint of the vocab alone.
+    vocab = sorted(json.loads(store.get_meta("macro_vocab") or "[]"))
+    store.set_meta("unhealable_vocab_fingerprint",
+                   hashlib.sha256("\n".join(vocab).encode()).hexdigest())
+
+    orig_parse = tree_sitter.Parser.parse
+    calls = {"n": 0}
+
+    def counting_parse(self, *a, **kw):
+        calls["n"] += 1
+        return orig_parse(self, *a, **kw)
+
+    with patch.object(tree_sitter.Parser, "parse", counting_parse):
+        index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path, force=True)
+    store.close()
+    assert calls["n"] > 1, "heal sweep skipped under a memo from the older heal logic"
 
 
 def test_macros_param_preblanks_first_run(tmp_path):

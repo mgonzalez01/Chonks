@@ -362,8 +362,7 @@ def test_blank_macros_preserves_length_and_newlines():
 
 def test_macro_self_heal_does_not_blank_bare_type():
     """Validation-gate hardening: a bare ALL_CAPS *type* (RID) must not be admitted
-    as a macro just because blanking it coincidentally drops the error count.
-    Only macro-CALL-shaped tokens (followed by '(') are discovered in error spans."""
+    as a macro just because blanking it coincidentally drops the error count."""
     # mangled-style: a forward decl with its trailing ';' stripped breaks the parse
     # for a NON-macro reason; RID here is a real return type, not a macro.
     src = (b"class RenderingDevice\n"      # missing ';'
@@ -373,6 +372,80 @@ def test_macro_self_heal_does_not_blank_bare_type():
     counters: dict = {}
     segment_file(src, "cpp", counters=counters)
     assert "RID" not in counters.get("discovered_macros", set()), "bare type wrongly blanked as a macro"
+
+
+@pytest.mark.parametrize("src,name", [
+    (b"class StringBuilder {\n  _FORCE_INLINE_ operator String() const { return s; }\n};\n",
+     "operator String"),
+    # The class-head macro's error lands at the closing brace, far from it.
+    (b"class _WARN_UNUSED_ HashSet {\n  int x;\n" + b"  int pad;\n" * 40 +
+     b"  _FORCE_INLINE_ int g() const { return x; }\n};\n", "HashSet"),
+    (b"class API_AVAILABLE(macos(11.0), ios(14.0)) Surface {\n  int x;\n};\n", "Surface"),
+    (b"class It {\n  It begin() const _LIFETIME_BOUND_ { return *this; }\n};\n", "It::begin"),
+], ids=["prefix", "class-head", "class-head-nested-args", "suffix"])
+def test_macro_self_heal_finds_attribute_macros(src, name):
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    names = {sym["name"] for sym in counters["symbols"]}
+    assert name in names or name.split("::")[-1] in names, names
+    assert "parse_error" not in counters
+
+
+def test_macro_self_heal_never_blanks_a_type_the_file_defines():
+    src = (b"struct AABB { int x; };\n"
+           b"class RenderingDevice\n"      # missing ';', a non-macro parse error
+           b"class Store {\n"
+           b"    AABB get_aabb() const { return a; }\n"
+           b"};\n")
+    from chonks.index.macro_heal import _discover_macros
+    from tree_sitter_language_pack import get_parser
+    assert "AABB" not in _discover_macros(get_parser("cpp").parse(src).root_node, src)
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert "AABB" not in counters.get("discovered_macros", set())
+
+
+def test_macro_self_heal_does_not_admit_the_type_beside_a_macro():
+    # Blanking RID also fixes `_FORCE_INLINE_ RID get_target()`, but only
+    # _FORCE_INLINE_ is needed; RID is a real type the file uses cleanly.
+    src = (b"class Buffers {\n"
+           b"  RID render_target;\n"
+           b"  _FORCE_INLINE_ RID get_render_target() const { return render_target; }\n"
+           b"};\n")
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert counters.get("discovered_macros") == {"_FORCE_INLINE_"}
+
+
+@pytest.mark.parametrize("src,macros", [
+    (b"class Ref {\n  ULONG count;\n  ULONG STDMETHODCALLTYPE AddRef() { return ++count; }\n};\n",
+     {"STDMETHODCALLTYPE"}),
+    (b"class Client {\n  UINT32 frames;\n  HRESULT Get(_Out_ UINT32 *p) { *p = frames; return 0; }\n};\n",
+     {"_Out_"}),
+], ids=["calling-convention", "sal-annotation"])
+def test_macro_self_heal_blames_the_macro_not_the_type(src, macros):
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert counters.get("discovered_macros") == macros
+    assert "parse_error" not in counters
+
+
+def test_macro_self_heal_drops_early_admissions_a_later_macro_makes_unneeded():
+    # libjpeg shape: a name admitted in an early pass is unneeded once
+    # LOCAL(void), the real macro, is found in a later one.
+    src = (b"INLINE\nLOCAL(void)\nupsample(j_decompress_ptr cinfo,\n                _JSAMPIMAGE input_buf,\n"
+           b"                JDIMENSION in_row_group_ctr)\n{\n  JDIMENSION col;\n  for (col = 0; col < 4; col++) { }\n}\n") * 3
+    counters: dict = {}
+    segment_file(src, "c", counters=counters)
+    assert counters.get("discovered_macros") == {"LOCAL"}
+    assert "parse_error" not in counters
+
+
+def test_blank_macros_blanks_nested_arguments():
+    src = b"class API_AVAILABLE(macos(11.0), ios(14.0)) Surface {};\n"
+    out = _blank_macros(src, {"API_AVAILABLE"})
+    assert len(out) == len(src)
+    assert out.split() == [b"class", b"Surface", b"{};"]
 
 
 def test_macro_self_heal_clears_parse_error_for_qt_signals_slots():

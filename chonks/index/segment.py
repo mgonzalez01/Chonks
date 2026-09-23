@@ -17,10 +17,14 @@ from chonks.index.macro_heal import (
     _MAX_MACRO_PASSES,
     _QT_ACCESS_SPECIFIERS,
     _blank_macros,
+    _count_errors,
     _count_errors_upto,
     _discover_macros,
+    _drop_redundant,
     _errors_with_ranges,
+    _heal_class_heads,
     _near_error_ranges,
+    _prune_healed,
 )
 from chonks.index.refs_extract import (
     _EMPTY_REFS,
@@ -875,8 +879,11 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
     # Discover macros, validate by strict error-count decrease (a real call
     # like ASSERT(x) is rejected since blanking it doesn't help), blank,
     # reparse, repeat (see _MAX_MACRO_PASSES for why one pass isn't enough).
-    if self_heal and lang in _MACRO_LANGS and root.has_error:
-        healed: set = set()
+    healed: set = set()
+    swept = self_heal and lang in _MACRO_LANGS and root.has_error
+    if swept:
+        base_src = parse_src
+        errors_before_heal = _count_errors(root)
         for _ in range(_MAX_MACRO_PASSES):
             if not root.has_error:
                 break
@@ -886,21 +893,33 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
             discovered = sorted(_discover_macros(root, parse_src) - healed)[:_MAX_MACRO_CANDIDATES]
             cands = (set(discovered) | _QT_ACCESS_SPECIFIERS) - healed
             testable = _near_error_ranges(cands, parse_src, error_ranges)
-            admitted = {m for m in testable
-                        if _count_errors_upto(parser.parse(_blank_macros(parse_src, {m})).root_node,
-                                              base) < base}
+            counts = {m: _count_errors_upto(parser.parse(_blank_macros(parse_src, {m})).root_node, base)
+                      for m in testable}
+            admitted = _drop_redundant(parser, parse_src, root,
+                                       {m for m, n in counts.items() if n < base}, counts)
             if not admitted:
                 break
             healed |= admitted
             parse_src = _blank_macros(parse_src, healed)
             root = parser.parse(parse_src).root_node
-        if healed and counters is not None:
-            counters.setdefault("discovered_macros", set()).update(healed)
-            counters["macro_healed"] = 1
-        elif not healed and counters is not None:
-            # Sweep found nothing to heal; chonks/index/pipeline.py persists this by content
-            # hash so unchanged unhealable files skip the sweep next time.
-            counters["heal_unhealable"] = 1
+        pruned = _prune_healed(parser, base_src, healed)
+        if pruned != healed:
+            healed = pruned
+            parse_src = _blank_macros(base_src, healed)
+            root = parser.parse(parse_src).root_node
+    if self_heal and lang in _MACRO_LANGS:
+        root, parse_src = _heal_class_heads(parser, root, parse_src, healed)
+    if healed and counters is not None:
+        counters.setdefault("discovered_macros", set()).update(healed)
+        counters["macro_healed"] = 1
+        # Whether the heal fixed most of the file, which is what makes its
+        # macros evidence worth persisting (see chonks/index/pipeline.py).
+        counters["heal_fixed_most"] = (
+            not swept or _count_errors(root) * 2 <= errors_before_heal)
+    elif swept and counters is not None:
+        # Sweep found nothing to heal; chonks/index/pipeline.py persists this by content
+        # hash so unchanged unhealable files skip the sweep next time.
+        counters["heal_unhealable"] = 1
 
     # Post-heal: parse_error now means genuinely unparseable, not "had a
     # macro we could heal".

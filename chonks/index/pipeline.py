@@ -207,9 +207,13 @@ def parser_worker(rs: RunState, vocab: set[str]) -> None:
                         state["literals_capped_chunks"] += _oc.get("literals_capped_chunks", 0)
                         state["literals_dropped"] += _oc.get("literals_dropped", 0)
                     # discovered_macros excludes ones already in `vocab`
-                    # (those parse cleanly and never resurface here).
-                    for _m in _oc.get("discovered_macros") or ():
-                        macro_file_counts[_m] = macro_file_counts.get(_m, 0) + 1
+                    # (those parse cleanly and never resurface here). A file
+                    # the heal left mostly broken (Objective-C in a .mm) is
+                    # not evidence: blanking a real type there can remove a
+                    # few errors by coincidence.
+                    if _oc.get("heal_fixed_most"):
+                        for _m in _oc.get("discovered_macros") or ():
+                            macro_file_counts[_m] = macro_file_counts.get(_m, 0) + 1
                     # Only set when self_heal actually ran, so a memoized
                     # skip never re-adds an already-recorded hash.
                     if _oc.get("heal_unhealable") and content_hash not in unhealable_hashes:

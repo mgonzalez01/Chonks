@@ -3132,6 +3132,7 @@
           "GENERATED_BODY",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -5017,6 +5018,7 @@
           "GENERATED_BODY",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -5971,6 +5973,7 @@
           "signals",
           "slots"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6084,6 +6087,7 @@
           "GENERATED_BODY",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6136,6 +6140,7 @@
           "signals",
           "slots"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6187,6 +6192,7 @@
           "signals",
           "slots"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6238,6 +6244,7 @@
           "GENERATED_BODY",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6396,6 +6403,7 @@
           "GENERATED_BODY",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -6536,6 +6544,7 @@
           "MYGAME_API",
           "UCLASS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {

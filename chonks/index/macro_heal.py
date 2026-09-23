@@ -43,8 +43,25 @@ def _qt_specifier_res(specifiers) -> tuple[re.Pattern, re.Pattern]:
     return qualified, bare
 
 
+# ALL_CAPS, optionally wrapped in underscores (_FORCE_INLINE_, __API__), or
+# `_Capital..._`, a name C reserves for the implementation, which is what
+# annotation macros use (SAL: _In_, _Out_writes_(n)).
+_MACRO_NAME = r"(?:_*[A-Z][A-Z0-9_]{2,}|_[A-Z][A-Za-z0-9_]*_)"
+
+
 def _is_macro_name(t: str) -> bool:
-    return bool(re.fullmatch(r"[A-Z][A-Z0-9_]{2,}", t)) and t not in _MACRO_KEEP
+    return bool(re.fullmatch(_MACRO_NAME, t)) and t not in _MACRO_KEEP
+
+
+def _defined_type_names(text: str) -> set[str]:
+    """Names this file defines as types. An ALL_CAPS type (AABB, RID) looks
+    like a macro and can pass the error-count check by coincidence."""
+    names = set(re.findall(
+        r"\b(?:class|struct|union|enum(?:\s+class)?)\s+(?:\[\[[^\]]*\]\]\s*)?(\w+)\s*(?:final\s*)?[:{]",
+        text))
+    names |= set(re.findall(r"\btypedef\b[^;{}]*?\b(\w+)\s*;", text))
+    names |= set(re.findall(r"\busing\s+(\w+)\s*=", text))
+    return names
 
 
 def _blank_macros(src: bytes, names) -> bytes:
@@ -80,10 +97,28 @@ def _blank_macros(src: bytes, names) -> bytes:
 
     plain = [n for n in names if n not in _QT_ACCESS_SPECIFIERS]
     if plain:
-        pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in plain) + r")\b[ \t]*(?:\([^()]*\))?")
+        pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in plain) + r")\b[ \t]*")
         for m in pat.finditer(text):
-            blank(m.start(), m.end())
+            blank(m.start(), _args_end(text, m.end()))
     return bytes(out)
+
+
+def _args_end(text: str, i: int) -> int:
+    """End of a balanced (...) starting at text[i], or i when there is none,
+    so API_AVAILABLE(macos(11.0), ios(14.0)) blanks whole."""
+    if i >= len(text) or text[i] != "(":
+        return i
+    depth = 0
+    for j in range(i, len(text)):
+        if text[j] == "(":
+            depth += 1
+        elif text[j] == ")":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+        elif text[j] in ";{}":
+            break
+    return i
 
 
 def _count_errors(root: Node) -> int:
@@ -172,10 +207,100 @@ def _near_error_ranges(cands: set, parse_src: bytes,
     return kept
 
 
+def _class_head_macros(text: str) -> set[str]:
+    """A macro in a class definition head, `class _WARN_UNUSED_ HashSet {` or
+    `class API_AVAILABLE(...) X :`. `struct TYPE var;` (a use) does not match."""
+    return {m.group(1) for m in re.finditer(
+        r"\b(?:class|struct)\s+(" + _MACRO_NAME + r")\s*(?:\([^;{}]*?\)\s*)?\s[A-Za-z_]\w*\s*(?:final\s*)?[:{]",
+        text) if _is_macro_name(m.group(1))} - _defined_type_names(text)
+
+
+def _clean_type_uses(root: Node, src: bytes) -> dict[str, int]:
+    """How often each name is the type of a declaration that parsed without
+    error (`RID render_target;`): a real type, not a macro."""
+    uses: dict[str, int] = {}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.has_error:
+            stack.extend(node.children)
+            continue
+        if node.type == "type_identifier" and node.parent is not None \
+                and node.parent.child_by_field_name("type") == node:
+            name = src[node.start_byte:node.end_byte].decode("latin-1")
+            uses[name] = uses.get(name, 0) + 1
+        stack.extend(node.children)
+    return uses
+
+
+def _drop_redundant(parser, parse_src: bytes, root: Node, admitted: set, counts: dict) -> set:
+    """In `_FORCE_INLINE_ RID get()` blanking either name fixes the line, so
+    both pass the error-count test on their own. Keep only the names the
+    set needs: weakest first, and on a tie the one that already parses as
+    a type elsewhere goes first, so a real type never rides along."""
+    if len(admitted) < 2:
+        return admitted
+    type_uses = _clean_type_uses(root, parse_src)
+    keep = set(admitted)
+    full = _count_errors(parser.parse(_blank_macros(parse_src, keep)).root_node)
+    for name in sorted(admitted, key=lambda m: (-counts[m], -type_uses.get(m, 0), m)):
+        without = keep - {name}
+        if without and _count_errors(parser.parse(_blank_macros(parse_src, without)).root_node) <= full:
+            keep = without
+    return keep
+
+
+def _prune_healed(parser, base_src: bytes, healed: set) -> set:
+    """Heal passes admit in rounds, so a name admitted early can be made
+    unnecessary by one found later: in libjpeg, JDIMENSION (a real typedef)
+    fixed a few errors before LOCAL(void), the actual macro, was found.
+    Drops every name the final set does not need, likely types first."""
+    if len(healed) < 2:
+        return healed
+    type_uses = _clean_type_uses(parser.parse(base_src).root_node, base_src)
+    keep = set(healed)
+    full = _count_errors(parser.parse(_blank_macros(base_src, keep)).root_node)
+    for name in sorted(healed, key=lambda m: (-type_uses.get(m, 0), m)):
+        without = keep - {name}
+        if without and _count_errors(parser.parse(_blank_macros(base_src, without)).root_node) <= full:
+            keep = without
+    return keep
+
+
+def _count_class_bodies(root: Node) -> int:
+    n, stack = 0, [root]
+    while stack:
+        node = stack.pop()
+        if node.type in ("class_specifier", "struct_specifier") and node.child_by_field_name("body"):
+            n += 1
+        stack.extend(node.children)
+    return n
+
+
+def _heal_class_heads(parser, root: Node, parse_src: bytes, healed: set) -> tuple[Node, bytes]:
+    """`class _WARN_UNUSED_ HashSet {...}` often parses with no error at all,
+    as a function named HashSet, so the error-count test never sees it.
+    Admits a class-head macro when blanking it adds a class body and no
+    error. Adds each admitted name to `healed`."""
+    heads = _class_head_macros(parse_src.decode("latin-1")) - healed
+    if not heads:
+        return root, parse_src
+    errors, bodies = _count_errors(root), _count_class_bodies(root)
+    for name in sorted(heads):
+        trial_src = _blank_macros(parse_src, {name})
+        trial = parser.parse(trial_src).root_node
+        trial_errors, trial_bodies = _count_errors(trial), _count_class_bodies(trial)
+        if trial_errors <= errors and trial_bodies > bodies:
+            healed.add(name)
+            root, parse_src, errors, bodies = trial, trial_src, trial_errors, trial_bodies
+    return root, parse_src
+
+
 def _discover_macros(root: Node, src: bytes) -> set[str]:
-    """Candidate macro names via 4 structural tells (no hardcoded names;
-    over-discovery is harmless since callers validate by error-count
-    decrease before ever blanking one)."""
+    """Candidate macro names from structural tells (no hardcoded names).
+    Over-discovery costs only trial reparses: callers keep a name only when
+    blanking it lowers the error count and the other admitted names do not
+    already cover it."""
     text = src.decode("latin-1")
     found: set[str] = set()
     stack = [root]
@@ -192,20 +317,39 @@ def _discover_macros(root: Node, src: bytes) -> set[str]:
             span = src[node.start_byte:node.end_byte].decode("latin-1")
             # Require a following '(': a bare ALL_CAPS type (RID) blanked here
             # could coincidentally drop the error count and erase a real name.
-            for tok in re.findall(r"[A-Z][A-Z0-9_]{2,}(?=\s*\()", span):
+            for tok in re.findall(_MACRO_NAME + r"(?=\s*\()", span):
                 if _is_macro_name(tok):
                     found.add(tok)
         stack.extend(node.children)
-    for m in re.finditer(r"\b(?:class|struct)\s+([A-Z][A-Z0-9_]{2,})\s+[A-Za-z_]\w*", text):
+    for m in re.finditer(r"\b(?:class|struct)\s+(" + _MACRO_NAME + r")(?:\s*\(|\s+[A-Za-z_]\w*)", text):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
-    for m in re.finditer(r"\b([A-Z][A-Z0-9_]{2,})\b\s*(?:\([^()]*\))?\s*(?:class|struct)\b", text):
+    for m in re.finditer(r"(?<![\w])(" + _MACRO_NAME + r")\b\s*(?:\([^()]*\))?\s*(?:class|struct)\b", text):
+        if _is_macro_name(m.group(1)):
+            found.add(m.group(1))
+    # Suffix macro after a signature (`f() const _LIFETIME_BOUND_ {`).
+    for m in re.finditer(r"\)[ \t]*(?:(?:const|noexcept|override|final)[ \t]*)*(" + _MACRO_NAME + r")[ \t]*(?:\([^()]*\))?[ \t]*(?=[{;])", text):
+        if _is_macro_name(m.group(1)):
+            found.add(m.group(1))
+    # Calling-convention macro between the return type and the name
+    # (`ULONG STDMETHODCALLTYPE AddRef(`). Without it only the type is a
+    # candidate, and blanking the type alone also fixes the line.
+    for m in re.finditer(r"\b[A-Za-z_]\w*[ \t*&]+(" + _MACRO_NAME + r")[ \t]+[A-Za-z_]\w*[ \t]*\(", text):
+        if _is_macro_name(m.group(1)):
+            found.add(m.group(1))
+    # Annotation before a parameter (`Get(_Out_ UINT32 *p)`), `_Capital..._`
+    # shape only, so an ALL_CAPS parameter type is never proposed here.
+    for m in re.finditer(r"[(,][ \t]*(_[A-Z][A-Za-z0-9_]*_)[ \t]*(?:\([^()]*\))?[ \t]+[A-Za-z_]", text):
+        found.add(m.group(1))
+    # Prefix macro with no arguments at the start of a declaration
+    # (`_FORCE_INLINE_ void f()`), which none of the tells above see.
+    for m in re.finditer(r"(?m)^[ \t]*(?:(?:static|inline|virtual|constexpr)[ \t]+)*(" + _MACRO_NAME + r")[ \t]+(?=[A-Za-z_~])", text):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
     # Standalone macro line (GENERATED_BODY(); Q_OBJECT) parses as a bogus
     # MISSING ';' declaration, not an ERROR node, so (a)/(d) above miss it.
     # `\r?$`: without it this never fires on CRLF (Windows) files.
-    for m in re.finditer(r"(?m)^[ \t]*([A-Z][A-Z0-9_]{2,})[ \t]*(?:\([^()]*\))?[ \t]*;?[ \t]*\r?$", text):
+    for m in re.finditer(r"(?m)^[ \t]*(" + _MACRO_NAME + r")[ \t]*(?:\([^()]*\))?[ \t]*;?[ \t]*\r?$", text):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
-    return found
+    return found - _defined_type_names(text)
