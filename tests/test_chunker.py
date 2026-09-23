@@ -1155,6 +1155,8 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
     import collections
     monkeypatch.setattr(index_cmd, "index_paths",
                         lambda *a, **k: collections.defaultdict(int))
+    # This test covers the config->env bridge; the cuda preflight has its own test.
+    monkeypatch.setattr(index_cmd, "validate_knn_backend", lambda backend: None, raising=False)
     src = tmp_path / "src"; src.mkdir()
 
     import os
@@ -1187,6 +1189,47 @@ def test_knn_backend_config_key(tmp_path, monkeypatch):
         assert run({}, None) is None                               # absent = untouched
         with pytest.raises(SystemExit):                            # typo rejected loudly
             run({"knn_backend": "cudda"}, None)
+    finally:
+        os.environ.pop("CHONKS_KNN_BACKEND", None)
+
+
+def test_cuda_backend_without_cupy_fails_before_indexing(tmp_path, monkeypatch, capsys):
+    """An explicit cuda backend that cannot run stops at startup with the
+    install hint, not in the k-NN pass after parse and embed."""
+    import collections
+    import json
+    import os
+    import sys
+    import pytest
+    import chonks.ops.index_cmd as index_cmd
+
+    started = []
+
+    class FakeStore:
+        def __init__(self, db): started.append("store")
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def stats(self): return {}
+        def path_family_rows(self): return []
+
+    monkeypatch.setattr(index_cmd, "Store", FakeStore)
+    monkeypatch.setattr(index_cmd, "index_paths",
+                        lambda *a, **k: started.append("index") or collections.defaultdict(int))
+    monkeypatch.setitem(sys.modules, "cupy", None)
+    src = tmp_path / "src"; src.mkdir()
+    cfg = tmp_path / "config.json"
+    json.dump({"db": str(tmp_path / "t.db"), "knn_backend": "cuda"}, open(cfg, "w"))
+
+    os.environ.pop("CHONKS_KNN_BACKEND", None)
+    try:
+        for argv in (["--config", str(cfg), str(src)],
+                     ["--config", str(cfg), "--rebuild-graphs"]):
+            os.environ.pop("CHONKS_KNN_BACKEND", None)
+            with pytest.raises(SystemExit) as e:
+                index_cmd.main(argv)
+            assert e.value.code == 2
+            assert "uv sync --extra" in capsys.readouterr().err
+        assert started == []
     finally:
         os.environ.pop("CHONKS_KNN_BACKEND", None)
 

@@ -16,7 +16,7 @@ from chonks.index.pipeline import index_paths, reembed_all
 from chonks.index.plugins import load_plugins
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
 from chonks.index.graph.hierarchy import rebuild_hierarchy
-from chonks.index.graph.knn import build_neighbors
+from chonks.index.graph.knn import build_neighbors, validate_knn_backend
 from chonks.index.graph.refs import build_refs
 from chonks.index.graph.pagerank import persist_pagerank
 from chonks.storage.store import Store
@@ -200,6 +200,14 @@ def main(argv=None) -> None:
             "provide paths to index, or use --reembed / --suggest-subsystems / "
             "--rebuild-graphs / --rebuild-knn"
         )
+
+    # An explicit cuda backend that cannot run fails here, not in the k-NN
+    # pass after the whole corpus has been parsed and embedded.
+    if not args.reembed and not args.suggest_subsystems:
+        try:
+            validate_knn_backend(os.environ.get("CHONKS_KNN_BACKEND") or "auto")
+        except RuntimeError as e:
+            parser.error(str(e))
 
     # Same precedence as embedder settings below, and the same key `chonks
     # serve` honors, so both agree on which db they read/write.
