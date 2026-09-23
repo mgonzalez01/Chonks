@@ -10,6 +10,15 @@ BASES = Children((
 ))
 
 
+def operator_name(node, src: bytes) -> str | None:
+    """`operator+` like C++; a conversion operator is named by its target type."""
+    if node.type == "operator_declaration":
+        op = node.child_by_field_name("operator")
+        return f"operator{name_text(op, src)}" if op else None
+    target = node.child_by_field_name("type")
+    return f"operator {name_text(target, src)}" if target else None
+
+
 def classify_param(part: str) -> "str | object":
     if part.startswith("params "):
         return "variadic"
@@ -20,7 +29,7 @@ C_SHARP = LanguageSpec(
     name="c_sharp",
     # tree-sitter-language-pack uses 'csharp' but we use 'c_sharp' internally
     grammar="csharp",
-    version="1",
+    version="2",
     extensions=frozenset({".cs"}),
     boundary_nodes=frozenset({
         "method_declaration", "constructor_declaration", "destructor_declaration",
@@ -33,14 +42,14 @@ C_SHARP = LanguageSpec(
         "method_declaration", "constructor_declaration", "destructor_declaration",
         "operator_declaration", "conversion_operator_declaration",
     }),
-    # C#: all declaration types have a 'name' field
+    # Operators have no 'name' field; every other declaration type does.
     name_rules=(
         NameRule((
             "method_declaration", "constructor_declaration", "destructor_declaration",
             "property_declaration", "class_declaration", "struct_declaration",
             "interface_declaration", "enum_declaration",
-            "operator_declaration", "conversion_operator_declaration",
         ), name_field),
+        NameRule(("operator_declaration", "conversion_operator_declaration"), operator_name),
     ),
     refs_spec={
         "using_directive": Children((

@@ -1842,3 +1842,21 @@ def test_chunks_tile_files_no_overlap_over_corpus():
                     (b["name"], b["start_line"], b["end_line"]),
                 ))
     assert not overlaps, f"overlapping adjacent chunks: {overlaps}"
+
+
+def test_c_sharp_operators_are_named():
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    src = b'''
+struct V {
+  public static V operator +(V a, V b) { return a; }
+  public static bool operator ==(V a, V b) => true;
+  public static V operator checked -(V a) => a;
+  public static implicit operator int(V v) => 0;
+  public static explicit operator Foo.Bar(V v) => null;
+}
+'''
+    root = get_parser("csharp").parse(src).root_node
+    names = {s["name"] for s in _collect_symbols_from_root(root, "c_sharp", src)}
+    assert names == {"V", "operator+", "operator==", "operator-",
+                     "operator int", "operator Foo.Bar"}, names
