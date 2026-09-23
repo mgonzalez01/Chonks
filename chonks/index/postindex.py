@@ -68,14 +68,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
         # Must run AFTER build_refs/build_neighbors, not before: their
         # incremental paths rely on this run's own dangling rows, so purging
         # first would desync them from a full rebuild. Gated to run once per DB.
-        if force or not store.get_meta("orphan_sweep_v1"):
-            orphan_neighbors = store.purge_orphan_neighbors()
-            orphan_refs = store.purge_orphan_refs()
-            if orphan_neighbors:
-                logger.info("Purged %d orphan chunk_neighbors edge(s).", orphan_neighbors)
-            if orphan_refs:
-                logger.info("Purged %d orphan chunk_refs edge(s).", orphan_refs)
-            store.set_meta("orphan_sweep_v1", "1")
+        _orphan_sweep_once(store, force)
 
         # Full rebuild every run: cheap relative to refs/kNN (see
         # rebuild_hierarchy), so no incremental path to keep in sync.
@@ -108,11 +101,25 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
                     store,
                     lambda texts: embedder.embed_documents(texts, client),
                 )
+            summaries_elapsed = time.monotonic() - _phase_t0
             logger.info(
                 "Folder summaries: refreshed %d, pruned %d.",
                 summary_stats["refreshed"], summary_stats["pruned"],
             )
         except Exception as e:
             logger.error("Folder summary generation failed: %s", e)
-        summaries_elapsed = time.monotonic() - _phase_t0
+    else:
+        # A DB whose runs are all no-ops still gets its one-time sweep.
+        _orphan_sweep_once(store, force)
     return fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed
+
+
+def _orphan_sweep_once(store, force: bool) -> None:
+    if force or not store.get_meta("orphan_sweep_v1"):
+        orphan_neighbors = store.purge_orphan_neighbors()
+        orphan_refs = store.purge_orphan_refs()
+        if orphan_neighbors:
+            logger.info("Purged %d orphan chunk_neighbors edge(s).", orphan_neighbors)
+        if orphan_refs:
+            logger.info("Purged %d orphan chunk_refs edge(s).", orphan_refs)
+        store.set_meta("orphan_sweep_v1", "1")
