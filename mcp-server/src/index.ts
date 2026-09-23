@@ -127,7 +127,6 @@ function parseHttpPort(): number | null {
   }
   return n;
 }
-const HTTP_PORT = parseHttpPort();
 const HTTP_HOST = process.env.CHONKS_MCP_HOST ?? "127.0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
@@ -136,6 +135,7 @@ const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  const httpPort = parseHttpPort();
   try {
     await ensureBackend();
   } catch (e) {
@@ -143,8 +143,8 @@ async function main(): Promise<void> {
     // Continue anyway: individual tool calls will surface the error clearly,
     // which is more useful than a silent start failure.
   }
-  if (HTTP_PORT !== null) {
-    await startHttp(HTTP_PORT);
+  if (httpPort !== null) {
+    await startHttp(httpPort);
     return;
   }
   const transport = new StdioServerTransport();
