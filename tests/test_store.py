@@ -1588,3 +1588,18 @@ def test_store_open_with_unparseable_language_set_does_not_raise(tmp_path, caplo
     with caplog.at_level(logging.WARNING, logger="chonks.store"):
         Store(tmp_path / "test.db")
     assert len(caplog.records) == 1
+
+
+def test_like_escape_single_implementation_with_unchanged_output():
+    import chonks.storage.store as store_mod
+
+    def old_module(s):
+        return s.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+    def old_method(s):
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    for s in ["plain", "a_b", "50%", "C:\\dir\\x_y%", "\\%_", "", "__%%\\\\"]:
+        assert store_mod._escape_like(s) == old_module(s) == old_method(s)
+        assert store_mod.Store._like_escape(s) == old_method(s)
+    assert store_mod.Store._like_escape is store_mod._escape_like
