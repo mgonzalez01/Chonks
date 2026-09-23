@@ -67,13 +67,18 @@ def _defined_type_names(text: str) -> set[str]:
 
 
 
-# A macro-shaped name defined as a function: one to eight return-type words
-# on its line or the line before (`static void DC4(...) {`, GNU style
-# `static int\nDC4(...)\n{`), a parameter list, then its body. Two macro
-# calls in a row (`GEN(a)\nGEN(b)`) have no type word and do not match.
-_FUNCTION_DEF = re.compile(
-    r"^[ \t]*(?!(?:else|return|do|case|goto)\b)(?:[A-Za-z_]\w*[ \t*&]+){0,7}[A-Za-z_]\w*[ \t*&]*(?:\r?\n[ \t]*)?[*&]*"
-    r"(" + _MACRO_NAME + r")[ \t]*\((?:[^;{}()]|\([^()]*\))*\)[ \t\r\n]*\{", re.M)
+def _function_def(name: str) -> re.Pattern:
+    """A name matching `name` defined as a function: one to eight
+    return-type words on its line or the line before (`static void DC4(...) {`,
+    GNU style `static int\nDC4(...)\n{`), a parameter list, an HLSL semantic
+    if any (`: SV_Target`), then its body. Two macro calls in a row
+    (`GEN(a)\nGEN(b)`) have no type word and do not match."""
+    return re.compile(
+        r"^[ \t]*(?!(?:else|return|do|case|goto)\b)(?:[A-Za-z_]\w*[ \t*&]+){0,7}[A-Za-z_]\w*[ \t*&]*(?:\r?\n[ \t]*)?[*&]*"
+        r"\b(" + name + r")\b[ \t]*\((?:[^;{}()]|\([^()]*\))*\)[ \t\r\n]*(?::[ \t]*\w+[ \t\r\n]*)?\{", re.M)
+
+
+_FUNCTION_DEF = _function_def(_MACRO_NAME)
 
 
 def _defined_function_names(text: str) -> set[str]:
@@ -132,8 +137,9 @@ def _blank_macros(src: bytes, names, subs: dict[str, str] | None = None) -> byte
     return bytes(out)
 
 
-# A directive line with its \-continuations.
-_DIRECTIVE = re.compile(r"^[ \t]*#(?:\\\r?\n|[^\n])*", re.M)
+# A directive line with its \-continuations. The file's first line may
+# start with a UTF-8 byte-order mark (three latin-1 characters here).
+_DIRECTIVE = re.compile(r"^(?:\xef\xbb\xbf)?[ \t]*#(?:\\\r?\n|[^\n])*", re.M)
 
 
 @functools.lru_cache(maxsize=4)
@@ -221,16 +227,22 @@ def _unwrap_macros(src: bytes, names) -> bytes:
     """Blanks each NAME( and its matching ), keeping the argument, so
     `LOCAL(void) f()` parses as `      void  f()`. Same length and newlines
     as the input. Directive lines are left alone: `#if NAME(x)` is the
-    preprocessor's, not code."""
+    preprocessor's, not code. A name the file also defines as a function
+    is left alone: one #if branch defines the function and the other a
+    macro that passes its argument through, and unwrapping the definition
+    deletes the function."""
     if not names:
         return src
     text = src.decode("latin-1")
-    present = sorted(n for n in names if n in text)
+    present = {n for n in names if n in text}
+    if present:
+        functions = _function_def("|".join(re.escape(n) for n in sorted(present)))
+        present -= {m.group(1) for m in functions.finditer(text)}
     if not present:
         return src
     out = bytearray(src)
     directives = _directive_spans(text)
-    pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in present) + r")\b[ \t]*(?=\()")
+    pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in sorted(present)) + r")\b[ \t]*(?=\()")
     for m in pat.finditer(text):
         if _in_spans(directives, m.start()):
             continue

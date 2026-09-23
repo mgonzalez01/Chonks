@@ -169,3 +169,31 @@ def test_a_type_before_parentheses_is_not_a_macro_call():
     src = b"typedef HRESULT(WINAPI *set_description)(HANDLE, PCWSTR);\n"
     out = _blank_attributes(src, {"WINAPI"}, {"PNG_FUNCTION"})
     assert out == b"typedef HRESULT(       *set_description)(HANDLE, PCWSTR);\n"
+
+
+def test_a_byte_order_mark_does_not_hide_the_first_directive(tmp_path):
+    # Files saved by Visual Studio often start with a UTF-8 byte-order mark,
+    # right before the include guard. Its name, an empty #define, was then
+    # blanked in `#ifndef SHAPES_H`.
+    src = b"\xef\xbb\xbf#ifndef SHAPES_H\n#define SHAPES_H\nint area(int w, int h) { return w * h; }\n#endif\n"
+    (tmp_path / "shapes.h").write_bytes(src)
+    (tmp_path / "api.h").write_bytes(b"\xef\xbb\xbf#define EXPORT\n")
+    table = scan_definitions([tmp_path / "shapes.h", tmp_path / "api.h"])
+    assert {"SHAPES_H", "EXPORT"} <= table.attributes
+    counters: dict = {}
+    segment_file(src, "c", counters=counters, definitions=table)
+    assert not counters.get("parse_error")
+
+
+def test_a_wrapper_the_file_also_defines_as_a_function_keeps_the_function(tmp_path):
+    # One #if branch defines the function, the other a macro that passes its
+    # argument through. Unwrapping the definition deleted the function.
+    src = (b"#ifdef VT_ENABLED\nfloat pack(float feedback)\n{\n    return feedback * 2.0f;\n}\n"
+           b"#else\n#define pack(feedback) feedback\n#endif\n")
+    table = _table(tmp_path, src.decode())
+    assert "pack" in table.wrappers
+    counters: dict = {}
+    segment_file(src, "c", counters=counters, definitions=table)
+    assert "pack" in {s["name"] for s in counters["symbols"]}
+    hlsl = b"float4 pack(float4 feedback) : SV_Target\n{\n    return feedback;\n}\n"
+    assert _unwrap_macros(hlsl, {"pack"}) == hlsl, "an HLSL semantic sits between the parameters and the body"
