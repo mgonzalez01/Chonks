@@ -1903,6 +1903,19 @@ def test_cpp_only_a_class_with_a_body_is_a_definition(src, symbols):
     assert sorted(got) == sorted(symbols)
 
 
+@pytest.mark.parametrize("src,symbols", [
+    (b"struct wl_surface;\n", [("forward_declaration", "wl_surface")]),
+    (b"struct stat st;\n", []),
+    (b"void f(struct Foo *p);\n", []),
+    (b"struct Point { int x; };\n", [("struct_specifier", "Point")]),
+], ids=["fwd-struct", "elaborated-var", "elaborated-param", "struct"])
+def test_c_forward_declaration_is_a_fallback_symbol(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    root = get_parser("c").parse(src).root_node
+    assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "c", src)] == symbols
+
+
 def test_cpp_anonymous_struct_with_a_body_stays_a_boundary():
     chunks = segment_file(b"struct { int x; } s;\n", "cpp")
     assert [(c["chunk_type"], c["name"]) for c in chunks] == [("struct_specifier", None)]

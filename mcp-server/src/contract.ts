@@ -139,7 +139,7 @@ export const TOOLS = [
       "codebase_search for this because it resolves against a decoupled symbol index, so it " +
       "still finds a method folded into a merged chunk that text search wouldn't surface by " +
       "name. Exact-name (or prefix) lookup covering every named boundary (functions, methods, " +
-      "classes, structs). Returns path:line definition sites; a C++ type the index only " +
+      "classes, structs). Returns path:line definition sites; a C/C++ type the index only " +
       "forward-declares (e.g. from an external SDK) returns its declarations, marked " +
       "(forward_declaration). Boundary-only scope: " +
       "member fields, local variables, and other non-boundary names are NOT indexed here — " +

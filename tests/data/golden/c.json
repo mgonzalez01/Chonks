@@ -16,6 +16,20 @@
             "language": "c",
             "name": "point",
             "start_line": 4
+          },
+          {
+            "end_line": 2,
+            "kind": "forward_declaration",
+            "language": "c",
+            "name": "color",
+            "start_line": 2
+          },
+          {
+            "end_line": 1,
+            "kind": "forward_declaration",
+            "language": "c",
+            "name": "node",
+            "start_line": 1
           }
         ]
       },
@@ -50,6 +64,20 @@
           "language": "c",
           "name": "point",
           "start_line": 4
+        },
+        {
+          "end_line": 2,
+          "kind": "forward_declaration",
+          "language": "c",
+          "name": "color",
+          "start_line": 2
+        },
+        {
+          "end_line": 1,
+          "kind": "forward_declaration",
+          "language": "c",
+          "name": "node",
+          "start_line": 1
         }
       ]
     },
