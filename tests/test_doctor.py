@@ -585,3 +585,38 @@ def test_main_unreadable_config_is_an_argparse_error(tmp_path, monkeypatch, caps
     assert exc_info.value.code == 2
     err = capsys.readouterr().err
     assert "config not readable:" in err
+
+
+def test_table_sizes_include_index_pages(tmp_path):
+    import re
+    import sqlite3
+
+    import pytest
+    try:
+        sqlite3.connect(":memory:").execute("SELECT 1 FROM dbstat LIMIT 1")
+    except sqlite3.OperationalError:
+        pytest.skip("this SQLite build has no dbstat table")
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    sizes = report.split("== Table sizes ==")[1].split("\n== ")[0]
+    # chunk_refs has its primary-key autoindex plus idx_chunk_refs_from/_to.
+    assert re.search(r"\nchunk_refs: 2 rows, ~[\d.]+ KB \+ ~[\d.]+ KB in 3 indexes", sizes), sizes
+
+
+def test_help_usage_names_the_subcommand(capsys):
+    import pytest
+    from chonks.ops.doctor import main
+    with pytest.raises(SystemExit):
+        main(["--help"])
+    assert capsys.readouterr().out.startswith("usage: chonks doctor")
+
+
+def test_diagnostics_note_names_no_deleted_module(tmp_path):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+
+    report = _report_for(tmp_path / "test.db")
+    assert "chunker.py" not in report
+    assert "chonks/index/pipeline.py" in report
