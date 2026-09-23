@@ -16,6 +16,20 @@
             "language": "c",
             "name": "point",
             "start_line": 4
+          },
+          {
+            "end_line": 2,
+            "kind": "forward_declaration",
+            "language": "c",
+            "name": "color",
+            "start_line": 2
+          },
+          {
+            "end_line": 1,
+            "kind": "forward_declaration",
+            "language": "c",
+            "name": "node",
+            "start_line": 1
           }
         ]
       },
@@ -50,6 +64,20 @@
           "language": "c",
           "name": "point",
           "start_line": 4
+        },
+        {
+          "end_line": 2,
+          "kind": "forward_declaration",
+          "language": "c",
+          "name": "color",
+          "start_line": 2
+        },
+        {
+          "end_line": 1,
+          "kind": "forward_declaration",
+          "language": "c",
+          "name": "node",
+          "start_line": 1
         }
       ]
     },
@@ -272,6 +300,7 @@
           "DECLARE_ASN1_FUNCTIONS",
           "IMPLEMENT_ASN1_FUNCTIONS"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {
@@ -494,6 +523,7 @@
         "discovered_macros": [
           "MY_EXPORT_ANNOTATION"
         ],
+        "heal_fixed_most": true,
         "macro_healed": 1,
         "symbols": [
           {

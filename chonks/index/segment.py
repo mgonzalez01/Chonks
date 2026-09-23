@@ -10,17 +10,26 @@ from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
 from chonks.core.refresh import register_refresh
+from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.index.macro_heal import (
     _MACRO_LANGS,
     _MAX_MACRO_CANDIDATES,
     _MAX_MACRO_PASSES,
     _QT_ACCESS_SPECIFIERS,
+    _blank_attributes,
+    _blank_directive_comments,
     _blank_macros,
+    _count_errors,
     _count_errors_upto,
     _discover_macros,
+    _drop_redundant,
     _errors_with_ranges,
+    _heal_class_heads,
     _near_error_ranges,
+    _prune_healed,
+    _unwrap_macros,
 )
+from chonks.index.macro_defs import EMPTY as EMPTY_DEFINITIONS, DefinitionTable
 from chonks.index.refs_extract import (
     _EMPTY_REFS,
     _decode_literals,
@@ -93,6 +102,12 @@ def _is_boundary(node: Node, lang: str, src: bytes) -> bool:
     if spec is not None and spec.extra_boundary is not None:
         return spec.extra_boundary(node, src)
     return False
+
+
+def _is_forward_declaration(node: Node, lang: str, src: bytes) -> bool:
+    spec = _lang_spec(lang)
+    pred = spec.forward_declarations.get(node.type) if spec is not None else None
+    return pred is not None and pred(node, src)
 
 
 # Salvage-eligible: statement-body types only. Member-body types
@@ -713,11 +728,17 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
     while stack:
         node = stack.pop()
         if _is_boundary(node, lang, src):
+            kind = node.type
+        elif _is_forward_declaration(node, lang, src):
+            kind = FORWARD_DECLARATION
+        else:
+            kind = None
+        if kind is not None:
             name = _extract_name(node, lang, src)
             if name:
                 out.append({
                     "name":       name,
-                    "kind":       node.type,
+                    "kind":       kind,
                     "language":   lang,
                     "start_line": node.start_point[0] + 1,
                     "end_line":   node.end_point[0] + 1,
@@ -836,10 +857,12 @@ def _dedup_segments(segs: list, src: bytes) -> list:
 
 def segment_file(src: bytes, lang: str, *, path: str | None = None,
                  counters: dict | None = None, macros: set | None = None,
-                 self_heal: bool = True) -> list[dict[str, Any]]:
+                 self_heal: bool = True,
+                 definitions: DefinitionTable | None = None) -> list[dict[str, Any]]:
     """Parses src and returns segment dicts. No chunk exceeds CHUNK_MAX
     (enforced by _finalize). `macros` pre-blanks known engine macros;
-    `self_heal` additionally discovers and blanks unknown ones on the fly."""
+    `self_heal` additionally discovers and blanks unknown ones on the fly;
+    `definitions` is the project's own #define table (macro_defs.py)."""
     # Reset in case a prior file's segment_file call raised before reaching
     # _finalize's own reset.
     _literal_cap_state["capped_chunks"] = 0
@@ -856,38 +879,66 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
 
     # Parse a possibly-blanked buffer for STRUCTURE; content/names below
     # still read from the ORIGINAL src (blanking preserves byte offsets).
-    parse_src = _blank_macros(src, macros) if macros else src
+    # What the project's own #defines and types say: hide a macro that
+    # stands for nothing or attributes only, unwrap one that only adds
+    # attributes around its argument, replace one that stands for a type,
+    # and never blank a type or a macro that writes a declaration.
+    defs = definitions or EMPTY_DEFINITIONS
+    subs = defs.substitutions
+    parse_src = src
+    if lang in _MACRO_LANGS:
+        parse_src = _blank_directive_comments(parse_src)
+        parse_src = _unwrap_macros(parse_src, defs.wrappers)
+        parse_src = _blank_attributes(parse_src, defs.attributes, defs.function_like)
+    if macros:
+        parse_src = _blank_macros(parse_src, macros, subs)
     root = parser.parse(parse_src).root_node
 
     # Discover macros, validate by strict error-count decrease (a real call
     # like ASSERT(x) is rejected since blanking it doesn't help), blank,
     # reparse, repeat (see _MAX_MACRO_PASSES for why one pass isn't enough).
-    if self_heal and lang in _MACRO_LANGS and root.has_error:
-        healed: set = set()
+    healed: set = set()
+    swept = self_heal and lang in _MACRO_LANGS and root.has_error
+    if swept:
+        base_src = parse_src
+        errors_before_heal = _count_errors(root)
         for _ in range(_MAX_MACRO_PASSES):
             if not root.has_error:
                 break
             base, error_ranges = _errors_with_ranges(root)
             # sorted() pins order before truncating, or a >cap file picks a
             # different subset per run. Qt specifiers unioned in AFTER truncation.
-            discovered = sorted(_discover_macros(root, parse_src) - healed)[:_MAX_MACRO_CANDIDATES]
+            found = _discover_macros(root, parse_src) - healed
+            discovered = sorted(found - defs.vetoed(found))[:_MAX_MACRO_CANDIDATES]
             cands = (set(discovered) | _QT_ACCESS_SPECIFIERS) - healed
             testable = _near_error_ranges(cands, parse_src, error_ranges)
-            admitted = {m for m in testable
-                        if _count_errors_upto(parser.parse(_blank_macros(parse_src, {m})).root_node,
-                                              base) < base}
+            counts = {m: _count_errors_upto(parser.parse(_blank_macros(parse_src, {m}, subs)).root_node, base)
+                      for m in testable}
+            admitted = _drop_redundant(parser, parse_src, root,
+                                       {m for m, n in counts.items() if n < base}, counts, subs)
             if not admitted:
                 break
             healed |= admitted
-            parse_src = _blank_macros(parse_src, healed)
+            parse_src = _blank_macros(parse_src, healed, subs)
             root = parser.parse(parse_src).root_node
-        if healed and counters is not None:
-            counters.setdefault("discovered_macros", set()).update(healed)
-            counters["macro_healed"] = 1
-        elif not healed and counters is not None:
-            # Sweep found nothing to heal; chonks/index/pipeline.py persists this by content
-            # hash so unchanged unhealable files skip the sweep next time.
-            counters["heal_unhealable"] = 1
+        pruned = _prune_healed(parser, base_src, healed, subs)
+        if pruned != healed:
+            healed = pruned
+            parse_src = _blank_macros(base_src, healed, subs)
+            root = parser.parse(parse_src).root_node
+    if self_heal and lang in _MACRO_LANGS:
+        root, parse_src = _heal_class_heads(parser, root, parse_src, healed, defs.vetoes)
+    if healed and counters is not None:
+        counters.setdefault("discovered_macros", set()).update(healed)
+        counters["macro_healed"] = 1
+        # Whether the heal fixed most of the file, which is what makes its
+        # macros evidence worth persisting (see chonks/index/pipeline.py).
+        counters["heal_fixed_most"] = (
+            not swept or _count_errors(root) * 2 <= errors_before_heal)
+    elif swept and counters is not None:
+        # Sweep found nothing to heal; chonks/index/pipeline.py persists this by content
+        # hash so unchanged unhealable files skip the sweep next time.
+        counters["heal_unhealable"] = 1
 
     # Post-heal: parse_error now means genuinely unparseable, not "had a
     # macro we could heal".

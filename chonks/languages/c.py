@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ._ast import is_forward_declaration
 from ._naming import cpp_function_declarator_name, tag_specifier_name, typedef_name
 from .cpp import INCLUDE, classify_param
 from .spec import Field, LanguageSpec, LiteralSpec, NameRule
@@ -22,7 +23,7 @@ def is_tag_definition(node: Node, src: bytes) -> bool:
 C = LanguageSpec(
     name="c",
     grammar="c",
-    version="2",
+    version="3",
     extensions=frozenset({".c"}),
     # struct/union/enum_specifier also match bare tag refs and forward decls;
     # the boundary_filters entry requires a body to treat one as a real boundary.
@@ -32,6 +33,7 @@ C = LanguageSpec(
     }),
     salvage_nodes=frozenset({"function_definition"}),
     boundary_filters={t: is_tag_definition for t in _C_TAG_TYPES},
+    forward_declarations={t: is_forward_declaration for t in _C_TAG_TYPES},
     name_rules=(
         NameRule(("function_definition",), cpp_function_declarator_name),
         NameRule(("struct_specifier", "union_specifier", "enum_specifier"), tag_specifier_name),

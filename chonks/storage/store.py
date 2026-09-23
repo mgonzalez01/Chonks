@@ -17,6 +17,7 @@ import sqlite_vec
 from chonks.core.batching import batched
 from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
+from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
@@ -67,6 +68,16 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         except (json.JSONDecodeError, ValueError):
             d["metadata"] = None
     return d
+
+
+def _has_definition(rows: list[dict[str, Any]]) -> bool:
+    return any(r["kind"] != FORWARD_DECLARATION for r in rows)
+
+
+def _definitions_first(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop a forward declaration of any name that also has a definition."""
+    defined = {r["name"] for r in rows if r["kind"] != FORWARD_DECLARATION}
+    return [r for r in rows if r["kind"] != FORWARD_DECLARATION or r["name"] not in defined]
 
 
 def _escape_like(s: str) -> str:
@@ -341,6 +352,26 @@ class Store:
             self._conn.execute("DELETE FROM files WHERE path=?", (path,))
             return chunk_ids
 
+    def get_macro_definitions(self) -> dict[str, tuple[str, str]]:
+        """path -> (scan_key, records JSON) for every C/C++ file read by
+        the definition scan (chonks/index/macro_defs.py)."""
+        with self._lock:
+            return {r[0]: (r[1], r[2]) for r in self._conn.execute(
+                "SELECT path, scan_key, records FROM macro_definitions")}
+
+    def put_macro_definitions(self, rows: dict[str, tuple[str, str]], drop=()) -> None:
+        """Writes `rows` (path -> (scan_key, records JSON)) and removes the
+        records of the paths in `drop`."""
+        drop = list(drop)
+        if not rows and not drop:
+            return
+        with self._lock:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO macro_definitions(path, scan_key, records) VALUES(?,?,?)",
+                [(path, key, records) for path, (key, records) in rows.items()])
+            self._conn.executemany("DELETE FROM macro_definitions WHERE path=?", [(p,) for p in drop])
+            self._conn.commit()
+
     def get_names_for_path(self, path: str) -> set[str]:
         """Names defined at `path`. Must be called BEFORE delete_file(path):
         build_refs needs these names to know what a deletion affects, and
@@ -379,10 +410,10 @@ class Store:
     def get_all_symbols(self, path_prefix: str | None = None) -> list[dict[str, Any]]:
         """Every symbol (optionally under a path prefix), for repomap listing."""
         sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id "
-               "FROM symbols")
-        args: list = []
+               "FROM symbols WHERE kind != ?")
+        args: list = [FORWARD_DECLARATION]
         if path_prefix:
-            sql += " WHERE path LIKE ? ESCAPE '\\'"
+            sql += " AND path LIKE ? ESCAPE '\\'"
             args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
         sql += " ORDER BY path, start_line"
         with self._lock:
@@ -411,13 +442,18 @@ class Store:
                 return [dict(r) for r in self._conn.execute(sql + tail, a).fetchall()]
 
         if prefix:
-            return run(r"name LIKE ? ESCAPE '\'", [_escape_like(name) + "%"])
+            return _definitions_first(run(r"name LIKE ? ESCAPE '\'", [_escape_like(name) + "%"]))
         rows = run("name = ?", [name])
-        if rows or "::" in name or "." in name:
-            return rows
+        if _has_definition(rows) or "::" in name or "." in name:
+            return _definitions_first(rows)
+        # Forward declarations only answer a name nothing defines, so a
+        # qualified definition (`Outer::Inner`) beats a bare `class Inner;`.
         esc = _escape_like(name)
-        return run(r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')",
-                   [f"%::{esc}", f"%.{esc}"])
+        suffix = run(r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')",
+                     [f"%::{esc}", f"%.{esc}"])
+        if _has_definition(suffix) or not rows:
+            return _definitions_first(suffix)
+        return rows
 
     def resolve_symbol_chunk_ids(self, name: str) -> list[str]:
         """Resolve a name to its defining chunk_id(s), same lookup and
@@ -425,16 +461,17 @@ class Store:
         (overloads); callers needing "the" definition should try each."""
         with self._lock:
             def_rows = self._conn.execute(
-                "SELECT DISTINCT chunk_id FROM symbols WHERE name = ? AND chunk_id IS NOT NULL",
-                (name,),
+                "SELECT DISTINCT chunk_id FROM symbols "
+                "WHERE name = ? AND chunk_id IS NOT NULL AND kind != ?",
+                (name, FORWARD_DECLARATION),
             ).fetchall()
             if not def_rows and "::" not in name and "." not in name:
                 esc = _escape_like(name)
                 def_rows = self._conn.execute(
                     r"SELECT DISTINCT chunk_id FROM symbols WHERE "
                     r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\') "
-                    r"AND chunk_id IS NOT NULL",
-                    (f"%::{esc}", f"%.{esc}"),
+                    r"AND chunk_id IS NOT NULL AND kind != ?",
+                    (f"%::{esc}", f"%.{esc}", FORWARD_DECLARATION),
                 ).fetchall()
         return [r["chunk_id"] for r in def_rows]
 
@@ -444,7 +481,8 @@ class Store:
         out: dict[str, list[str]] = {}
         with self._lock:
             for r in self._conn.execute(
-                "SELECT name, chunk_id FROM symbols WHERE chunk_id IS NOT NULL"
+                "SELECT name, chunk_id FROM symbols WHERE chunk_id IS NOT NULL AND kind != ?",
+                (FORWARD_DECLARATION,),
             ).fetchall():
                 out.setdefault(r["name"], []).append(r["chunk_id"])
         return out
@@ -464,8 +502,9 @@ class Store:
             for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
-                    f"SELECT DISTINCT name FROM symbols WHERE chunk_id IN ({placeholders})",
-                    batch,
+                    f"SELECT DISTINCT name FROM symbols "
+                    f"WHERE kind != ? AND chunk_id IN ({placeholders})",
+                    [FORWARD_DECLARATION, *batch],
                 ).fetchall()
                 out.update(r[0] for r in rows)
         return out
@@ -481,8 +520,8 @@ class Store:
                 placeholders = ",".join("?" * len(batch))
                 rows = self._conn.execute(
                     f"SELECT name, chunk_id FROM symbols "
-                    f"WHERE chunk_id IS NOT NULL AND name IN ({placeholders})",
-                    batch,
+                    f"WHERE chunk_id IS NOT NULL AND kind != ? AND name IN ({placeholders})",
+                    [FORWARD_DECLARATION, *batch],
                 ).fetchall()
                 for r in rows:
                     out[r["name"]].append(r["chunk_id"])

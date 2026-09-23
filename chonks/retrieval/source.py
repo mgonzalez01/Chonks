@@ -1,5 +1,7 @@
 """Source text of a definition, stitched from its chunks."""
 
+from chonks.core.symbols import FORWARD_DECLARATION
+
 
 def _canonical_chunk_content(chunk: dict) -> str:
     """Strips the fallback-split overlap; without this, stitching chunks together
@@ -25,6 +27,12 @@ def _attach_definition_source(store, definitions: list[dict], max_chars: int) ->
     for d in definitions:
         chunk = chunks_by_id.get(d.get("chunk_id"))
         if not chunk:
+            continue
+        if d.get("kind") == FORWARD_DECLARATION:
+            # The declaration's own lines, not the unrelated chunk around them.
+            lines = _canonical_chunk_content(chunk).splitlines()
+            first = d["start_line"] - chunk["start_line"]
+            d["source"] = "\n".join(lines[first:first + d["end_line"] - d["start_line"] + 1])
             continue
         content = chunk.get("content") or ""
         chunk_end, def_end = chunk.get("end_line"), d.get("end_line")

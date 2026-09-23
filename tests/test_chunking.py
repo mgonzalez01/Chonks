@@ -2,6 +2,8 @@
 noise tables and giant single lines, and named-method preservation."""
 from pathlib import Path
 
+import pytest
+
 from chonks.index.rows import _chunk_id
 from chonks.index.macro_heal import _blank_macros
 from chonks.index.segment import segment_file, CHUNK_MAX
@@ -360,8 +362,7 @@ def test_blank_macros_preserves_length_and_newlines():
 
 def test_macro_self_heal_does_not_blank_bare_type():
     """Validation-gate hardening: a bare ALL_CAPS *type* (RID) must not be admitted
-    as a macro just because blanking it coincidentally drops the error count.
-    Only macro-CALL-shaped tokens (followed by '(') are discovered in error spans."""
+    as a macro just because blanking it coincidentally drops the error count."""
     # mangled-style: a forward decl with its trailing ';' stripped breaks the parse
     # for a NON-macro reason; RID here is a real return type, not a macro.
     src = (b"class RenderingDevice\n"      # missing ';'
@@ -371,6 +372,80 @@ def test_macro_self_heal_does_not_blank_bare_type():
     counters: dict = {}
     segment_file(src, "cpp", counters=counters)
     assert "RID" not in counters.get("discovered_macros", set()), "bare type wrongly blanked as a macro"
+
+
+@pytest.mark.parametrize("src,name", [
+    (b"class StringBuilder {\n  _FORCE_INLINE_ operator String() const { return s; }\n};\n",
+     "operator String"),
+    # The class-head macro's error lands at the closing brace, far from it.
+    (b"class _WARN_UNUSED_ HashSet {\n  int x;\n" + b"  int pad;\n" * 40 +
+     b"  _FORCE_INLINE_ int g() const { return x; }\n};\n", "HashSet"),
+    (b"class API_AVAILABLE(macos(11.0), ios(14.0)) Surface {\n  int x;\n};\n", "Surface"),
+    (b"class It {\n  It begin() const _LIFETIME_BOUND_ { return *this; }\n};\n", "It::begin"),
+], ids=["prefix", "class-head", "class-head-nested-args", "suffix"])
+def test_macro_self_heal_finds_attribute_macros(src, name):
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    names = {sym["name"] for sym in counters["symbols"]}
+    assert name in names or name.split("::")[-1] in names, names
+    assert "parse_error" not in counters
+
+
+def test_macro_self_heal_never_blanks_a_type_the_file_defines():
+    src = (b"struct AABB { int x; };\n"
+           b"class RenderingDevice\n"      # missing ';', a non-macro parse error
+           b"class Store {\n"
+           b"    AABB get_aabb() const { return a; }\n"
+           b"};\n")
+    from chonks.index.macro_heal import _discover_macros
+    from tree_sitter_language_pack import get_parser
+    assert "AABB" not in _discover_macros(get_parser("cpp").parse(src).root_node, src)
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert "AABB" not in counters.get("discovered_macros", set())
+
+
+def test_macro_self_heal_does_not_admit_the_type_beside_a_macro():
+    # Blanking RID also fixes `_FORCE_INLINE_ RID get_target()`, but only
+    # _FORCE_INLINE_ is needed; RID is a real type the file uses cleanly.
+    src = (b"class Buffers {\n"
+           b"  RID render_target;\n"
+           b"  _FORCE_INLINE_ RID get_render_target() const { return render_target; }\n"
+           b"};\n")
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert counters.get("discovered_macros") == {"_FORCE_INLINE_"}
+
+
+@pytest.mark.parametrize("src,macros", [
+    (b"class Ref {\n  ULONG count;\n  ULONG STDMETHODCALLTYPE AddRef() { return ++count; }\n};\n",
+     {"STDMETHODCALLTYPE"}),
+    (b"class Client {\n  UINT32 frames;\n  HRESULT Get(_Out_ UINT32 *p) { *p = frames; return 0; }\n};\n",
+     {"_Out_"}),
+], ids=["calling-convention", "sal-annotation"])
+def test_macro_self_heal_blames_the_macro_not_the_type(src, macros):
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert counters.get("discovered_macros") == macros
+    assert "parse_error" not in counters
+
+
+def test_macro_self_heal_drops_early_admissions_a_later_macro_makes_unneeded():
+    # libjpeg shape: a name admitted in an early pass is unneeded once
+    # LOCAL(void), the real macro, is found in a later one.
+    src = (b"INLINE\nLOCAL(void)\nupsample(j_decompress_ptr cinfo,\n                _JSAMPIMAGE input_buf,\n"
+           b"                JDIMENSION in_row_group_ctr)\n{\n  JDIMENSION col;\n  for (col = 0; col < 4; col++) { }\n}\n") * 3
+    counters: dict = {}
+    segment_file(src, "c", counters=counters)
+    assert counters.get("discovered_macros") == {"LOCAL"}
+    assert "parse_error" not in counters
+
+
+def test_blank_macros_blanks_nested_arguments():
+    src = b"class API_AVAILABLE(macos(11.0), ios(14.0)) Surface {};\n"
+    out = _blank_macros(src, {"API_AVAILABLE"})
+    assert len(out) == len(src)
+    assert out.split() == [b"class", b"Surface", b"{};"]
 
 
 def test_macro_self_heal_clears_parse_error_for_qt_signals_slots():
@@ -1860,6 +1935,89 @@ struct V {
     names = {s["name"] for s in _collect_symbols_from_root(root, "c_sharp", src)}
     assert names == {"V", "operator+", "operator==", "operator-",
                      "operator int", "operator Foo.Bar"}, names
+
+
+@pytest.mark.parametrize("src,name", [
+    (b"namespace render {\nint draw_count();\nextern int frame_index;\n}\n", "render"),
+    (b"namespace render::detail {\nconstexpr int kMax = 4;\n}\n", "render::detail"),
+    (b"namespace a {\nnamespace b {\nint x;\n}\n}\n", "b"),
+    (b"namespace {\nint hidden;\n}\n", None),
+    (b'extern "C" {\nint c_api();\n}\n', None),
+], ids=["plain", "qualified", "nested", "anonymous", "extern-c"])
+def test_cpp_namespace_body_chunk_takes_the_namespace_name(src, name):
+    chunks = segment_file(src, "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("declaration_list", name)]
+
+
+@pytest.mark.parametrize("src,symbols", [
+    (b"class Node;\n", [("forward_declaration", "Node")]),
+    (b"struct Opaque;\n", [("forward_declaration", "Opaque")]),
+    (b"struct Foo *make_foo();\n", []),
+    (b"struct stat st;\n", []),
+    (b"typedef struct Foo Foo;\n", [("forward_declaration", "Foo")]),
+    (b"typedef struct _FcConfig FcConfig;\n", [("forward_declaration", "FcConfig")]),
+    (b"typedef int Id;\n", []),
+    (b"template <class T> class Vec;\n", [("forward_declaration", "Vec")]),
+    (b"class A {\n  friend class B;\n  class Inner;\n};\n",
+     [("class_specifier", "A"), ("forward_declaration", "Inner")]),
+    (b"class GODOT_API Node;\n", []),
+    (b"class Node {\n  int x;\n};\n", [("class_specifier", "Node")]),
+    (b"struct P { int x; } p;\n", [("struct_specifier", "P")]),
+    (b"template <class T> class Vec {\n  T* data;\n};\n",
+     [("template_declaration", "Vec"), ("class_specifier", "Vec")]),
+], ids=["fwd-class", "fwd-struct", "elaborated-return", "elaborated-var", "opaque-typedef",
+        "opaque-typedef-alias", "plain-typedef", "fwd-template", "nested-fwd-not-friend", "unhealed-macro-fwd", "class",
+        "struct-with-declarator", "template-class"])
+def test_cpp_only_a_class_with_a_body_is_a_definition(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    root = get_parser("cpp").parse(src).root_node
+    got = [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "cpp", src)]
+    assert sorted(got) == sorted(symbols)
+
+
+@pytest.mark.parametrize("src,symbols", [
+    (b"struct wl_surface;\n", [("forward_declaration", "wl_surface")]),
+    (b"struct stat st;\n", []),
+    (b"void f(struct Foo *p);\n", []),
+    (b"struct Point { int x; };\n", [("struct_specifier", "Point")]),
+], ids=["fwd-struct", "elaborated-var", "elaborated-param", "struct"])
+def test_c_forward_declaration_is_a_fallback_symbol(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    root = get_parser("c").parse(src).root_node
+    assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "c", src)] == symbols
+
+
+@pytest.mark.parametrize("src,symbols", [
+    (b"struct VSOut;\n", [("forward_declaration", "VSOut")]),
+    (b"struct VSOut make();\n", []),
+    (b"void f(struct VSOut v);\n", []),
+    (b"struct VSOut { float4 pos : SV_Position; };\n", [("struct_specifier", "VSOut")]),
+], ids=["fwd-struct", "elaborated-return", "elaborated-param", "struct"])
+def test_hlsl_only_a_struct_with_a_body_is_a_definition(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from chonks.languages import REGISTRY
+    from tree_sitter_language_pack import get_parser
+    root = get_parser(REGISTRY.get("hlsl").grammar).parse(src).root_node
+    assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "hlsl", src)] == symbols
+
+
+def test_cpp_anonymous_struct_with_a_body_stays_a_boundary():
+    chunks = segment_file(b"struct { int x; } s;\n", "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("struct_specifier", None)]
+
+
+def test_cpp_forward_declaration_does_not_name_the_chunk_around_it():
+    src = b"namespace render {\nint draw_count();\nextern int frame_index;\nstruct Opaque;\n}\n"
+    chunks = segment_file(src, "cpp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("declaration_list", "render")]
+
+
+def test_c_sharp_namespace_chunk_is_named():
+    src = b"namespace Game.Events\n{\n    public delegate void Hit(int damage);\n}\n"
+    chunks = segment_file(src, "c_sharp")
+    assert [(c["chunk_type"], c["name"]) for c in chunks] == [("namespace_declaration", "Game.Events")]
 
 
 def test_cpp_names_look_through_pointer_reference_and_cast_declarators():

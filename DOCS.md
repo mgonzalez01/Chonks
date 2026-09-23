@@ -102,6 +102,7 @@ flowchart TD
     CHUNKS --> LIT["chunk_literals&#10;chunk_id &middot; text &middot; skeleton &middot; line&#10;source-literal index for find_by_message"]
     LIT -->|mirrors| LFTS["literals_fts&#10;FTS5 virtual &mdash; literal/message search"]
     FOLD["folder_summaries&#10;per-folder summary + embedding"]
+    MDEFS["macro_definitions&#10;path &middot; scan_key &middot; records&#10;#defines and type names per C/C++ file"]
     META["meta&#10;key-value: schema_version, chunker_version,&#10;pagerank_stale_chunks, ..."]
     GNODES["graph_nodes&#10;id &middot; kind &middot; path &middot; parent_id&#10;dir/file hierarchy, separate from chunks"]
     GEDGES["graph_edges&#10;(from_id, to_id) + edge_type&#10;'contains' edges over graph_nodes"]
@@ -119,6 +120,7 @@ The tables:
 - `symbols`, the decoupled named-boundary index, since the chunker sometimes folds several named things into one `chunks` row while `find_symbol` and `find_usages` need every name individually addressable.
 - `chunk_literals`, mirrored into `literals_fts`, holding every decoded string literal a chunk contains plus a hole-collapsed skeleton, populated at parse time and consumed only by `find_by_message`.
 - `folder_summaries`, one row per folder with its summary text and embedding.
+- `macro_definitions`, each C and C++ file's `#define` lines and type names under its content hash, read by the indexer before parsing.
 - `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
 - `graph_nodes` and `graph_edges`, the directory and file containment hierarchy (`dir:` and `file:` nodes plus `contains` edges), kept separate from `chunks` and `chunk_refs`.
 
@@ -179,7 +181,16 @@ Merge-time comparisons are in UTF-8 bytes, since `_Segment.size()` and `_Synthet
 2. **Partial** (`root_node.has_error` after the heal loop), which ticks `parse_error` in the summary. Boundaries come from what parsed cleanly and the gap-fill backstop captures the error regions as `module` or `block` chunks, so the content stays searchable while symbols, typed edges, `find_symbol`, `find_usages`, and `trace_path` thin out there. `parse_error_files` and `chonks doctor` name the candidates.
 3. **Clean**, no errors and full structure.
 
-**Macro self-heal (C and C++).** Annotation macros such as `GDCLASS` or `UCLASS` make tree-sitter-cpp set `has_error`, so self-heal finds their names structurally, blanks them, reparses, and keeps a candidate only when the error count dropped. A macro that heals at least two distinct files in a run is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it.
+**Macro definitions (C and C++).** Before any file is parsed, the index reads the `#define` lines and type names (`class`, `struct`, `union`, `enum`, `typedef`, `using`) of every C and C++ file as text, with no preprocessor, and classifies each defined name over all of its `#ifdef` branches, the most cautious reading winning. The parse buffer keeps its byte offsets and newlines while:
+
+- a macro-shaped name that stands for nothing or for attributes only (`#define API __declspec(dllexport)` in one branch, `#define API` in the other) is blanked in every file, except on directive lines and inside the arguments of a function-like macro the project defines (`PNG_FUNCTION(void *, f, (int n), PNG_ALLOCATED)`);
+- a wrapper, a function-like macro that only adds attributes around its one argument (`#define LOCAL(type) static type`), loses its name and parentheses and keeps the argument;
+- a macro that stands for a type is replaced by that type when it fits in the name's length;
+- a type, and a macro that writes a declaration by placing two of its parameters side by side (`#define DECL(type, name) type name`), is never blanked, by self-heal or from the saved vocabulary.
+
+A block comment just before a directive's line continuation (`do { /* note */ \`) is blanked as well: tree-sitter ends the `#define` there, and the rest of the body would parse as code. Each file's records are kept in `macro_definitions` under its content hash, so a re-index reads only changed files and indexing one folder still sees the macros the rest of the repo defines.
+
+**Macro self-heal (C and C++).** The macros the definitions leave open, those defined outside the repo such as Unreal's `UCLASS` and those that expand to code such as `GDCLASS`, still make tree-sitter-cpp set `has_error`, so self-heal finds candidate names structurally, blanks them (arguments included, nested parentheses and all, never on a directive line), reparses, and keeps a candidate only when the error count dropped. A candidate is ALL_CAPS, optionally wrapped in underscores, or `_Capital..._`, the shape of Windows SAL annotations such as `_In_`; it is found as a call-shaped statement, in an error region, in a class head, before or after a function signature, between a return type and the name (`ULONG STDMETHODCALLTYPE AddRef()`), or before a parameter. A type the file itself defines is never a candidate, nor is a function it defines with a return type (`static void DC4(...)` also called as `DC4(dst, top);`). Because blanking either the macro or the type beside it can fix the same line, a name is dropped again when the other admitted names already fix what it fixed, likely types first, so a real type such as `RID` is not hidden. A macro in a class head (`class _WARN_UNUSED_ HashSet {`) often leaves no parse error at all, so it is admitted when blanking it turns the head back into a class body without adding an error. A macro that heals at least two distinct files in a run, counting only files whose heal removed at least half their errors, is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it; the memo is dropped when the vocabulary or the heal logic changes, so an improved heal reaches content an older one gave up on.
 
 **Dominance warning.** `chonks doctor` groups chunks into path families by top-level path segment (root files as `(root)`), reporting per family the chunk count, corpus share, file count, chunks per file, and docs share, where docs means "not one of `chonks.index.segment.CODE_LANGUAGES`", the split `chunk_kind` also uses. `chonks index` prints a one-line warning at the end of a run when one family is both mostly docs (80% or more within it) and large (40% or more of the corpus), or when corpus-wide docs chunks reach 50%; it names the family and prints a ready-to-paste `exclude` snippet, changing nothing itself.
 
@@ -580,9 +591,9 @@ Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\
 }
 ```
 
-An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
+An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. It also holds C, C++ and HLSL forward declarations (`class X;`, `struct X;`, `typedef struct X X;` in C++) with `kind` `forward_declaration`, which are returned only for a name nothing in the index defines, such as a type from an external SDK; a name that is defined returns its definitions alone. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
 
-Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N }`, with an empty list rather than an error when the name has no match.
+Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N, "note" }`, with an empty list rather than an error when the name has no match. `note` explains a miss, or that only forward declarations matched.
 
 ### POST /usages
 
@@ -596,7 +607,7 @@ Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end
 
 The counterpart to `/symbol`. It resolves `name` to its defining chunk ids through the same symbol-index lookup and walks `chunk_refs` backwards to every chunk that references it, across files and languages. `name` is limited to 2000 characters, `path_prefix` (500 characters) scopes the referencing chunks, not the definition, and `limit` (1 to 1000) caps the returned rows.
 
-Response: `{ "usages": [{"chunk_id", "path", "name", "chunk_type", "start_line", "end_line", "edge_type", "provenance"}], "count": N }`, sorted by `(edge-quality rank, path, start_line)`, in which the typed edges (`calls`, `imports`, `inherits`) come before `xlang`, then `associated`, then `mentions`, according to the module-level `_COLLAPSE_RANK` shared with `find_outgoing`. `limit` applies after that sort, so it keeps the highest-signal edges, and when it truncates, `note` reports the omitted rows split by typed, xlang, associated, and mentions, each counted independently. `edge_type` carries the collapsed type behind each row's `provenance`. An empty list rather than an error is returned when the name has no match or no incoming references.
+Response: `{ "usages": [{"chunk_id", "path", "name", "chunk_type", "start_line", "end_line", "edge_type", "provenance"}], "count": N }`, sorted by `(edge-quality rank, path, start_line)`, in which the typed edges (`calls`, `imports`, `inherits`) come before `xlang`, then `associated`, then `mentions`, according to the module-level `_COLLAPSE_RANK` shared with `find_outgoing`. `limit` applies after that sort, so it keeps the highest-signal edges, and when it truncates, `note` reports the omitted rows split by typed, xlang, associated, and mentions, each counted independently. `edge_type` carries the collapsed type behind each row's `provenance`. An empty list rather than an error is returned when the name has no match or no incoming references. Two cases have no reference edges to walk, and both return `content_matches` instead, chunks whose content contains `name` as a whole word, each with `origin: "fts_scan"`: a name with more definers than the edge-indexing cap, and a name that is only forward-declared. They are text matches, not graph edges, and `note` says which case applies.
 
 ### POST /outgoing
 
@@ -876,12 +887,11 @@ find_symbol({
 An exact-name, or prefix, lookup against the decoupled symbol index. It returns `path:line` definition sites, including the methods of a folded small class and the members of a merged chunk that `codebase_search` and `codebase_map` do not surface by name. Use it when the symbol name is known; `codebase_search` is for concept or fuzzy queries.
 
 ```
-2 match(es):
+1 match(es):
 RenderingDevice  servers/rendering/rendering_device.h:67  (class_specifier)
-RenderingDevice  servers/rendering/rendering_server.h:62  (class_specifier)
 ```
 
-Both the class definition (`rendering_device.h:67`, a specifier too large to chunk whole) and a forward declaration come back.
+The class definition comes back, a specifier too large to chunk whole. The forward declaration at `rendering_server.h:62` does not, because the name has a definition; forward declarations answer only a name nothing defines, marked `(forward_declaration)`.
 
 ### Tool: find_usages
 

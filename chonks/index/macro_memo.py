@@ -17,11 +17,17 @@ _MACRO_PERSIST_MIN_FILES = 2
 _UNHEALABLE_HASH_CAP = 100_000
 
 
+# Bump when macro discovery or blanking changes: a file the old logic could
+# not heal may heal now, and the memo would otherwise skip it for good.
+_HEAL_LOGIC_VERSION = "2"
+
+
 def _vocab_fingerprint(vocab: set[str]) -> str:
-    """Invalidates the unhealable-content memo when the vocab changes: a file
-    healing depends on which macros are pre-blanked, so a memo built under a
-    narrower vocab must be dropped once the vocab grows."""
-    return hashlib.sha256("\n".join(sorted(vocab)).encode()).hexdigest()
+    """Invalidates the unhealable-content memo when the vocab or the heal
+    logic changes: a file healing depends on which macros are pre-blanked,
+    so a memo built under a narrower vocab must be dropped once it grows."""
+    return hashlib.sha256(
+        "\n".join([_HEAL_LOGIC_VERSION, *sorted(vocab)]).encode()).hexdigest()
 
 
 def load_macro_memo(store, macros):
@@ -58,14 +64,15 @@ def load_macro_memo(store, macros):
     return persisted, vocab, unhealable_order, unhealable_hashes, new_unhealable
 
 
-def persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, new_unhealable):
+def persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, new_unhealable,
+                       vocab_changed: bool = False):
     """Writes the macro vocab and, when it changed, the unhealable-content memo to meta."""
     # `persisted` carried forward unconditionally: its members were
     # pre-blanked, so they can't reappear in macro_file_counts (see
     # _MACRO_PERSIST_MIN_FILES for the filter on new ones).
     qualifying = {m for m, c in macro_file_counts.items()
                   if c >= _MACRO_PERSIST_MIN_FILES}
-    if qualifying:
+    if qualifying or vocab_changed:
         # Persist only the durable set + newly-qualifying macros, NOT the runtime
         # seed (which is layered on at load time), so a config seed never bakes in.
         store.set_meta("macro_vocab", json.dumps(sorted(persisted | qualifying)))
