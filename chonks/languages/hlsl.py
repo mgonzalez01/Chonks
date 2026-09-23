@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ._ast import name_text
+from ._ast import has_body, is_forward_declaration, name_text
 from ._naming import cpp_function_declarator_name, tag_specifier_name
 from .spec import LanguageSpec, LiteralSpec, NameRule
 
@@ -42,11 +42,14 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
-    version="3",
+    version="4",
     extensions=frozenset({".hlsl", ".fx", ".fxh"}),
     # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.
     boundary_nodes=frozenset({"function_definition", "struct_specifier"}),
+    # `struct X;` and `struct X` used as a type name a struct without defining it.
+    boundary_filters={"struct_specifier": has_body},
+    forward_declarations={"struct_specifier": is_forward_declaration},
     salvage_nodes=frozenset({"function_definition"}),  # cbuffer/tbuffer: see the salvage_extra field below
     salvage_extra=is_cbuffer,
     extra_boundary=is_cbuffer,

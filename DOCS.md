@@ -580,7 +580,7 @@ Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\
 }
 ```
 
-An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. It also holds C and C++ forward declarations (`class X;`, `struct X;`, `typedef struct X X;` in C++) with `kind` `forward_declaration`, which are returned only for a name nothing in the index defines, such as a type from an external SDK; a name that is defined returns its definitions alone. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
+An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. It also holds C, C++ and HLSL forward declarations (`class X;`, `struct X;`, `typedef struct X X;` in C++) with `kind` `forward_declaration`, which are returned only for a name nothing in the index defines, such as a type from an external SDK; a name that is defined returns its definitions alone. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
 
 Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N, "note" }`, with an empty list rather than an error when the name has no match. `note` explains a miss, or that only forward declarations matched.
 

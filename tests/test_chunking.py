@@ -1916,6 +1916,20 @@ def test_c_forward_declaration_is_a_fallback_symbol(src, symbols):
     assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "c", src)] == symbols
 
 
+@pytest.mark.parametrize("src,symbols", [
+    (b"struct VSOut;\n", [("forward_declaration", "VSOut")]),
+    (b"struct VSOut make();\n", []),
+    (b"void f(struct VSOut v);\n", []),
+    (b"struct VSOut { float4 pos : SV_Position; };\n", [("struct_specifier", "VSOut")]),
+], ids=["fwd-struct", "elaborated-return", "elaborated-param", "struct"])
+def test_hlsl_only_a_struct_with_a_body_is_a_definition(src, symbols):
+    from chonks.index.segment import _collect_symbols_from_root
+    from chonks.languages import REGISTRY
+    from tree_sitter_language_pack import get_parser
+    root = get_parser(REGISTRY.get("hlsl").grammar).parse(src).root_node
+    assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "hlsl", src)] == symbols
+
+
 def test_cpp_anonymous_struct_with_a_body_stays_a_boundary():
     chunks = segment_file(b"struct { int x; } s;\n", "cpp")
     assert [(c["chunk_type"], c["name"]) for c in chunks] == [("struct_specifier", None)]
