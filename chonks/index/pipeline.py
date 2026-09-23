@@ -1,5 +1,6 @@
 """The indexing pipeline: scan, parse and embed threads, run state, worker pool and abort errors."""
 
+import hashlib
 import json
 import logging
 import os
@@ -38,6 +39,8 @@ from chonks.index.admission import (
     _is_oversize_data_blob,
 )
 from chonks.index.embed_retry import _batch_label, _embed_isolating
+import chonks.index.macro_heal as _macro_heal
+from chonks.index.macro_defs import SCAN_VERSION, DefinitionTable, build_table, read_definitions
 from chonks.index.macro_memo import load_macro_memo, persist_macro_memo
 from chonks.index.postindex import run_post_index_passes
 from chonks.index.progress import tqdm_reporter
@@ -153,7 +156,7 @@ EMBEDDER_DOWN_THRESHOLD = 5
 # ---------------------------------------------------------------------------
 
 # ------------------------------------------------------- parser thread
-def parser_worker(rs: RunState, vocab: set[str]) -> None:
+def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
     state = rs.state
     lock = rs.lock
     file_symbols = rs.file_symbols
@@ -180,8 +183,8 @@ def parser_worker(rs: RunState, vocab: set[str]) -> None:
                     # Skip the heal sweep entirely for content already known
                     # unhealable from a prior run.
                     heal = content_hash not in unhealable_hashes
-                    segs = segment_file(src, lang, path=stored_path,
-                                        counters=_oc, macros=vocab, self_heal=heal)
+                    segs = segment_file(src, lang, path=stored_path, counters=_oc,
+                                        macros=vocab, self_heal=heal, definitions=definitions)
                 else:
                     # No grammar for this extension, admitted only because it's
                     # in fallback_extensions (scan_producer already filtered out
@@ -488,6 +491,99 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
 # ------------------------------------------------------ scan producer
 # Streams changed files into parse_q as the walk progresses. Orphan
 # pruning runs after, since it needs the full set of paths seen.
+def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: list[str],
+                      data_limit: int):
+    """(path, stored path) of the files scan_producer indexes, limited to
+    macro self-heal languages (C and C++), for the definition scan that runs
+    before parsing. Same exclude/include and data-blob rules as scan_producer."""
+    macro_exts = {ext for ext, lang in _EXT_TO_LANG.items() if lang in _macro_heal._MACRO_LANGS}
+    seen: set[str] = set()
+
+    def admitted(fpath: Path) -> str | None:
+        ext = fpath.suffix.lower()
+        if ext not in macro_exts or _is_oversize_data_blob(fpath, ext, data_limit):
+            return None
+        stored = _to_stored_path(fpath, root)
+        if stored in seen or (excludes and not _path_allowed(stored, excludes, includes)):
+            return None
+        seen.add(stored)
+        return stored
+
+    for p in paths:
+        p = Path(p).resolve()
+        if p.is_file():
+            if (stored := admitted(p)) is not None:
+                yield p, stored
+        elif p.is_dir():
+            for dirpath, dirnames, filenames in os.walk(p):
+                dir_path = Path(dirpath)
+                if excludes:
+                    dirnames[:] = [d for d in dirnames
+                                   if not _dir_should_prune(_to_stored_path(dir_path / d, root),
+                                                            excludes, includes)]
+                for fname in filenames:
+                    fpath = (dir_path / fname).resolve()
+                    if (stored := admitted(fpath)) is not None:
+                        yield fpath, stored
+
+
+def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str],
+                      includes: list[str], data_limit: int) -> DefinitionTable:
+    """The definition table over every C/C++ file the index holds. Files
+    under this run's paths are read, and re-scanned only when their content
+    changed; files outside them keep their stored records, so indexing one
+    folder still sees the macros the rest of the repo defines. A stored file
+    under this run's paths that the walk no longer finds is dropped, as the
+    scanner prunes it from the index this run."""
+    cached = store.get_macro_definitions()
+    fresh: dict[str, tuple[str, str]] = {}
+
+    def records_for(fpath: Path, stored: str):
+        try:
+            src = fpath.read_bytes()
+        except OSError:
+            return None
+        key = f"{SCAN_VERSION}:{hashlib.sha256(src).hexdigest()}"
+        hit = cached.get(stored)
+        if hit is not None and hit[0] == key:
+            return json.loads(hit[1])
+        rec = read_definitions(src)
+        fresh[stored] = (key, json.dumps(rec))
+        return rec
+
+    # Same scoping as scan_producer's orphan prune.
+    scope_dirs, scope_files = [], set()
+    for p in paths:
+        resolved = Path(p).resolve()
+        prefix = _to_stored_path(resolved, root)
+        prefix = "" if prefix == "." else prefix
+        if resolved.is_dir():
+            scope_dirs.append(prefix + "/" if prefix else "")
+        else:
+            scope_files.add(prefix)
+
+    records, seen, gone = [], set(), []
+    for fpath, stored in _macro_lang_paths(paths, root, excludes, includes, data_limit):
+        seen.add(stored)
+        if (rec := records_for(fpath, stored)) is not None:
+            records.append(rec)
+    for stored, (key, rec_json) in cached.items():
+        if stored in seen:
+            continue
+        if stored in scope_files or any(stored.startswith(d) for d in scope_dirs):
+            gone.append(stored)
+            continue
+        if key.startswith(f"{SCAN_VERSION}:"):
+            records.append(json.loads(rec_json))
+        else:
+            # Read by an older scan: read the file again.
+            fpath = Path(stored) if root is None or Path(stored).is_absolute() else root / stored
+            if (rec := records_for(fpath, stored)) is not None:
+                records.append(rec)
+    store.put_macro_definitions(fresh, drop=gone)
+    return build_table(records)
+
+
 def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, store: Store, force: bool,
                   excludes: list[str], includes: list[str], fallback_exts: set[str], data_limit: int) -> None:
     state = rs.state
@@ -731,6 +827,22 @@ def index_paths(
     t0 = time.monotonic()  # for the end-of-run chunks/s throughput line
 
     persisted, vocab, unhealable_order, unhealable_hashes, new_unhealable = load_macro_memo(store, macros)
+    # The project's own #defines and types, read before any file is parsed:
+    # they decide how each defined macro is rewritten, and self-heal guesses
+    # only the rest.
+    t_defs = time.monotonic()
+    definitions = _load_definitions(store, paths, root, excludes, includes, data_limit)
+    logger.info("Read C/C++ definitions in %.1fs (%d names)",
+                time.monotonic() - t_defs, len(definitions.classes))
+    # A saved macro the source defines as a type, a declaration writer or a
+    # wrapper is dropped: blanking it with its arguments everywhere would
+    # delete what it declares.
+    vetoed_saved = persisted & definitions.vetoes
+    if vetoed_saved:
+        logger.info("Dropping %d saved macro(s) the source says must not be blanked: %s",
+                    len(vetoed_saved), ", ".join(sorted(vetoed_saved)))
+        persisted = persisted - vetoed_saved
+    vocab = vocab - definitions.vetoes
     # Per-macro file count, checked against _MACRO_PERSIST_MIN_FILES at persist
     # time below.
     macro_file_counts: dict[str, int] = {}
@@ -816,7 +928,7 @@ def index_paths(
     )
 
     # ---------------------------------------------------- start threads
-    t_parser   = threading.Thread(target=parser_worker,   args=(rs, vocab), daemon=True)
+    t_parser   = threading.Thread(target=parser_worker,   args=(rs, vocab, definitions), daemon=True)
     t_embedder = threading.Thread(target=embedder_worker, args=(rs, store, embedder, embed_batch, embed_inflight), daemon=True)
     t_scanner  = threading.Thread(target=scan_producer,   args=(rs, paths, root, store, force, excludes, includes, fallback_exts, data_limit), daemon=True)
     t_parser.start()
@@ -909,7 +1021,8 @@ def index_paths(
             raise worker_exc[1]
         raise RuntimeError(f"Embedder worker crashed: {worker_exc[1]}") from worker_exc[1]
 
-    persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, rs.new_unhealable)
+    persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, rs.new_unhealable,
+                       vocab_changed=bool(vetoed_saved))
 
     # Wall-clock scan+parse+embed only, excluding post-processing below. The
     # number to watch when tuning embed_batch/embed_inflight/--parallel.

@@ -150,6 +150,16 @@ SCHEMA_DDL = """
                 VALUES (new.rowid, new.id, new.name, new.content);
             END;
 
+            -- Each C/C++ file's #defines and type names, as read by
+            -- chonks/index/macro_defs.py; scan_key is its SCAN_VERSION and
+            -- the file's content hash, so an unchanged file is not re-read.
+            -- An old DB gains it empty and fills it on the next index run.
+            CREATE TABLE IF NOT EXISTS macro_definitions (
+                path     TEXT PRIMARY KEY,
+                scan_key TEXT NOT NULL,
+                records  TEXT NOT NULL
+            );
+
             -- CREATE TABLE IF NOT EXISTS alone migrates an old DB: no
             -- SCHEMA_VERSION bump, no forced re-index. Coverage is tracked
             -- by _LITERAL_INDEX_META_KEY, not by this table being empty.

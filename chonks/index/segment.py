@@ -16,6 +16,8 @@ from chonks.index.macro_heal import (
     _MAX_MACRO_CANDIDATES,
     _MAX_MACRO_PASSES,
     _QT_ACCESS_SPECIFIERS,
+    _blank_attributes,
+    _blank_directive_comments,
     _blank_macros,
     _count_errors,
     _count_errors_upto,
@@ -25,7 +27,9 @@ from chonks.index.macro_heal import (
     _heal_class_heads,
     _near_error_ranges,
     _prune_healed,
+    _unwrap_macros,
 )
+from chonks.index.macro_defs import EMPTY as EMPTY_DEFINITIONS, DefinitionTable
 from chonks.index.refs_extract import (
     _EMPTY_REFS,
     _decode_literals,
@@ -853,10 +857,12 @@ def _dedup_segments(segs: list, src: bytes) -> list:
 
 def segment_file(src: bytes, lang: str, *, path: str | None = None,
                  counters: dict | None = None, macros: set | None = None,
-                 self_heal: bool = True) -> list[dict[str, Any]]:
+                 self_heal: bool = True,
+                 definitions: DefinitionTable | None = None) -> list[dict[str, Any]]:
     """Parses src and returns segment dicts. No chunk exceeds CHUNK_MAX
     (enforced by _finalize). `macros` pre-blanks known engine macros;
-    `self_heal` additionally discovers and blanks unknown ones on the fly."""
+    `self_heal` additionally discovers and blanks unknown ones on the fly;
+    `definitions` is the project's own #define table (macro_defs.py)."""
     # Reset in case a prior file's segment_file call raised before reaching
     # _finalize's own reset.
     _literal_cap_state["capped_chunks"] = 0
@@ -873,7 +879,19 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
 
     # Parse a possibly-blanked buffer for STRUCTURE; content/names below
     # still read from the ORIGINAL src (blanking preserves byte offsets).
-    parse_src = _blank_macros(src, macros) if macros else src
+    # What the project's own #defines and types say: hide a macro that
+    # stands for nothing or attributes only, unwrap one that only adds
+    # attributes around its argument, replace one that stands for a type,
+    # and never blank a type or a macro that writes a declaration.
+    defs = definitions or EMPTY_DEFINITIONS
+    subs = defs.substitutions
+    parse_src = src
+    if lang in _MACRO_LANGS:
+        parse_src = _blank_directive_comments(parse_src)
+        parse_src = _unwrap_macros(parse_src, defs.wrappers)
+        parse_src = _blank_attributes(parse_src, defs.attributes, defs.function_like)
+    if macros:
+        parse_src = _blank_macros(parse_src, macros, subs)
     root = parser.parse(parse_src).root_node
 
     # Discover macros, validate by strict error-count decrease (a real call
@@ -890,25 +908,26 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
             base, error_ranges = _errors_with_ranges(root)
             # sorted() pins order before truncating, or a >cap file picks a
             # different subset per run. Qt specifiers unioned in AFTER truncation.
-            discovered = sorted(_discover_macros(root, parse_src) - healed)[:_MAX_MACRO_CANDIDATES]
+            found = _discover_macros(root, parse_src) - healed
+            discovered = sorted(found - defs.vetoed(found))[:_MAX_MACRO_CANDIDATES]
             cands = (set(discovered) | _QT_ACCESS_SPECIFIERS) - healed
             testable = _near_error_ranges(cands, parse_src, error_ranges)
-            counts = {m: _count_errors_upto(parser.parse(_blank_macros(parse_src, {m})).root_node, base)
+            counts = {m: _count_errors_upto(parser.parse(_blank_macros(parse_src, {m}, subs)).root_node, base)
                       for m in testable}
             admitted = _drop_redundant(parser, parse_src, root,
-                                       {m for m, n in counts.items() if n < base}, counts)
+                                       {m for m, n in counts.items() if n < base}, counts, subs)
             if not admitted:
                 break
             healed |= admitted
-            parse_src = _blank_macros(parse_src, healed)
+            parse_src = _blank_macros(parse_src, healed, subs)
             root = parser.parse(parse_src).root_node
-        pruned = _prune_healed(parser, base_src, healed)
+        pruned = _prune_healed(parser, base_src, healed, subs)
         if pruned != healed:
             healed = pruned
-            parse_src = _blank_macros(base_src, healed)
+            parse_src = _blank_macros(base_src, healed, subs)
             root = parser.parse(parse_src).root_node
     if self_heal and lang in _MACRO_LANGS:
-        root, parse_src = _heal_class_heads(parser, root, parse_src, healed)
+        root, parse_src = _heal_class_heads(parser, root, parse_src, healed, defs.vetoes)
     if healed and counters is not None:
         counters.setdefault("discovered_macros", set()).update(healed)
         counters["macro_healed"] = 1

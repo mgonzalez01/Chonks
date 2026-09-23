@@ -1,6 +1,7 @@
 """Structural macro discovery and blanking to self-heal tree-sitter parse errors."""
 
 import bisect
+import functools
 import re
 
 from tree_sitter import Node
@@ -64,10 +65,29 @@ def _defined_type_names(text: str) -> set[str]:
     return names
 
 
-def _blank_macros(src: bytes, names) -> bytes:
+
+
+# A macro-shaped name defined as a function: one to eight return-type words
+# on its line or the line before (`static void DC4(...) {`, GNU style
+# `static int\nDC4(...)\n{`), a parameter list, then its body. Two macro
+# calls in a row (`GEN(a)\nGEN(b)`) have no type word and do not match.
+_FUNCTION_DEF = re.compile(
+    r"^[ \t]*(?!(?:else|return|do|case|goto)\b)(?:[A-Za-z_]\w*[ \t*&]+){0,7}[A-Za-z_]\w*[ \t*&]*(?:\r?\n[ \t]*)?[*&]*"
+    r"(" + _MACRO_NAME + r")[ \t]*\((?:[^;{}()]|\([^()]*\))*\)[ \t\r\n]*\{", re.M)
+
+
+def _defined_function_names(text: str) -> set[str]:
+    """Names this file defines as functions. A function also called as a
+    statement (`DC4(dst, top);`) looks like a macro, and blanking it deletes
+    the function."""
+    return {m.group(1) for m in _FUNCTION_DEF.finditer(text)}
+
+def _blank_macros(src: bytes, names, subs: dict[str, str] | None = None) -> bytes:
     """Replaces each macro NAME(...) with spaces, preserving byte length
     and newlines so tree-sitter offsets stay valid against the ORIGINAL
-    bytes. latin-1 keeps one char = one byte for regex spans."""
+    bytes. latin-1 keeps one char = one byte for regex spans. A name in
+    `subs` (a macro that stands for a type) is replaced by that type,
+    padded to the name's length, instead of blanked."""
     if not names:
         return src
     out = bytearray(src)
@@ -97,9 +117,128 @@ def _blank_macros(src: bytes, names) -> bytes:
 
     plain = [n for n in names if n not in _QT_ACCESS_SPECIFIERS]
     if plain:
-        pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in plain) + r")\b[ \t]*")
+        pat = re.compile(r"\b(" + "|".join(re.escape(n) for n in plain) + r")\b[ \t]*")
+        directives = _directive_spans(text)
         for m in pat.finditer(text):
-            blank(m.start(), _args_end(text, m.end()))
+            # `#define NAME(...) \` blanked would leave a nameless define
+            # whose body leaks out as code; `#if defined(NAME)` would break.
+            if _in_spans(directives, m.start()):
+                continue
+            sub = subs.get(m.group(1)) if subs else None
+            if sub is not None:
+                out[m.start(1):m.end(1)] = sub.ljust(m.end(1) - m.start(1)).encode("latin-1")
+            else:
+                blank(m.start(), _args_end(text, m.end()))
+    return bytes(out)
+
+
+# A directive line with its \-continuations.
+_DIRECTIVE = re.compile(r"^[ \t]*#(?:\\\r?\n|[^\n])*", re.M)
+
+
+@functools.lru_cache(maxsize=4)
+def _directive_spans(text: str) -> tuple[list[int], list[int]]:
+    """Starts and ends of the directive lines in text. Cached: the heal
+    loop blanks one candidate at a time against the same buffer."""
+    spans = [(m.start(), m.end()) for m in _DIRECTIVE.finditer(text)]
+    return [s for s, _ in spans], [e for _, e in spans]
+
+
+def _in_spans(spans: tuple[list[int], list[int]], i: int) -> bool:
+    starts, ends = spans
+    j = bisect.bisect_right(starts, i) - 1
+    return j >= 0 and i < ends[j]
+
+
+_CONTINUATION = re.compile(r"[ \t]*\\\r?\n")
+# A string or char literal, or a one-line block comment, inside a directive.
+_DIRECTIVE_COMMENT = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|/\*(?:[^*\n]|\*(?!/))*\*/')
+
+
+def _blank_directive_comments(src: bytes) -> bytes:
+    """Blanks a block comment that ends a directive line just before its
+    continuation. tree-sitter ends the #define there, so in
+    `#define M(x) \\ do { /* note */ \\ ... } while (0)` the rest of the
+    body leaks out as code and swallows what follows. Other comments stay:
+    they are tokens to tree-sitter, and removing them changes how it
+    recovers from errors elsewhere in the file."""
+    if b"/*" not in src:
+        return src
+    text = src.decode("latin-1")
+    out = None
+    for d in _DIRECTIVE.finditer(text):
+        if "/*" not in d.group():
+            continue
+        for m in _DIRECTIVE_COMMENT.finditer(text, d.start(), d.end()):
+            if m.group().startswith("/*") and _CONTINUATION.match(text, m.end()):
+                out = out or bytearray(src)
+                out[m.start():m.end()] = b" " * (m.end() - m.start())
+    return bytes(out) if out is not None else src
+
+_MACRO_TOKEN = re.compile(r"\b" + _MACRO_NAME + r"\b")
+_MACRO_CALL = re.compile(r"\b(" + _MACRO_NAME + r")\b[ \t]*\(")
+
+
+def _macro_arg_spans(text: str, macros) -> tuple[list[int], list[int]]:
+    """The outermost argument lists of calls `NAME(...)` to the given
+    function-like macros."""
+    starts, ends, last = [], [], -1
+    for m in _MACRO_CALL.finditer(text):
+        if m.start() < last or m.group(1) not in macros:
+            continue
+        end = _args_end(text, m.end() - 1)
+        if end > m.end():
+            starts.append(m.end() - 1)
+            ends.append(end)
+            last = end
+    return starts, ends
+
+
+def _blank_attributes(src: bytes, names, function_like=frozenset()) -> bytes:
+    """Blanks each bare NAME of an object-like macro that stands for nothing
+    or attributes only. Unlike _blank_macros no argument list follows: the
+    macro takes none, so a `(` after it is the code's own. Left alone inside
+    the arguments of a `function_like` macro, which decides where it lands:
+    `PNG_FUNCTION(void*, f, (int n), PNG_ALLOCATED)` blanked would end in `, )`.
+    A name the repo does not define as a macro is not one: in
+    `HRESULT(WINAPI *fn)(void)` WINAPI is still blanked.
+    Names are looked up per token: the table can hold thousands."""
+    if not names:
+        return src
+    text = src.decode("latin-1")
+    hits = [m for m in _MACRO_TOKEN.finditer(text) if m.group() in names]
+    if not hits:
+        return src
+    out = bytearray(src)
+    directives, macro_args = _directive_spans(text), _macro_arg_spans(text, function_like)
+    for m in hits:
+        if not _in_spans(directives, m.start()) and not _in_spans(macro_args, m.start()):
+            out[m.start():m.end()] = b" " * (m.end() - m.start())
+    return bytes(out)
+
+
+def _unwrap_macros(src: bytes, names) -> bytes:
+    """Blanks each NAME( and its matching ), keeping the argument, so
+    `LOCAL(void) f()` parses as `      void  f()`. Same length and newlines
+    as the input. Directive lines are left alone: `#if NAME(x)` is the
+    preprocessor's, not code."""
+    if not names:
+        return src
+    text = src.decode("latin-1")
+    present = sorted(n for n in names if n in text)
+    if not present:
+        return src
+    out = bytearray(src)
+    directives = _directive_spans(text)
+    pat = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in present) + r")\b[ \t]*(?=\()")
+    for m in pat.finditer(text):
+        if _in_spans(directives, m.start()):
+            continue
+        end = _args_end(text, m.end())
+        if end == m.end():
+            continue
+        for i in (*range(m.start(), m.end() + 1), end - 1):
+            out[i] = 0x20
     return bytes(out)
 
 
@@ -233,7 +372,8 @@ def _clean_type_uses(root: Node, src: bytes) -> dict[str, int]:
     return uses
 
 
-def _drop_redundant(parser, parse_src: bytes, root: Node, admitted: set, counts: dict) -> set:
+def _drop_redundant(parser, parse_src: bytes, root: Node, admitted: set, counts: dict,
+                    subs: dict[str, str] | None = None) -> set:
     """In `_FORCE_INLINE_ RID get()` blanking either name fixes the line, so
     both pass the error-count test on their own. Keep only the names the
     set needs: weakest first, and on a tie the one that already parses as
@@ -242,15 +382,15 @@ def _drop_redundant(parser, parse_src: bytes, root: Node, admitted: set, counts:
         return admitted
     type_uses = _clean_type_uses(root, parse_src)
     keep = set(admitted)
-    full = _count_errors(parser.parse(_blank_macros(parse_src, keep)).root_node)
+    full = _count_errors(parser.parse(_blank_macros(parse_src, keep, subs)).root_node)
     for name in sorted(admitted, key=lambda m: (-counts[m], -type_uses.get(m, 0), m)):
         without = keep - {name}
-        if without and _count_errors(parser.parse(_blank_macros(parse_src, without)).root_node) <= full:
+        if without and _count_errors(parser.parse(_blank_macros(parse_src, without, subs)).root_node) <= full:
             keep = without
     return keep
 
 
-def _prune_healed(parser, base_src: bytes, healed: set) -> set:
+def _prune_healed(parser, base_src: bytes, healed: set, subs: dict[str, str] | None = None) -> set:
     """Heal passes admit in rounds, so a name admitted early can be made
     unnecessary by one found later: in libjpeg, JDIMENSION (a real typedef)
     fixed a few errors before LOCAL(void), the actual macro, was found.
@@ -259,10 +399,10 @@ def _prune_healed(parser, base_src: bytes, healed: set) -> set:
         return healed
     type_uses = _clean_type_uses(parser.parse(base_src).root_node, base_src)
     keep = set(healed)
-    full = _count_errors(parser.parse(_blank_macros(base_src, keep)).root_node)
+    full = _count_errors(parser.parse(_blank_macros(base_src, keep, subs)).root_node)
     for name in sorted(healed, key=lambda m: (-type_uses.get(m, 0), m)):
         without = keep - {name}
-        if without and _count_errors(parser.parse(_blank_macros(base_src, without)).root_node) <= full:
+        if without and _count_errors(parser.parse(_blank_macros(base_src, without, subs)).root_node) <= full:
             keep = without
     return keep
 
@@ -277,12 +417,13 @@ def _count_class_bodies(root: Node) -> int:
     return n
 
 
-def _heal_class_heads(parser, root: Node, parse_src: bytes, healed: set) -> tuple[Node, bytes]:
+def _heal_class_heads(parser, root: Node, parse_src: bytes, healed: set,
+                      vetoed=frozenset()) -> tuple[Node, bytes]:
     """`class _WARN_UNUSED_ HashSet {...}` often parses with no error at all,
     as a function named HashSet, so the error-count test never sees it.
     Admits a class-head macro when blanking it adds a class body and no
     error. Adds each admitted name to `healed`."""
-    heads = _class_head_macros(parse_src.decode("latin-1")) - healed
+    heads = _class_head_macros(parse_src.decode("latin-1")) - healed - set(vetoed)
     if not heads:
         return root, parse_src
     errors, bodies = _count_errors(root), _count_class_bodies(root)
@@ -352,4 +493,4 @@ def _discover_macros(root: Node, src: bytes) -> set[str]:
     for m in re.finditer(r"(?m)^[ \t]*(" + _MACRO_NAME + r")[ \t]*(?:\([^()]*\))?[ \t]*;?[ \t]*\r?$", text):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
-    return found - _defined_type_names(text)
+    return found - _defined_type_names(text) - _defined_function_names(text)

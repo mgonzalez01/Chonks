@@ -7,5 +7,5 @@ from chonks.storage.schema import SCHEMA_DDL
 
 def test_schema_ddl_sha256():
     assert hashlib.sha256(SCHEMA_DDL.encode()).hexdigest() == (
-        "b4f69dfde328e98b7ed99ba3ebc7c6575192ac8ab57534eefae8fc77710ecbcf"
+        "7c12e00c93d63681f0b3e23f33ff3ee81a9e216aa614f3ffd80e04db9c49d7b9"
     )

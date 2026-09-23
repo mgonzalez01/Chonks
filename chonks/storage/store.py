@@ -352,6 +352,26 @@ class Store:
             self._conn.execute("DELETE FROM files WHERE path=?", (path,))
             return chunk_ids
 
+    def get_macro_definitions(self) -> dict[str, tuple[str, str]]:
+        """path -> (scan_key, records JSON) for every C/C++ file read by
+        the definition scan (chonks/index/macro_defs.py)."""
+        with self._lock:
+            return {r[0]: (r[1], r[2]) for r in self._conn.execute(
+                "SELECT path, scan_key, records FROM macro_definitions")}
+
+    def put_macro_definitions(self, rows: dict[str, tuple[str, str]], drop=()) -> None:
+        """Writes `rows` (path -> (scan_key, records JSON)) and removes the
+        records of the paths in `drop`."""
+        drop = list(drop)
+        if not rows and not drop:
+            return
+        with self._lock:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO macro_definitions(path, scan_key, records) VALUES(?,?,?)",
+                [(path, key, records) for path, (key, records) in rows.items()])
+            self._conn.executemany("DELETE FROM macro_definitions WHERE path=?", [(p,) for p in drop])
+            self._conn.commit()
+
     def get_names_for_path(self, path: str) -> set[str]:
         """Names defined at `path`. Must be called BEFORE delete_file(path):
         build_refs needs these names to know what a deletion affects, and

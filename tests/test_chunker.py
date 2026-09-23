@@ -183,6 +183,119 @@ def test_macro_vocab_ignores_files_the_heal_left_mostly_broken(tmp_path):
     assert not vocab & {"UCLASS", "GENERATED_BODY"}
 
 
+def test_saved_macro_the_source_defines_as_a_type_is_dropped(tmp_path):
+    from chonks.index.pipeline import index_paths
+
+    (tmp_path / "rid.h").write_text("class RID {\n    int id;\n};\n")
+    store = Store(tmp_path / "test.db")
+    store.set_meta("macro_vocab", json.dumps(["RID", "UCLASS"]))
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    vocab = set(json.loads(store.get_meta("macro_vocab") or "[]"))
+    store.close()
+    assert vocab == {"UCLASS"}
+
+
+def test_definition_walk_covers_exactly_the_c_family_files_indexed(tmp_path):
+    from chonks.index.pipeline import _macro_lang_paths, index_paths
+
+    for rel in ("src/a.c", "src/b.h", "src/c.cpp", "src/d.py", "vendor/e.h",
+                "vendor/keep/f.h", "build/g.c"):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("int x;\n")
+    excludes, includes = ["vendor/", "build/"], ["vendor/keep/"]
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path,
+                exclude=excludes, include=includes)
+    indexed = {r[0] for r in store._conn.execute("SELECT path FROM files")
+               if r[0].endswith((".c", ".h", ".cpp"))}
+    cached = set(store.get_macro_definitions())
+    store.close()
+    walked = {stored for _, stored in _macro_lang_paths([str(tmp_path)], tmp_path, excludes, includes, 10**9)}
+    assert walked == indexed == cached == {"src/a.c", "src/b.h", "src/c.cpp", "vendor/keep/f.h"}
+
+
+
+
+def test_comment_before_a_line_continuation_does_not_end_the_define():
+    from chonks.index.segment import segment_file
+
+    src = (b"#define check(n) \\\n  do { /* bounds */ \\\n    if ((n) < 0) return; \\\n  } while (0)\n"
+           b"int area(int w, int h) { return w * h; }\n")
+    counters: dict = {}
+    segment_file(src, "cpp", counters=counters)
+    assert "area" in {s["name"] for s in counters["symbols"]}
+    assert not counters.get("parse_error"), "the rest of the macro body would leak out as code"
+
+
+def test_a_function_the_file_defines_is_never_a_macro_candidate():
+    from chonks.index.macro_heal import _discover_macros
+    from tree_sitter_language_pack import get_parser
+
+    src = (b"static void DC4(unsigned char *dst, const unsigned char *top) {\n  dst[0] = top[0];\n}\n\n"
+           b"static int\nTM4(unsigned char *dst)\n{\n  return dst[0];\n}\n\n"
+           b"GEN_MATCHER(noDict)\nGEN_MATCHER(extDict)\n\n"
+           b"static void Predict(unsigned char *dst, const unsigned char *top) {\n"
+           b"  DC4(dst, top);\n  TM4(dst);\n  COPY_ROW(dst)\n}\n")
+    found = _discover_macros(get_parser("c").parse(src).root_node, src)
+    # All are call-shaped; DC4 and TM4 are functions defined here, and two
+    # macro calls in a row still read as macros.
+    assert {"COPY_ROW", "GEN_MATCHER"} <= found and not {"DC4", "TM4"} & found
+
+
+def _api_repo(tmp_path):
+    (tmp_path / "inc").mkdir()
+    (tmp_path / "src").mkdir()
+    (tmp_path / "inc" / "api.h").write_text("#define API_EXPORT\n")
+    (tmp_path / "src" / "a.c").write_text("API_EXPORT int area(int w, int h) { return w * h; }\n")
+
+
+def test_indexing_one_folder_still_sees_macros_defined_elsewhere(tmp_path):
+    from chonks.index.pipeline import index_paths
+
+    _api_repo(tmp_path)
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    (tmp_path / "src" / "a.c").write_text("API_EXPORT int volume(int w, int h, int d) { return w * h * d; }\n")
+    stats = index_paths([str(tmp_path / "src")], store, _FakeEmbedder(), root=tmp_path)
+    store.close()
+    # API_EXPORT is defined in inc/, outside this run's paths: without the
+    # stored records self-heal would have to guess it.
+    assert stats["indexed"] == 1 and stats["macro_healed_files"] == 0 and stats["parse_error_files"] == 0
+
+
+def test_definition_records_are_reused_and_dropped_with_their_file(tmp_path, monkeypatch):
+    import chonks.index.pipeline as pipeline
+
+    _api_repo(tmp_path)
+    store = Store(tmp_path / "test.db")
+    pipeline.index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    reads = []
+    real_read = pipeline.read_definitions
+    monkeypatch.setattr(pipeline, "read_definitions", lambda src: reads.append(src) or real_read(src))
+    pipeline.index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    assert reads == [], "unchanged files are not scanned again"
+
+    (tmp_path / "inc" / "api.h").unlink()
+    (tmp_path / "src" / "a.c").write_text("API_EXPORT int volume(int w, int h, int d) { return w * h * d; }\n")
+    stats = pipeline.index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    assert set(store.get_macro_definitions()) == {"src/a.c"}
+    store.close()
+    assert stats["macro_healed_files"] == 1, "with its header gone, API_EXPORT is only a guess again"
+
+
+def test_records_from_an_older_scan_are_read_again(tmp_path, monkeypatch):
+    import chonks.index.pipeline as pipeline
+
+    _api_repo(tmp_path)
+    store = Store(tmp_path / "test.db")
+    pipeline.index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    monkeypatch.setattr(pipeline, "SCAN_VERSION", "next")
+    pipeline.index_paths([str(tmp_path / "src")], store, _FakeEmbedder(), root=tmp_path)
+    keys = {path: key for path, (key, _) in store.get_macro_definitions().items()}
+    store.close()
+    assert all(key.startswith("next:") for key in keys.values()) and set(keys) == {"inc/api.h", "src/a.c"}
+
 def test_macro_vocab_persists_on_crlf_sources(tmp_path):
     """Same as above but with Windows line endings, written as bytes so the
     fixture is CRLF on every platform: discovery tell (e), the only tell that
