@@ -88,9 +88,12 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
             tier1a_rows: list[sqlite3.Row] = []
             substring_tier_skipped = len(message) >= _SUBSTRING_TIER_MAX_MESSAGE_LEN
             if 0 < len(message) and not substring_tier_skipped:
+                # An empty first line (text starting with a newline) is a
+                # substring of every message, so it never counts.
                 where = (
                     "WHERE length(cl.text) >= 6 AND "
-                    f"(instr(?, cl.text) > 0 OR instr(?, {_FIRST_LINE_SQL}) > 0)"
+                    f"(instr(?, cl.text) > 0 OR ({_FIRST_LINE_SQL} <> '' "
+                    f"AND instr(?, {_FIRST_LINE_SQL}) > 0))"
                 )
                 params: list[Any] = [message, message]
                 if len(message) >= 6:
@@ -141,7 +144,7 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
             if text in message or (len(message) >= 6 and message in text):
                 return True
             first = _first_line(text)
-            if first is text:
+            if first is text or not first:
                 return False
             return first in message or (len(message) >= 6 and message in first)
 

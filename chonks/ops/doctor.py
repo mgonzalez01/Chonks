@@ -331,7 +331,7 @@ def _parse_health_section(conn: sqlite3.Connection) -> str:
     else:
         lines.append(
             "per-file parse_error/coverage diagnostics: not recorded in this DB "
-            "(chunker.py computes them per-run but only reports them in the run "
+            "(the indexer, chonks/index/pipeline.py, computes them per run but only reports them in the run "
             "summary printed at index time — nothing persists them to the DB)"
         )
     lines.append(
@@ -354,6 +354,9 @@ def _table_sizes_section(conn: sqlite3.Connection) -> str:
             dbstat[r["name"]] = r["bytes"]
     except sqlite3.OperationalError:
         dbstat = {}  # dbstat vtab unavailable on this SQLite build, fall back to counts only
+    indexes: dict[str, list[str]] = {}
+    for r in conn.execute("SELECT name, tbl_name FROM sqlite_master WHERE type = 'index'"):
+        indexes.setdefault(r["tbl_name"], []).append(r["name"])
 
     for table in _KNOWN_TABLES:
         if not _table_exists(conn, table):
@@ -361,7 +364,13 @@ def _table_sizes_section(conn: sqlite3.Connection) -> str:
             continue
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         if table in dbstat:
-            lines.append(f"{table}: {count} rows, ~{dbstat[table] / 1024:.1f} KB")
+            line = f"{table}: {count} rows, ~{dbstat[table] / 1024:.1f} KB"
+            table_indexes = indexes.get(table, [])
+            if table_indexes:
+                index_bytes = sum(dbstat.get(name, 0) for name in table_indexes)
+                n = len(table_indexes)
+                line += f" + ~{index_bytes / 1024:.1f} KB in {n} index{'es' if n != 1 else ''}"
+            lines.append(line)
         else:
             lines.append(f"{table}: {count} rows (size n/a — dbstat unavailable)")
     return "\n".join(lines)
@@ -409,7 +418,8 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
 
 
 def main(argv=None) -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(prog="chonks doctor", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=None, help="Path to chunks DB (default: config.json's `db` key)")
     ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
     ap.add_argument(

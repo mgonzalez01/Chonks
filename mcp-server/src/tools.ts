@@ -18,6 +18,7 @@ import {
   _formatTraceChunk,
 } from "./render.js";
 import { parseSubsystemPrefix, stripSubsystemPrefix } from "./subsystems.js";
+import { type BranchFailure, partialSearchNote } from "./fanout.js";
 
 // ---------------------------------------------------------------------------
 // Tool implementations
@@ -79,14 +80,20 @@ export async function toolCodebaseSearch(args: any): Promise<string> {
 
   // Nudge uses pre-merge per-branch sums, an approximation against the
   // final merged set rather than re-deriving the backend's code/docs split.
+  const failures: BranchFailure[] = [];
   const responses = await Promise.all(
     paths.map((p) =>
       httpPost("/search", { query, mode, top_k: topK, path_prefix: p, chunk_kind: chunkKind }).catch((e) => {
-        console.error(`[chonks-mcp] search failed for ${p}: ${(e as Error).message}`);
+        const message = (e as Error).message;
+        console.error(`[chonks-mcp] search failed for ${p}: ${message}`);
+        failures.push({ path: p, message });
         return { chunks: [] };
       })
     )
   );
+  if (failures.length === paths.length) {
+    throw new Error(`search failed for every path of @${name}: ${failures[0].message}`);
+  }
   const merged = dedupeByIdKeepBest(responses.flatMap((r) => r.chunks ?? []));
   const top = merged.slice(0, topK);
   const totalDocs = responses.reduce((acc, r) => acc + (r.docs_in_results ?? 0), 0);
@@ -101,7 +108,8 @@ export async function toolCodebaseSearch(args: any): Promise<string> {
   const nudge = docsNudgeFooter(chunkKind, totalDocs, totalCount) + nearDupFooter(worstNearDup, totalCount);
   const filesLine = formatFilesLine(rankFilesFromChunks(top));
   const filesBlock = filesLine ? `${filesLine}\n\n` : "";
-  return `(scope: @${name} × ${paths.length} paths · ${top.length} results)\n\n${filesBlock}${formatChunks(top)}${nudge}`;
+  const partial = partialSearchNote(name, paths.length, failures);
+  return `${partial}(scope: @${name} × ${paths.length} paths · ${top.length} results)\n\n${filesBlock}${formatChunks(top)}${nudge}`;
 }
 
 const RESEARCH_EXPLORE_EDGE_TYPE_WEIGHTS = { calls: 8, imports: 8, inherits: 8, xlang: 8, associated: 1, mentions: 1 };

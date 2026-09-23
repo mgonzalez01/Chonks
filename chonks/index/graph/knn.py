@@ -123,6 +123,40 @@ def _neighbor_block_rows(n: int, override: int | None = None) -> int:
 _KNN_CPU_HINT_MIN_N = 50_000
 
 
+def validate_knn_backend(backend: str):
+    """For an explicit 'cuda' request, return the cupy module or raise
+    RuntimeError if cupy or a CUDA device is missing. Other backends pass."""
+    if backend != "cuda":
+        return None
+    try:
+        import cupy as cp
+    except ImportError as e:
+        raise RuntimeError(
+            "CHONKS_KNN_BACKEND=cuda is set but cupy is not "
+            "importable. Install the optional extra "
+            "(`pip install 'chonks[cuda]'` / `uv sync --extra "
+            "cuda`) or unset CHONKS_KNN_BACKEND to use the numpy "
+            f"path. Import error: {e}"
+        ) from e
+    try:
+        device_count = cp.cuda.runtime.getDeviceCount()
+    except Exception as e:
+        raise RuntimeError(
+            "CHONKS_KNN_BACKEND=cuda is set but querying CUDA "
+            "devices failed (no driver, or no GPU present?). "
+            f"Unset CHONKS_KNN_BACKEND to use the numpy path. "
+            f"Underlying error: {e}"
+        ) from e
+    if device_count < 1:
+        raise RuntimeError(
+            "CHONKS_KNN_BACKEND=cuda is set but no CUDA device "
+            "was detected (cupy.cuda.runtime.getDeviceCount() "
+            "== 0). Unset CHONKS_KNN_BACKEND to use the numpy "
+            "path."
+        )
+    return cp
+
+
 def _detect_knn_backend() -> str:
     """Soft probe for 'auto': 'cuda' if usable, else 'mlx' if usable, else 'numpy'.
     Never raises."""
@@ -208,32 +242,7 @@ class _Corpus:
                 logger.warning("CHONKS_KNN_BACKEND=mlx set but mlx not importable — using numpy")
         elif backend == "cuda":
             if not self.exact and dim_safe:
-                try:
-                    import cupy as cp
-                except ImportError as e:
-                    raise RuntimeError(
-                        "CHONKS_KNN_BACKEND=cuda is set but cupy is not "
-                        "importable. Install the optional extra "
-                        "(`pip install 'chonks[cuda]'` / `uv sync --extra "
-                        "cuda`) or unset CHONKS_KNN_BACKEND to use the numpy "
-                        f"path. Import error: {e}"
-                    ) from e
-                try:
-                    device_count = cp.cuda.runtime.getDeviceCount()
-                except Exception as e:
-                    raise RuntimeError(
-                        "CHONKS_KNN_BACKEND=cuda is set but querying CUDA "
-                        "devices failed (no driver, or no GPU present?). "
-                        f"Unset CHONKS_KNN_BACKEND to use the numpy path. "
-                        f"Underlying error: {e}"
-                    ) from e
-                if device_count < 1:
-                    raise RuntimeError(
-                        "CHONKS_KNN_BACKEND=cuda is set but no CUDA device "
-                        "was detected (cupy.cuda.runtime.getDeviceCount() "
-                        "== 0). Unset CHONKS_KNN_BACKEND to use the numpy "
-                        "path."
-                    )
+                cp = validate_knn_backend("cuda")
                 self._cp = cp.asarray(self.m)
                 self._cpt = self._cp.T
                 logger.info("k-NN matmul backend: CUDA (cupy), N=%d dim=%d", self.n, dim)

@@ -77,6 +77,27 @@ def test_reads_utf8(tmp_path, monkeypatch):
     assert loaded.problems == ()
 
 
+def test_non_object_top_level_is_a_problem_and_discovery_moves_on(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text(json.dumps(["db", "x.db"]))
+    (tmp_path / ".chonks.json").write_text(json.dumps({"db": "dot.db"}))
+    loaded = load_config(None)
+    assert loaded.data == {"db": "dot.db"}
+    assert len(loaded.problems) == 1
+    assert loaded.problems[0].path == "config.json"
+    assert loaded.problems[0].missing is False
+    assert "object" in loaded.problems[0].reason
+
+
+def test_explicit_non_object_top_level_returns_empty_data(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "explicit.json").write_text("42")
+    loaded = load_config("explicit.json")
+    assert loaded.data == {}
+    assert loaded.path is None
+    assert len(loaded.problems) == 1
+
+
 def test_resolve_codebase_rejects_absolute_path_from_discovered_config(caplog):
     logger = logging.getLogger("test.chonks.core.config.discovered")
     with caplog.at_level(logging.WARNING, logger=logger.name):

@@ -85,6 +85,22 @@ def _escape_like(s: str) -> str:
 _VALID_CHUNK_KINDS = frozenset({"code", "docs", "any"})
 
 
+def oldest_recorded(meta_value: str) -> str:
+    """The value a provenance meta row held before a run marked it mixed:
+    "mixed: <oldest>+<current> (...)" gives "<oldest>"; any other value is
+    returned unchanged."""
+    if not meta_value.startswith("mixed: "):
+        return meta_value
+    rest = meta_value[len("mixed: "):]
+    if rest.startswith("{"):
+        try:
+            _, end = json.JSONDecoder().raw_decode(rest)
+        except ValueError:
+            return meta_value
+        return rest[:end]
+    return rest.split("+", 1)[0]
+
+
 def _chunk_kind_clause(chunk_kind: str | None, column: str = "language") -> tuple[str, list[str]]:
     """SQL `AND ...` fragment + params for chunk_kind against `column`.
     docs includes NULL: text-fallback chunks and rows missing `language`
@@ -179,14 +195,12 @@ class Store:
             stored_language_set = self.get_meta("language_set")
             if stored_language_set is not None:
                 current = _language_set()
-                if stored_language_set.startswith("mixed: "):
-                    recorded = None
-                else:
-                    try:
-                        recorded = json.loads(stored_language_set)
-                    except ValueError:
-                        recorded = None  # corrupt meta row: treat as differing, don't raise
-                if recorded != current:
+                mixed = stored_language_set.startswith("mixed: ")
+                try:
+                    recorded = json.loads(oldest_recorded(stored_language_set))
+                except ValueError:
+                    recorded = None  # corrupt meta row: treat as differing, don't raise
+                if mixed or recorded != current:
                     if isinstance(recorded, dict):
                         changed = sorted(
                             name for name in set(recorded) | set(current)
@@ -365,19 +379,17 @@ class Store:
         args: list = []
         if path_prefix:
             sql += " WHERE path LIKE ? ESCAPE '\\'"
-            args.append(self._like_escape(path_prefix.rstrip("/\\")) + "%")
+            args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
         sql += " ORDER BY path, start_line"
         with self._lock:
             return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
 
+    # Kept for callers outside this module (chonks.retrieval.graph_queries).
+    _like_escape = staticmethod(_escape_like)
+
     # C++ symbols are qualified ("AABB::encloses") but callers query the bare
     # method name, so an exact miss falls back to a last-component suffix
     # match. LIKE wildcards in the name are escaped so '_' isn't a wildcard.
-
-    @staticmethod
-    def _like_escape(s: str) -> str:
-        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
     def find_symbols(self, name: str, path_prefix: str | None = None,
                      prefix: bool = False) -> list[dict[str, Any]]:
         """Exact-name (or prefix) symbol lookup -> path:line + owning chunk_id.
@@ -390,16 +402,16 @@ class Store:
             sql, a = base + where, list(args)
             if path_prefix:
                 sql += " AND path LIKE ? ESCAPE '\\'"
-                a.append(self._like_escape(path_prefix.rstrip("/\\")) + "%")
+                a.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
             with self._lock:
                 return [dict(r) for r in self._conn.execute(sql + tail, a).fetchall()]
 
         if prefix:
-            return run(r"name LIKE ? ESCAPE '\'", [self._like_escape(name) + "%"])
+            return run(r"name LIKE ? ESCAPE '\'", [_escape_like(name) + "%"])
         rows = run("name = ?", [name])
         if rows or "::" in name or "." in name:
             return rows
-        esc = self._like_escape(name)
+        esc = _escape_like(name)
         return run(r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')",
                    [f"%::{esc}", f"%.{esc}"])
 
@@ -413,7 +425,7 @@ class Store:
                 (name,),
             ).fetchall()
             if not def_rows and "::" not in name and "." not in name:
-                esc = self._like_escape(name)
+                esc = _escape_like(name)
                 def_rows = self._conn.execute(
                     r"SELECT DISTINCT chunk_id FROM symbols WHERE "
                     r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\') "

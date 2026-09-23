@@ -314,7 +314,16 @@ def test_yes_mode_force_overwrites_existing_config(tmp_path):
 
 # ---- run_wizard: interactive path via injected input_fn -------------------
 
-def test_interactive_flow_writes_config_end_to_end(tmp_path):
+def test_interactive_flow_writes_config_end_to_end(tmp_path, monkeypatch):
+    import httpx
+    network_posts = []
+    monkeypatch.setattr(httpx.Client, "post", lambda self, url, **kw: network_posts.append(url))
+    fake_post = lambda url, body, timeout: _FakeResp({"data": [{"embedding": [0.1, 0.2, 0.3, 0.4]}]})
+    monkeypatch.setattr(
+        "chonks.ops.init.ping_embedder",
+        lambda url, **kw: ping_embedder(url, post_fn=fake_post, **kw),
+    )
+
     codebase = tmp_path / "code"
     (codebase / "node_modules").mkdir(parents=True)
     (codebase / "node_modules" / "f.js").write_text("x")
@@ -345,6 +354,8 @@ def test_interactive_flow_writes_config_end_to_end(tmp_path):
     assert config["codebase"] == str(codebase)
     assert "node_modules/" in config["exclude"]
     assert config["embed_url"] == "http://localhost:11437/v1/embeddings"
+    assert network_posts == []
+    assert "  Reachable. Embedding dim: 4" in lines
 
 
 def test_interactive_flow_aborts_on_existing_config_declined(tmp_path):

@@ -2,6 +2,7 @@
 
 import posixpath
 from collections import defaultdict
+from contextlib import contextmanager
 
 from chonks.core.refresh import register_refresh
 from chonks.languages import union as _lang_union
@@ -21,11 +22,22 @@ def _refresh_from_registry() -> None:
 register_refresh(_refresh_from_registry)
 
 
+@contextmanager
+def _rollback_on_error(store):
+    # The rebuild commits once at the end; without this, a failure leaves the
+    # DELETEs and partial inserts pending for the next commit on the connection.
+    try:
+        yield
+    except BaseException:
+        store._conn.rollback()
+        raise
+
+
 def rebuild_hierarchy(store) -> dict[str, int]:
     """Full rebuild of graph_nodes + graph_edges, DELETE then re-derive
     from scratch every call, never incremental. Chunks stay out of
     graph_nodes so chunk_pagerank stays chunk-only and comparable."""
-    with store._lock:
+    with store._lock, _rollback_on_error(store):
         store.clear_hierarchy()
 
         file_paths = store.all_file_paths()
@@ -35,16 +47,15 @@ def rebuild_hierarchy(store) -> dict[str, int]:
             d = posixpath.dirname(fp) or "."
             while True:
                 dir_paths.add(d)
-                if d == ".":
-                    break
                 parent = posixpath.dirname(d) or "."
+                # "." for a relative path, "/" for an absolute one.
+                if parent == d:
+                    break
                 d = parent
 
         def _dir_parent_id(d: str) -> str | None:
-            if d == ".":
-                return None
             parent = posixpath.dirname(d) or "."
-            return "dir:" + parent
+            return None if parent == d else "dir:" + parent
 
         dir_rows = [
             ("dir:" + d, "dir", d, _dir_parent_id(d))

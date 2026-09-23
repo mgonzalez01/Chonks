@@ -161,8 +161,13 @@ def _first_line(text: str) -> str:
 
 
 # SQL equivalent of _first_line(cl.text), for the tier-1a query. Kept as
-# one string so the two definitions stay in sync.
-_FIRST_LINE_SQL = "CASE WHEN instr(cl.text, char(10)) > 0 THEN substr(cl.text, 1, instr(cl.text, char(10)) - 1) ELSE cl.text END"
+# one string so the two definitions stay in sync. Split as BLOB: substr on
+# TEXT stops at a NUL, and a decoded C literal can contain one.
+_FIRST_LINE_SQL = (
+    "CAST(CASE WHEN instr(CAST(cl.text AS BLOB), X'0A') > 0 "
+    "THEN substr(CAST(cl.text AS BLOB), 1, instr(CAST(cl.text AS BLOB), X'0A') - 1) "
+    "ELSE CAST(cl.text AS BLOB) END AS TEXT)"
+)
 
 
 def _dedupe_literal_rows(rows: list[sqlite3.Row]) -> list[sqlite3.Row]:

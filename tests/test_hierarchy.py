@@ -288,3 +288,48 @@ def test_rebuild_pairing_idempotent():
         ("file:widget.cpp", "file:widget.h"),
     }
     store.close()
+
+
+def test_rebuild_terminates_on_absolute_stored_path():
+    # A file outside the index root is stored with its absolute path.
+    import threading
+    store = _mk_store()
+    _seed_file(store, "a/b.py", ["r1"])
+    _seed_file(store, "/abs/x/y.py", ["x1"])
+    result = {}
+    t = threading.Thread(target=lambda: result.update(rebuild_hierarchy(store)), daemon=True)
+    t.start()
+    t.join(timeout=10)
+    assert not t.is_alive(), "rebuild_hierarchy did not terminate"
+
+    rows = store._conn.execute("SELECT id, parent_id FROM graph_nodes").fetchall()
+    parent = {r["id"]: r["parent_id"] for r in rows}
+    assert {"dir:/", "dir:/abs", "dir:/abs/x", "file:/abs/x/y.py"} <= set(parent)
+    assert parent["dir:/"] is None
+    assert parent["dir:/abs"] == "dir:/"
+    self_loops = store._conn.execute(
+        "SELECT COUNT(*) FROM graph_edges WHERE from_id = to_id").fetchone()[0]
+    assert self_loops == 0
+
+
+def test_failed_rebuild_leaves_previous_hierarchy_intact():
+    store = _mk_store()
+    _seed_small_corpus(store)
+    rebuild_hierarchy(store)
+    before = sorted(tuple(r) for r in store._conn.execute("SELECT * FROM graph_nodes"))
+    edges_before = store.count_graph_edges()
+
+    def boom():
+        raise RuntimeError("mid-rebuild failure")
+    store.insert_chunk_contains_edges = boom
+    try:
+        rebuild_hierarchy(store)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("the injected failure did not propagate")
+    store.commit()  # the next commit on the shared connection
+
+    after = sorted(tuple(r) for r in store._conn.execute("SELECT * FROM graph_nodes"))
+    assert after == before
+    assert store.count_graph_edges() == edges_before

@@ -44,7 +44,9 @@ class _Bars:
         self.last_embedded = embedded
 
     def finish(self, parsed, queued, embedded):
-        self.pb_files.update(parsed - self.last_parsed)
+        # Before the flip the files bar counts scanned files, not parsed ones.
+        if self.files_total_set:
+            self.pb_files.update(parsed - self.last_parsed)
         self.pb_queued.n = queued - embedded
         self.pb_queued.refresh()
         self.pb_embedded.update(embedded - self.last_embedded)
