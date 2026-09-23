@@ -18,8 +18,28 @@ def name_field(node: Node, src: bytes) -> str | None:
     return None
 
 
-# C++ / HLSL function_definition: type declarator body
-# declarator field holds function_declarator → look for identifier/field_identifier
+# Declarator layers that wrap the name: `int* f()`, `V& f()`, `int (*f())(int)`.
+_WRAPPER_DECLARATORS = frozenset({
+    "function_declarator", "pointer_declarator", "reference_declarator",
+    "parenthesized_declarator", "attributed_declarator",
+})
+
+
+def _operator_cast_name(node: Node, src: bytes) -> str:
+    # `operator int*() const` -> `operator int*`: the text up to the parameter list.
+    end = node.end_byte
+    target = node.child_by_field_name("type")
+    stack = [c for c in node.children if c != target]
+    while stack:
+        n = stack.pop()
+        if n.type == "parameter_list":
+            end = min(end, n.start_byte)
+        stack.extend(n.children)
+    return " ".join(src[node.start_byte:end].decode(errors="replace").split())
+
+
+# C / C++ / HLSL function_definition: type declarator body. The declarator
+# field holds the name under any number of wrapper layers.
 def cpp_function_declarator_name(node: Node, src: bytes) -> str | None:
     decl = node.child_by_field_name("declarator")
     if decl is None:
@@ -28,17 +48,32 @@ def cpp_function_declarator_name(node: Node, src: bytes) -> str | None:
             if c.type == "function_declarator":
                 decl = c
                 break
-    if decl is not None:
-        # function_declarator → declarator field is the name
-        name_node = decl.child_by_field_name("declarator")
-        if name_node is None:
-            # try first named child (identifier, qualified_identifier, field_identifier…)
+    # A real definition has a function_declarator on the way down (or is a
+    # conversion operator). Without one, this is error recovery reading
+    # `MACRO class Foo {` as a function: leave it unnamed so salvage runs.
+    is_function = False
+    while decl is not None and decl.type in _WRAPPER_DECLARATORS:
+        is_function = is_function or decl.type == "function_declarator"
+        inner = decl.child_by_field_name("declarator")
+        if inner is None:
+            # reference_declarator and parenthesized_declarator have no field
             named = [c for c in decl.children if c.is_named]
-            name_node = named[0] if named else None
-        if name_node is not None:
-            # For qualified names like ShadowMap::Render, return the full qualified text
-            return name_text(name_node, src)
-    return None
+            inner = named[0] if named else None
+        decl = inner
+    if decl is None:
+        return None
+    if decl.type == "operator_cast":
+        return _operator_cast_name(decl, src)
+    if decl.type == "qualified_identifier":
+        name = decl
+        while name is not None and name.type == "qualified_identifier":
+            name = name.child_by_field_name("name")
+        if name is not None and name.type == "operator_cast":
+            return src[decl.start_byte:name.start_byte].decode(errors="replace") + _operator_cast_name(name, src)
+    if not is_function:
+        return None
+    # For qualified names like ShadowMap::Render, return the full qualified text
+    return name_text(decl, src)
 
 
 # C++: class_specifier, struct_specifier, namespace_definition

@@ -1860,3 +1860,42 @@ struct V {
     names = {s["name"] for s in _collect_symbols_from_root(root, "c_sharp", src)}
     assert names == {"V", "operator+", "operator==", "operator-",
                      "operator int", "operator Foo.Bar"}, names
+
+
+def test_cpp_names_look_through_pointer_reference_and_cast_declarators():
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    src = b'''
+struct V {
+  operator int() const { return 0; }
+  explicit operator bool() const noexcept { return true; }
+  operator std::string() { return {}; }
+  operator std::function<void(int)>() { return {}; }
+  V& operator=(const V&) { return *this; }
+  int* ptr() { return 0; }
+  const V& ref() const { return *this; }
+  V&& mv() { return static_cast<V&&>(*this); }
+};
+V::operator int*() const { return 0; }
+int** V::pp() { return 0; }
+int (*fnptr())(int) { return 0; }
+int plain(int a) { return a; }
+A::B::operator long() { return 0; }
+'''
+    root = get_parser("cpp").parse(src).root_node
+    names = {s["name"] for s in _collect_symbols_from_root(root, "cpp", src)}
+    assert names == {
+        "V", "operator int", "operator bool", "operator std::string",
+        "operator std::function<void(int)>", "operator=",
+        "ptr", "ref", "mv", "V::operator int*", "V::pp", "fnptr", "plain",
+        "A::B::operator long",
+    }, names
+
+
+def test_c_names_look_through_pointer_declarators():
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    src = b"char *dup(const char *s) { return 0; }\nint plain(void) { return 0; }\n"
+    root = get_parser("c").parse(src).root_node
+    names = {s["name"] for s in _collect_symbols_from_root(root, "c", src)}
+    assert names == {"dup", "plain"}, names

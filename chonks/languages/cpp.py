@@ -48,7 +48,7 @@ BASES = Children((
 CPP = LanguageSpec(
     name="cpp",
     grammar="cpp",
-    version="1",
+    version="2",
     display_name="C++",
     # .h stays on "cpp" not "c": remapping would churn boundaries across
     # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
