@@ -2,28 +2,6 @@
 import re
 import sqlite3
 
-# A star import skips underscore names unless __all__ lists them.
-__all__ = [
-    "_HOLE_SENTINEL",
-    "_PRINTF_HOLE_RE",
-    "_DOLLAR_HOLE_RE",
-    "_BRACE_HOLE_RE",
-    "_SKELETON_MAX_HOLES",
-    "_SKELETON_MAX_MESSAGE_LEN",
-    "_SKELETON_HOLE_GAP",
-    "_SKELETON_WORK_BUDGET",
-    "_SKELETON_QUERY_BUDGET",
-    "_compute_skeleton",
-    "_is_message_shaped",
-    "_passes_exact_gate",
-    "_longest_skeleton_fragment",
-    "_skeleton_match",
-    "_skeleton_candidates",
-    "_first_line",
-    "_FIRST_LINE_SQL",
-    "_dedupe_literal_rows",
-]
-
 
 # Sentinel for a collapsed format hole. Must stay printable and FTS-safe; a
 # raw NUL byte round-trips badly through FTS5 and JSON/HTTP.
