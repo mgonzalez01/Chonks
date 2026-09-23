@@ -977,3 +977,29 @@ def test_first_line_sql_matches_first_line(text):
     conn.execute("INSERT INTO cl (text) VALUES (?)", (text,))
     result = conn.execute(f"SELECT {_FIRST_LINE_SQL} FROM cl").fetchone()[0]
     assert result == _first_line(text)
+
+
+def _store_with_leading_newline_literal(tmp_path) -> Store:
+    store = _make_store(tmp_path)
+    store.insert_chunks(
+        [_chunk("c1", "a.py", 'print("\\nOperation cancelled.")',
+                [("\nOperation cancelled.", 1)])],
+        [_embed()], model="test",
+    )
+    _mark_complete(store)
+    return store
+
+
+@pytest.mark.parametrize("message", ["zzz", "the job was cancelled by an admin"])
+def test_empty_first_line_matches_no_unrelated_message(tmp_path, message):
+    """A literal starting with a newline has an empty first line, which is a
+    substring of every message; it must not count as a match."""
+    store = _store_with_leading_newline_literal(tmp_path)
+    result = find_by_message(store, message)
+    assert result["results"] == []
+
+
+def test_leading_newline_literal_still_matches_its_own_text(tmp_path):
+    store = _store_with_leading_newline_literal(tmp_path)
+    result = find_by_message(store, "Operation cancelled.")
+    assert [r["matched_literal"] for r in result["results"]] == ["\nOperation cancelled."]
