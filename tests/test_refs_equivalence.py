@@ -185,15 +185,12 @@ def test_extract_refs_matches_golden_cap_and_dedup_cpp(golden):
 
 
 def test_extract_refs_matches_golden_unsupported_language(golden):
-    # HLSL has no refs spec; must fall back to empty refs on both sides.
-    src = b'''
-struct VSOut { float4 pos : SV_Position; };
-VSOut main(float3 p : POSITION) { VSOut o; o.pos = float4(p, 1); return o; }
-'''
-    parser = get_parser("hlsl")
+    # Lua has no refs spec; must fall back to empty refs on both sides.
+    src = b"local function helper() end\nlocal function main() helper() end\n"
+    parser = get_parser("lua")
     tree = parser.parse(src)
-    new = _normalize(new_chunking._extract_refs(tree.root_node, "hlsl", src))
-    assert golden["unsupported_hlsl"] == new == {"calls": [], "imports": [], "inherits": []}
+    new = _normalize(new_chunking._extract_refs(tree.root_node, "lua", src))
+    assert golden["unsupported"] == new == {"calls": [], "imports": [], "inherits": []}
 
 
 def test_lang_refs_specs_covers_same_languages_as_before(golden):

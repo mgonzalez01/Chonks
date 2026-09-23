@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from ._ast import has_body, is_forward_declaration, name_text
 from ._naming import cpp_function_declarator_name, tag_specifier_name
-from .spec import LanguageSpec, LiteralSpec, NameRule
+from .cpp import INCLUDE
+from .spec import Field, LanguageSpec, LiteralSpec, NameRule
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -42,7 +43,7 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
-    version="4",
+    version="5",
     extensions=frozenset({".hlsl", ".fx", ".fxh"}),
     # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.
@@ -59,6 +60,12 @@ HLSL = LanguageSpec(
         NameRule(("function_definition",), cpp_function_declarator_name),
         NameRule(("struct_specifier",), tag_specifier_name),
     ),
+    # Same call and #include nodes as C. A constructor such as float4(n, 1)
+    # is a call too; nothing defines float4, so it never becomes an edge.
+    refs_spec={
+        "preproc_include": INCLUDE,
+        "call_expression": Field("function", "calls"),
+    },
     chain_base_fields={"field_expression": "argument"},
     identifier_leaf_types=frozenset({"identifier", "field_identifier", "type_identifier"}),
     kind_labels={

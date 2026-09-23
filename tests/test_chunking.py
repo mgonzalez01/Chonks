@@ -1035,16 +1035,26 @@ func _ready():
     assert _call_entry(refs, "do_thing") == {"name": "do_thing", "receiver": "x", "arity": 0}
 
 
-def test_extract_refs_unsupported_language_is_empty():
-    """HLSL has no calls/imports/inherits case, so it falls back to
-    mentions-only, same as before typed-edge extraction existed."""
-    src = b'''
+def test_extract_refs_hlsl_calls_and_includes():
+    """HLSL has C's call and #include nodes. A constructor such as
+    float4(p, 1) is a call too; nothing defines float4, so it never becomes
+    an edge."""
+    src = b'''#include "Packages/Core/Common.hlsl"
 struct VSOut { float4 pos : SV_Position; };
-VSOut main(float3 p : POSITION) { VSOut o; o.pos = float4(p, 1); return o; }
+VSOut main(float3 p : POSITION) { VSOut o; o.pos = float4(Warp(p), 1) * _Noise.Sample(s, p.xy); return o; }
 '''
     segs = segment_file(src, "hlsl", path="t.hlsl")
-    for seg in segs:
-        assert seg["refs"] == {"calls": [], "imports": [], "inherits": [], "literals": []}
+    assert [i for seg in segs for i in seg["refs"]["imports"]] == ["Packages/Core/Common.hlsl"]
+    refs = {"calls": [c for seg in segs for c in seg["refs"]["calls"]]}
+    assert _call_names(refs) == {"float4", "Warp", "Sample"}
+    assert _call_entry(refs, "Sample") == {"name": "Sample", "receiver": "_Noise", "arity": 2}
+
+
+def test_extract_refs_unsupported_language_is_empty():
+    """A language with no refs_spec falls back to mentions only."""
+    src = b"local function helper() end\nlocal function main() helper() end\n"
+    for seg in segment_file(src, "lua", path="t.lua"):
+        assert (seg["refs"]["calls"], seg["refs"]["imports"], seg["refs"]["inherits"]) == ([], [], [])
 
 
 def test_extract_refs_capped_at_max_names():

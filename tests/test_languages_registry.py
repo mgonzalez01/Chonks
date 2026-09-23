@@ -133,7 +133,7 @@ def test_describe_row_values():
         "macro_heal": True,
         "pairing": True,
     }
-    assert rows["hlsl"]["typed_refs"] is False
+    assert rows["hlsl"]["typed_refs"] is True
     assert rows["hlsl"]["literals"] is True
     assert rows["python"]["arity_keyword"] is True
     assert rows["python"]["macro_heal"] is False

@@ -22,7 +22,80 @@
           }
         ]
       },
-      "definer_param_arity": [],
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "CompileShader"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "MainVS"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "SetVertexShader"
+        },
+        {
+          "arity": [
+            4,
+            4,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "float4"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "register"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "CompileShader"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "MainVS"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "SetVertexShader"
+        }
+      ],
       "segments": [
         {
           "chunk_type": "cbuffer",
@@ -31,7 +104,33 @@
           "literals": [],
           "name": "PerFrame",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "register",
+                "receiver": null
+              },
+              {
+                "arity": 4,
+                "name": "float4",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetVertexShader",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "CompileShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainVS",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -45,7 +144,23 @@
           "literals": [],
           "name": null,
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "SetVertexShader",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "CompileShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainVS",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -94,7 +209,17 @@
           }
         ]
       },
-      "definer_param_arity": [],
+      "definer_param_arity": [
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "float4"
+        }
+      ],
       "segments": [
         {
           "chunk_type": "struct_specifier",
@@ -103,7 +228,13 @@
           "literals": [],
           "name": "VSOut",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 2,
+                "name": "float4",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -162,7 +293,233 @@
           }
         ]
       },
-      "definer_param_arity": [],
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "register"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "CompileShader"
+        },
+        {
+          "arity": [
+            0,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "MainPS"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "MainVS"
+        },
+        {
+          "arity": [
+            3,
+            3,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "SetBlendState"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "SetDepthStencilState"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "SetPixelShader"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "SetRasterizerState"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "SetVertexShader"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "dot"
+        },
+        {
+          "arity": [
+            3,
+            3,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "float3"
+        },
+        {
+          "arity": [
+            2,
+            4,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "float4"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "max"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "normalize"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "pow"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 3,
+          "name": "saturate"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "CompileShader"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "MainPS"
+        },
+        {
+          "arity": [
+            0,
+            0,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "MainVS"
+        },
+        {
+          "arity": [
+            3,
+            3,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "SetBlendState"
+        },
+        {
+          "arity": [
+            2,
+            2,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "SetDepthStencilState"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "SetPixelShader"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "SetRasterizerState"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "SetVertexShader"
+        },
+        {
+          "arity": [
+            4,
+            4,
+            false
+          ],
+          "chunk_index": 4,
+          "name": "float4"
+        }
+      ],
       "segments": [
         {
           "chunk_type": "cbuffer",
@@ -171,7 +528,13 @@
           "literals": [],
           "name": "PerFrame",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "register",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -213,7 +576,88 @@
           "literals": [],
           "name": "MainPS",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "normalize",
+                "receiver": null
+              },
+              {
+                "arity": 3,
+                "name": "float3",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "max",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "dot",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "pow",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "saturate",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "float4",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetVertexShader",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "CompileShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainVS",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetPixelShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainPS",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetRasterizerState",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "SetDepthStencilState",
+                "receiver": null
+              },
+              {
+                "arity": 3,
+                "name": "SetBlendState",
+                "receiver": null
+              },
+              {
+                "arity": 4,
+                "name": "float4",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -227,7 +671,53 @@
           "literals": [],
           "name": null,
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "SetVertexShader",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "CompileShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainVS",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetPixelShader",
+                "receiver": null
+              },
+              {
+                "arity": 0,
+                "name": "MainPS",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "SetRasterizerState",
+                "receiver": null
+              },
+              {
+                "arity": 2,
+                "name": "SetDepthStencilState",
+                "receiver": null
+              },
+              {
+                "arity": 3,
+                "name": "SetBlendState",
+                "receiver": null
+              },
+              {
+                "arity": 4,
+                "name": "float4",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
