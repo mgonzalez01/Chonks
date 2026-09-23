@@ -43,8 +43,10 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
-    version="5",
-    extensions=frozenset({".hlsl", ".fx", ".fxh"}),
+    version="6",
+    # .hlsli is the DirectX include convention; .compute, .raytrace and
+    # .cginc are Unity's plain-HLSL compute, ray tracing and include files.
+    extensions=frozenset({".hlsl", ".hlsli", ".fx", ".fxh", ".compute", ".raytrace", ".cginc"}),
     # cbuffer/tbuffer are found with `is_cbuffer()` because tree-sitter-hlsl
     # parses them as `declaration` nodes, not a dedicated node type.
     boundary_nodes=frozenset({"function_definition", "struct_specifier"}),
@@ -66,6 +68,9 @@ HLSL = LanguageSpec(
         "preproc_include": INCLUDE,
         "call_expression": Field("function", "calls"),
     },
+    # Shader code is macro-dense (Unity's UNITY_VERTEX_INPUT_INSTANCE_ID,
+    # CBUFFER_START): same preprocessor, same handling as C and C++.
+    c_macro_self_heal=True,
     chain_base_fields={"field_expression": "argument"},
     identifier_leaf_types=frozenset({"identifier", "field_identifier", "type_identifier"}),
     kind_labels={

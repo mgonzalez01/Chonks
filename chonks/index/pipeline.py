@@ -494,7 +494,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
 def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: list[str],
                       data_limit: int):
     """(path, stored path) of the files scan_producer indexes, limited to
-    macro self-heal languages (C and C++), for the definition scan that runs
+    macro self-heal languages (C, C++, HLSL), for the definition scan that runs
     before parsing. Same exclude/include and data-blob rules as scan_producer."""
     macro_exts = {ext for ext, lang in _EXT_TO_LANG.items() if lang in _macro_heal._MACRO_LANGS}
     seen: set[str] = set()
@@ -529,7 +529,7 @@ def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: l
 
 def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str],
                       includes: list[str], data_limit: int) -> DefinitionTable:
-    """The definition table over every C/C++ file the index holds. Files
+    """The definition table over every C, C++ and HLSL file the index holds. Files
     under this run's paths are read, and re-scanned only when their content
     changed; files outside them keep their stored records, so indexing one
     folder still sees the macros the rest of the repo defines. A stored file
@@ -832,7 +832,7 @@ def index_paths(
     # only the rest.
     t_defs = time.monotonic()
     definitions = _load_definitions(store, paths, root, excludes, includes, data_limit)
-    logger.info("Read C/C++ definitions in %.1fs (%d names)",
+    logger.info("Read macro definitions in %.1fs (%d names)",
                 time.monotonic() - t_defs, len(definitions.classes))
     # A saved macro the source defines as a type, a declaration writer or a
     # wrapper is dropped: blanking it with its arguments everywhere would

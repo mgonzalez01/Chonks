@@ -4,6 +4,7 @@
       "counters": {
         "error_salvaged": 1,
         "error_salvaged_nodes": 1,
+        "heal_unhealable": 1,
         "parse_error": 1,
         "symbols": [
           {
@@ -268,6 +269,7 @@
       "counters": {
         "error_salvaged": 1,
         "error_salvaged_nodes": 1,
+        "heal_unhealable": 1,
         "parse_error": 1,
         "symbols": [
           {
