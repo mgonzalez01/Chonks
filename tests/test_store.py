@@ -1603,3 +1603,28 @@ def test_like_escape_single_implementation_with_unchanged_output():
         assert store_mod._escape_like(s) == old_module(s) == old_method(s)
         assert store_mod.Store._like_escape(s) == old_method(s)
     assert store_mod.Store._like_escape is store_mod._escape_like
+
+
+def test_vector_deletes_use_the_id_lookup_not_a_scan(tmp_path):
+    """vec0 answers `id = ?` from its rowid map but `id IN (...)` by scanning
+    every vector. No store path may delete from chunk_vecs with IN, and the
+    vectors must still be gone or replaced. Reads by id take the same lookup."""
+    import re
+    store = _make_store(tmp_path)
+    chunks = [{"id": f"c{i}", "path": "a.py", "language": "python", "chunk_type": "function",
+               "name": f"f{i}", "start_line": i, "end_line": i, "content": f"def f{i}(): pass"}
+              for i in range(3)]
+    store.insert_chunks(chunks, [_fake_embedding()] * 3)
+
+    sent: list[str] = []
+    store._conn.set_trace_callback(sent.append)
+    store.insert_chunks(chunks[:2], [[0.1, 0.2, 0.3, 0.4]] * 2)   # re-insert replaces
+    store.update_vectors(["c2"], [[0.4, 0.3, 0.2, 0.1]])
+    blobs = store.get_int8_embeddings_by_ids(["c0", "c2", "missing", "c0"])
+    store.delete_file("a.py")
+    store._conn.set_trace_callback(None)
+
+    scans = [s for s in sent if re.search(r"FROM chunk_vecs WHERE id IN", s)]
+    assert scans == [], scans
+    assert set(blobs) == {"c0", "c2"}
+    assert store._conn.execute("SELECT count(*) FROM chunk_vecs").fetchone()[0] == 0

@@ -311,6 +311,12 @@ class Store:
             ).fetchall()
             return [r[0] for r in rows]
 
+    def _delete_vectors(self, ids: list[str]) -> None:
+        # One `id = ?` per row: vec0 answers that from its rowid map, but
+        # answers `id IN (...)` by scanning every stored vector. Caller holds _lock.
+        if ids:
+            self._conn.executemany("DELETE FROM chunk_vecs WHERE id = ?", [(i,) for i in ids])
+
     def delete_file(self, path: str) -> list[str]:
         """Remove a file and its chunks, vectors, and FTS entries. Returns
         the deleted chunk ids so callers can update derived state (e.g. the
@@ -322,11 +328,9 @@ class Store:
                     "SELECT id FROM chunks WHERE path=?", (path,)
                 ).fetchall()
             ]
+            self._delete_vectors(chunk_ids)
             for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
-                self._conn.execute(
-                    f"DELETE FROM chunk_vecs WHERE id IN ({placeholders})", batch
-                )
                 self._conn.execute(
                     f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", batch
                 )
@@ -532,10 +536,8 @@ class Store:
             # vec0 doesn't support INSERT OR REPLACE: delete first. chunk_literals
             # is deleted+reinserted the same way so a direct re-insert (without
             # a preceding delete_file) stays correct too.
+            self._delete_vectors(ids)
             placeholders = ",".join("?" * len(ids))
-            self._conn.execute(
-                f"DELETE FROM chunk_vecs WHERE id IN ({placeholders})", ids
-            )
             self._conn.execute(
                 f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", ids
             )
@@ -597,9 +599,7 @@ class Store:
             )
         self._set_dim(len(embeddings[0]), model=model)
         with self._lock:
-            for batch in batched(ids, 900):
-                placeholders = ",".join("?" * len(batch))
-                self._conn.execute(f"DELETE FROM chunk_vecs WHERE id IN ({placeholders})", batch)
+            self._delete_vectors(ids)
             for cid, emb in zip(ids, embeddings):
                 self._conn.execute(
                     "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_quantize_int8(?, 'unit'))",
@@ -1162,19 +1162,18 @@ class Store:
             return {}
         out: dict[str, bytes] = {}
         with self._lock:
-            for batch in batched(ids, 900):
-                placeholders = ",".join("?" * len(batch))
+            # `id = ?` per id, not IN: see _delete_vectors.
+            for cid in dict.fromkeys(ids):
                 try:
-                    rows = self._conn.execute(
-                        f"SELECT id, embedding FROM chunk_vecs WHERE id IN ({placeholders})",
-                        batch,
-                    ).fetchall()
+                    row = self._conn.execute(
+                        "SELECT embedding FROM chunk_vecs WHERE id = ?", (cid,)
+                    ).fetchone()
                 except sqlite3.OperationalError as e:
                     if "no such table" in str(e).lower():
                         return {}
                     raise
-                for r in rows:
-                    out[r["id"]] = r["embedding"]
+                if row is not None:
+                    out[cid] = row["embedding"]
         return out
 
     def get_vectors_for_chunks(self, ids: list[str]) -> dict[str, np.ndarray]:
