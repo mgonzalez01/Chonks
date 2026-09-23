@@ -713,6 +713,36 @@ def test_chunker_version_mixed_when_incremental_run_skips_files(tmp_path):
     store.close()
 
 
+def test_mixed_meta_does_not_nest_across_incremental_runs(tmp_path):
+    """A mixed stamp keeps the oldest recorded value and the current one; later
+    incremental runs that still skip files must not wrap it again."""
+    from chonks.index.pipeline import index_paths
+    from chonks.index.segment import CHUNKER_VERSION
+    from chonks.languages import language_set
+
+    (tmp_path / "a.py").write_text("def a():\n    return 1\n")
+    (tmp_path / "b.py").write_text("def b():\n    return 2\n")
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    old_set = json.dumps(dict(language_set(), python="0"), sort_keys=True, separators=(",", ":"))
+    store.set_meta("chunker_version", "0")
+    store.set_meta("language_set", old_set)
+
+    stamps = []
+    for i in range(3):
+        (tmp_path / "a.py").write_text(f"def a():\n    return {i + 10}\n")
+        result = index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+        assert result["skipped"] >= 1
+        stamps.append((store.get_meta("chunker_version"), store.get_meta("language_set")))
+
+    assert stamps[0] == stamps[1] == stamps[2]
+    cv, ls = stamps[0]
+    assert cv.startswith(f"mixed: 0+{CHUNKER_VERSION} ")
+    assert ls.startswith(f"mixed: {old_set}+")
+    assert cv.count("mixed:") == 1 and ls.count("mixed:") == 1
+    store.close()
+
+
 def test_chunker_version_self_heals_on_force_reindex(tmp_path):
     """A --force run always reprocesses every file, so it can always clean up
     a previously-mixed chunker_version stamp."""

@@ -1564,6 +1564,21 @@ def test_store_open_with_mixed_language_set_logs_one_warning(tmp_path, caplog):
     assert "language_set" in caplog.records[0].message
 
 
+def test_store_open_with_mixed_language_set_names_only_changed_languages(tmp_path, caplog):
+    """The warning names the languages whose oldest recorded version differs
+    from the code, not every language."""
+    store = _make_store(tmp_path)
+    current = language_set()
+    oldest = json.dumps(dict(current, python="0"), sort_keys=True, separators=(",", ":"))
+    now = json.dumps(current, sort_keys=True, separators=(",", ":"))
+    store.set_meta("language_set", f"mixed: {oldest}+{now} (2 unchanged file(s) retain old chunk boundaries)")
+    store.close()
+    with caplog.at_level(logging.WARNING, logger="chonks.store"):
+        Store(tmp_path / "test.db")
+    assert len(caplog.records) == 1
+    assert "(python changed)" in caplog.records[0].message
+
+
 def test_store_open_with_unparseable_language_set_does_not_raise(tmp_path, caplog):
     """A corrupt meta row must not stop a query: treat it as differing, warn,
     but never raise."""

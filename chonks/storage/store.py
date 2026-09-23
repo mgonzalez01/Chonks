@@ -85,6 +85,22 @@ def _escape_like(s: str) -> str:
 _VALID_CHUNK_KINDS = frozenset({"code", "docs", "any"})
 
 
+def oldest_recorded(meta_value: str) -> str:
+    """The value a provenance meta row held before a run marked it mixed:
+    "mixed: <oldest>+<current> (...)" gives "<oldest>"; any other value is
+    returned unchanged."""
+    if not meta_value.startswith("mixed: "):
+        return meta_value
+    rest = meta_value[len("mixed: "):]
+    if rest.startswith("{"):
+        try:
+            _, end = json.JSONDecoder().raw_decode(rest)
+        except ValueError:
+            return meta_value
+        return rest[:end]
+    return rest.split("+", 1)[0]
+
+
 def _chunk_kind_clause(chunk_kind: str | None, column: str = "language") -> tuple[str, list[str]]:
     """SQL `AND ...` fragment + params for chunk_kind against `column`.
     docs includes NULL: text-fallback chunks and rows missing `language`
@@ -179,14 +195,12 @@ class Store:
             stored_language_set = self.get_meta("language_set")
             if stored_language_set is not None:
                 current = _language_set()
-                if stored_language_set.startswith("mixed: "):
-                    recorded = None
-                else:
-                    try:
-                        recorded = json.loads(stored_language_set)
-                    except ValueError:
-                        recorded = None  # corrupt meta row: treat as differing, don't raise
-                if recorded != current:
+                mixed = stored_language_set.startswith("mixed: ")
+                try:
+                    recorded = json.loads(oldest_recorded(stored_language_set))
+                except ValueError:
+                    recorded = None  # corrupt meta row: treat as differing, don't raise
+                if mixed or recorded != current:
                     if isinstance(recorded, dict):
                         changed = sorted(
                             name for name in set(recorded) | set(current)

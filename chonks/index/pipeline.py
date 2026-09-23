@@ -54,7 +54,7 @@ from chonks.index.segment import (
 from chonks.index.text_segment import segment_text_file
 from chonks.languages import EXT_TO_LANG as _EXT_TO_LANG
 from chonks.languages import language_set as _language_set
-from chonks.storage.store import Store
+from chonks.storage.store import Store, oldest_recorded
 
 
 def _refresh_from_registry() -> None:
@@ -929,7 +929,7 @@ def index_paths(
     elif _prev_chunker_version != str(CHUNKER_VERSION):
         store.set_meta(
             "chunker_version",
-            f"mixed: {_prev_chunker_version}+{CHUNKER_VERSION} "
+            f"mixed: {oldest_recorded(_prev_chunker_version)}+{CHUNKER_VERSION} "
             f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
         )
 
@@ -943,7 +943,7 @@ def index_paths(
     elif _prev_language_set != _cur_language_set:
         store.set_meta(
             "language_set",
-            f"mixed: {_prev_language_set}+{_cur_language_set} "
+            f"mixed: {oldest_recorded(_prev_language_set)}+{_cur_language_set} "
             f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
         )
 
