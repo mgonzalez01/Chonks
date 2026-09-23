@@ -912,25 +912,26 @@ def index_paths(
     embed_elapsed = time.monotonic() - t0
     with lock:
         chunks_embedded_total = state["chunks_embedded"]
+        pruned = state["pruned"]
+        skipped = state["skipped"]
+        indexed = state["indexed"]
     chunks_per_s = chunks_embedded_total / embed_elapsed if embed_elapsed > 0 else 0.0
     logger.info(
         "Embedded %d chunks in %.1fs (%.1f chunks/s).",
         chunks_embedded_total, embed_elapsed, chunks_per_s,
     )
 
-    pruned = state["pruned"]
-
     # Only claim a clean chunker-version match when skipped==0 (every tracked
     # file reprocessed this run); otherwise record "mixed" rather than
     # silently claiming a false match (doctor.py reads this back).
     _prev_chunker_version = store.get_meta("chunker_version")
-    if _prev_chunker_version is None or state["skipped"] == 0:
+    if _prev_chunker_version is None or skipped == 0:
         store.set_meta("chunker_version", str(CHUNKER_VERSION))
     elif _prev_chunker_version != str(CHUNKER_VERSION):
         store.set_meta(
             "chunker_version",
             f"mixed: {oldest_recorded(_prev_chunker_version)}+{CHUNKER_VERSION} "
-            f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
+            f"({skipped} unchanged file(s) retain old chunk boundaries)",
         )
 
     # Same three-branch shape as chunker_version, and for the same reason:
@@ -938,26 +939,26 @@ def index_paths(
     # current when they were last indexed, not this run's.
     _cur_language_set = json.dumps(_language_set(), sort_keys=True, separators=(",", ":"))
     _prev_language_set = store.get_meta("language_set")
-    if _prev_language_set is None or state["skipped"] == 0:
+    if _prev_language_set is None or skipped == 0:
         store.set_meta("language_set", _cur_language_set)
     elif _prev_language_set != _cur_language_set:
         store.set_meta(
             "language_set",
             f"mixed: {oldest_recorded(_prev_language_set)}+{_cur_language_set} "
-            f"({state['skipped']} unchanged file(s) retain old chunk boundaries)",
+            f"({skipped} unchanged file(s) retain old chunk boundaries)",
         )
 
     # skipped==0 alone isn't sufficient here (a --force on a path subset also
     # yields it): also require indexed == tracked_file_count, so this run
     # demonstrably covered every file the DB tracks, not just what it targeted.
     if store.get_meta("literal_index_version") is not None or (
-        state["skipped"] == 0 and state["indexed"] == store.tracked_file_count()
+        skipped == 0 and indexed == store.tracked_file_count()
     ):
         store.set_meta("literal_index_version", "1")
 
     fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed = run_post_index_passes(
         store, embedder,
-        force=force, indexed=state["indexed"], pruned=pruned,
+        force=force, indexed=indexed, pruned=pruned,
         changed_chunk_ids=changed_chunk_ids, deleted_chunk_ids=deleted_chunk_ids,
         deleted_chunk_names=deleted_chunk_names, edge_type_weights=edge_type_weights,
         cap_mentions_fanout=cap_mentions_fanout, associated_top_frac=associated_top_frac,
@@ -967,8 +968,8 @@ def index_paths(
 
     with lock:
         return {
-            "indexed":         state["indexed"],
-            "skipped":         state["skipped"],
+            "indexed":         indexed,
+            "skipped":         skipped,
             "errors":          state["errors"],
             "pruned":          pruned,
             "dirs_pruned":     state["dirs_pruned"],
