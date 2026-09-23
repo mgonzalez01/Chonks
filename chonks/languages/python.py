@@ -88,9 +88,7 @@ PYTHON = LanguageSpec(
     boundary_nodes=frozenset({"function_definition", "class_definition", "decorated_definition"}),
     salvage_nodes=frozenset({"function_definition"}),
     name_rules=(
-        # `async_function_def` is not a node type in tree-sitter-python: an
-        # async function is a `function_definition`. The entry is dead.
-        NameRule(("function_definition", "async_function_def", "class_definition"), name_field),
+        NameRule(("function_definition", "class_definition"), name_field),
         NameRule(("decorated_definition",), decorated_name),
     ),
     module_residue_split=is_main_block,

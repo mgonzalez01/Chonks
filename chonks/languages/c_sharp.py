@@ -75,9 +75,10 @@ C_SHARP = LanguageSpec(
         "conversion_operator_declaration": "operator",
         "constructor_declaration": "method",
     },
-    # BUG preserved: a named argument (`x: 1`) has the node type `argument`,
-    # the same as a positional one, so call arity counts it as positional.
-    # A fix changes stored chunk metadata, so an indexed repo needs a re-index.
+    # Call arity counts every `argument` node, named (`x: 1`) or positional, so
+    # a C# arity is the full argument count, which is what the arity filter
+    # wants. Python's arity skips keyword arguments, so the two languages mean
+    # different things by `arity`.
     literals=LiteralSpec(
         leaf_types=("string_literal", "verbatim_string_literal", "interpolated_string_expression"),
         plus_type="binary_expression"),
