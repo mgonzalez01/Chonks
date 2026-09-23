@@ -1,4 +1,4 @@
-"""Guards the plan's layer boundaries over today's flat chonks/ layout."""
+"""Guards the import direction between chonks/ layers."""
 import ast
 import subprocess
 import sys
@@ -15,19 +15,19 @@ _LAYER_PACKAGE_NAMES = (
 
 _LAYER_MAP: dict[str, str] = {
     "chonks": "core",
-    "chonks.server": "facade",
+    "chonks.server": "ops",
 }
 
+# What each layer may import, not what it imports today.
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
-    "ops":       {"facade", "serve", "retrieval", "index", "storage", "embed", "languages", "core"},
-    "serve":     {"facade", "retrieval", "index", "storage", "embed", "core"},
-    "retrieval": {"facade", "storage", "embed", "languages", "core"},
-    "index":     {"facade", "storage", "embed", "languages", "core"},
+    "ops":       {"serve", "retrieval", "index", "storage", "embed", "languages", "core"},
+    "serve":     {"retrieval", "index", "storage", "embed", "core"},
+    "retrieval": {"storage", "embed", "languages", "core"},
+    "index":     {"storage", "embed", "languages", "core"},
     "storage":   {"languages", "core"},
     "embed":     {"core"},
     "languages": {"core"},
     "core":      set(),
-    "facade":    {"facade", "ops", "serve", "retrieval", "index", "storage", "embed", "languages", "core"},
 }
 
 _KNOWN_INVERSIONS: set[tuple[str, str]] = {
@@ -121,6 +121,11 @@ def test_import_direction_is_allowed_or_known(importer, imported):
     if imported_layer in _ALLOWED_DIRECTIONS.get(importer_layer, set()):
         return
     assert (importer, imported) in _KNOWN_INVERSIONS
+
+
+@pytest.mark.parametrize("inversion", sorted(_KNOWN_INVERSIONS), ids="->".join)
+def test_known_inversion_still_exists(inversion):
+    assert inversion in _EDGES, f"{inversion} no longer imports; drop it from _KNOWN_INVERSIONS"
 
 
 @pytest.mark.parametrize("module", ["chonks.storage.store"])
