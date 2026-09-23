@@ -965,6 +965,7 @@ def test_insert_chunks_alone_never_sets_the_completeness_flag(tmp_path):
 @pytest.mark.parametrize("text", [
     "one line", "first\nsecond", "first\nsecond\nthird", "\nleading newline",
     "trailing\n", "first\r\nsecond", "héllo wörld\nsecond", "",
+    "a\x00b\ncd", "\x00lead\nsecond", "no newline\x00after nul",
 ])
 def test_first_line_sql_matches_first_line(text):
     """The SQL first-line expression must agree with the Python one."""
