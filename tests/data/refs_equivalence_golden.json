@@ -5660,7 +5660,7 @@
   "gdscript",
   "python"
  ],
- "unsupported_hlsl": {
+ "unsupported": {
   "calls": [],
   "imports": [],
   "inherits": []

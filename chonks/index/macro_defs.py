@@ -25,7 +25,7 @@ ATTRIBUTE = "attribute"  # empty or attributes only: blanking is exact
 _CAUTION = {VETO: 0, TYPE: 1, CODE: 2, UNKNOWN: 3, ATTRIBUTE: 4}
 
 _DEFINE = re.compile(
-    rb"^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)(\([^)]*\))?[ \t]*((?:[^\n]*\\\r?\n)*[^\n]*)",
+    rb"^(?:\xef\xbb\xbf)?[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)(\([^)]*\))?[ \t]*((?:[^\n]*\\\r?\n)*[^\n]*)",
     re.M)
 _TYPE_DEF = re.compile(
     rb"\b(?:class|struct|union|enum(?:[ \t]+class)?)[ \t]+(?:\[\[[^\]]*\]\][ \t]*)?"
@@ -54,7 +54,7 @@ _QUALIFIERS = frozenset({"const", "volatile", "signed", "unsigned", "struct", "u
 _MAX_CHAIN = 4
 # Bump when read_definitions extracts something different: the index
 # caches its records per file under this version.
-SCAN_VERSION = "1"
+SCAN_VERSION = "2"
 # Only macro-shaped names are hidden, the shape self-heal guesses from: a
 # lowercase `#define local static` may be an ordinary identifier elsewhere.
 _MACRO_SHAPE = re.compile(_MACRO_NAME)

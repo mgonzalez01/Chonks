@@ -133,8 +133,17 @@ def test_describe_row_values():
         "macro_heal": True,
         "pairing": True,
     }
-    assert rows["hlsl"]["typed_refs"] is False
+    assert rows["hlsl"]["typed_refs"] is True
     assert rows["hlsl"]["literals"] is True
+    assert rows["hlsl"]["macro_heal"] is True
     assert rows["python"]["arity_keyword"] is True
     assert rows["python"]["macro_heal"] is False
     assert rows["python"]["pairing"] is False
+
+
+@pytest.mark.parametrize("ext", [".hlsli", ".compute", ".raytrace", ".cginc"])
+def test_shader_files_are_hlsl(ext):
+    # Plain HLSL under other names: the DirectX include convention and
+    # Unity's compute, ray tracing and include files.
+    from pathlib import Path
+    assert languages.lang_for_path(Path("Shaders/Blur" + ext)) == "hlsl"

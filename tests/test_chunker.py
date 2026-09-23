@@ -198,7 +198,7 @@ def test_saved_macro_the_source_defines_as_a_type_is_dropped(tmp_path):
 def test_definition_walk_covers_exactly_the_c_family_files_indexed(tmp_path):
     from chonks.index.pipeline import _macro_lang_paths, index_paths
 
-    for rel in ("src/a.c", "src/b.h", "src/c.cpp", "src/d.py", "vendor/e.h",
+    for rel in ("src/a.c", "src/b.h", "src/c.cpp", "src/d.py", "src/h.hlsl", "vendor/e.h",
                 "vendor/keep/f.h", "build/g.c"):
         path = tmp_path / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,13 +208,27 @@ def test_definition_walk_covers_exactly_the_c_family_files_indexed(tmp_path):
     index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path,
                 exclude=excludes, include=includes)
     indexed = {r[0] for r in store._conn.execute("SELECT path FROM files")
-               if r[0].endswith((".c", ".h", ".cpp"))}
+               if r[0].endswith((".c", ".h", ".cpp", ".hlsl"))}
     cached = set(store.get_macro_definitions())
     store.close()
     walked = {stored for _, stored in _macro_lang_paths([str(tmp_path)], tmp_path, excludes, includes, 10**9)}
-    assert walked == indexed == cached == {"src/a.c", "src/b.h", "src/c.cpp", "vendor/keep/f.h"}
+    assert walked == indexed == cached == {"src/a.c", "src/b.h", "src/c.cpp", "src/h.hlsl", "vendor/keep/f.h"}
 
 
+
+
+def test_hlsl_macros_are_healed_like_c():
+    from chonks.index.segment import segment_file
+
+    # Unity's shape: a field macro with no semicolon ends each struct, and
+    # both structs were lost.
+    src = (b"struct Attributes\n{\n    float4 positionOS : POSITION;\n    UNITY_VERTEX_INPUT_INSTANCE_ID\n};\n\n"
+           b"struct Varyings\n{\n    float4 vertex : SV_POSITION;\n    UNITY_VERTEX_INPUT_INSTANCE_ID\n};\n\n"
+           b"half4 frag(Varyings input) : SV_Target\n{\n    UNITY_SETUP_INSTANCE_ID(input);\n    return input.vertex;\n}\n")
+    counters: dict = {}
+    segment_file(src, "hlsl", counters=counters)
+    assert {"Attributes", "Varyings", "frag"} <= {s["name"] for s in counters["symbols"]}
+    assert not counters.get("parse_error")
 
 
 def test_comment_before_a_line_continuation_does_not_end_the_define():
