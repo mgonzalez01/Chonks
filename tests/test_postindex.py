@@ -16,12 +16,26 @@ def _run(store, **kw):
     return postindex.run_post_index_passes(store, object(), **args)
 
 
-def test_orphan_sweep_runs_once_on_a_no_op_run(tmp_path):
+def test_orphan_sweep_runs_once_on_a_no_op_run(tmp_path, caplog):
     store = Store(tmp_path / "t.db")
     store._conn.execute("INSERT INTO chunk_neighbors VALUES ('ghost', 'gone', 0.1)")
     store._conn.commit()
-    _run(store)
+    with caplog.at_level(logging.INFO, logger="chonks.chunker"):
+        _run(store)
+    assert "Checking for orphan edges." in [r.getMessage() for r in caplog.records]
     assert store._conn.execute("SELECT COUNT(*) FROM chunk_neighbors").fetchone()[0] == 0
+    assert store.get_meta("orphan_sweep_v1") == "1"
+    store.close()
+
+
+def test_a_forced_run_skips_the_orphan_sweep(tmp_path, monkeypatch, stub_passes):
+    monkeypatch.setattr(postindex, "build_folder_summaries", lambda *a, **k: {"refreshed": 0, "pruned": 0})
+    store = Store(tmp_path / "t.db")
+    store._conn.execute("INSERT INTO chunk_neighbors VALUES ('ghost', 'gone', 0.1)")
+    store._conn.commit()
+    _run(store, force=True, indexed=1)
+    # The stubbed rebuilds leave the row, so only a sweep would remove it.
+    assert store._conn.execute("SELECT COUNT(*) FROM chunk_neighbors").fetchone()[0] == 1
     assert store.get_meta("orphan_sweep_v1") == "1"
     store.close()
 
@@ -64,7 +78,6 @@ def test_each_pass_says_when_it_starts(tmp_path, monkeypatch, stub_passes, caplo
     store.close()
     lines = [r.getMessage() for r in caplog.records]
     expected = ["Rebuilding the full-text index.", "Rebuilt the full-text index in",
-                "Checking for orphan edges.", "Checked for orphan edges in",
                 "Building the folder hierarchy.", "Built hierarchy:",
                 "Computing PageRank.", "Persisted 0 PageRank scores.",
                 "Refreshing folder summaries.", "Folder summaries:"]

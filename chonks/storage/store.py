@@ -1682,7 +1682,7 @@ class Store:
         with self._lock:
             affected_to_ids = {
                 r[0] for r in self._conn.execute(
-                    f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}"
+                    f"SELECT to_id FROM chunk_refs WHERE {where}"
                 ).fetchall()
             }
             cur = self._conn.execute(f"DELETE FROM chunk_refs WHERE {where}")

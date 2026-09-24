@@ -70,7 +70,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
         # Must run AFTER build_refs/build_neighbors, not before: their
         # incremental paths rely on this run's own dangling rows, so purging
         # first would desync them from a full rebuild. Gated to run once per DB.
-        _orphan_sweep_once(store, force)
+        _orphan_sweep_once(store, rebuilt=force)
 
         # Full rebuild every run: cheap relative to refs/kNN (see
         # rebuild_hierarchy), so no incremental path to keep in sync.
@@ -115,12 +115,13 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
             logger.error("Folder summary generation failed: %s", e)
     else:
         # A DB whose runs are all no-ops still gets its one-time sweep.
-        _orphan_sweep_once(store, force)
+        _orphan_sweep_once(store, rebuilt=False)
     return fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed
 
 
-def _orphan_sweep_once(store, force: bool) -> None:
-    if force or not store.get_meta("orphan_sweep_v1"):
+def _orphan_sweep_once(store, rebuilt: bool) -> None:
+    # A full rebuild of both edge tables leaves no orphans.
+    if not rebuilt and not store.get_meta("orphan_sweep_v1"):
         logger.info("Checking for orphan edges.")
         _phase_t0 = time.monotonic()
         orphan_neighbors = store.purge_orphan_neighbors()
@@ -130,4 +131,4 @@ def _orphan_sweep_once(store, force: bool) -> None:
             logger.info("Purged %d orphan chunk_neighbors edge(s).", orphan_neighbors)
         if orphan_refs:
             logger.info("Purged %d orphan chunk_refs edge(s).", orphan_refs)
-        store.set_meta("orphan_sweep_v1", "1")
+    store.set_meta("orphan_sweep_v1", "1")
