@@ -47,6 +47,36 @@ def is_template_definition(node: Node, src: bytes) -> bool:
     return True
 
 
+_STATEMENT_KEYWORDS = frozenset({"if", "for", "while", "switch"})
+
+
+def _in_function_body(node: Node) -> bool:
+    parent = node.parent
+    while parent is not None:
+        if parent.type == "field_declaration_list":
+            return False
+        if parent.type == "compound_statement":
+            return True
+        parent = parent.parent
+    return False
+
+
+def is_function_definition(node: Node, src: bytes) -> bool:
+    """Inside a function body, `MACRO(a, b) { ... }` and `MACRO if (x) { ... }`
+    parse as function definitions; neither is one."""
+    if not _in_function_body(node):
+        return True
+    decl = node.child_by_field_name("declarator")
+    if decl is None or decl.type != "function_declarator":
+        return True
+    name = decl.child_by_field_name("declarator")
+    if name is None or name.type != "identifier":
+        return True
+    if node.child_by_field_name("type") is None:
+        return False
+    return src[name.start_byte:name.end_byte].decode(errors="replace") not in _STATEMENT_KEYWORDS
+
+
 def classify_param(part: str) -> "str | object":
     if part == "..." or part.endswith("..."):
         return "variadic"
@@ -66,7 +96,7 @@ BASES = Children((
 CPP = LanguageSpec(
     name="cpp",
     grammar="cpp",
-    version="3",
+    version="4",
     display_name="C++",
     # .h stays on "cpp" not "c": remapping would churn boundaries across
     # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
@@ -85,6 +115,7 @@ CPP = LanguageSpec(
     boundary_filters={
         **{t: has_body for t in _CLASS_TYPES},
         "template_declaration": is_template_definition,
+        "function_definition": is_function_definition,
     },
     forward_declarations={
         **{t: is_forward_declaration for t in _CLASS_TYPES},

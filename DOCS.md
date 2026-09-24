@@ -224,6 +224,8 @@ Excluded directories are pruned from the walk, include-aware, so a directory is 
 
 HLSL also detects `cbuffer` and `tbuffer` blocks. A custom predicate finds them, because tree-sitter-hlsl parses them as generic `declaration` nodes.
 
+In C and C++ a function body cannot hold a function, so a `function_definition` inside one with no return type (`MACRO(a, b) { ... }`) or named by a statement keyword (`MACRO if (x) { ... }`) is neither a boundary nor a symbol.
+
 JavaScript, TypeScript and TSX also detect `const/let/var NAME = (...) => ...`. The grammars have no node type for a function assigned to a variable, so `is_arrow_var_decl` detects the pattern and makes the whole `lexical_declaration` or `variable_declaration` one chunk, named after the variable.
 
 Lua is a best-effort tier: its grammar comes from the `tree-sitter-language-pack` registry only.
