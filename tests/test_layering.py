@@ -1,4 +1,5 @@
-"""Guards the import direction between chonks/ layers."""
+"""Guards the seams between chonks/ layers: import direction, where third-party
+packages and environment reads live, and where language and edge-type literals live."""
 import ast
 import subprocess
 import sys
@@ -136,3 +137,120 @@ def test_storage_import_is_light(module):
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
+
+
+def _rel(path: Path) -> str:
+    return path.relative_to(_REPO_ROOT).as_posix()
+
+
+_TREES = {_rel(p): ast.parse(p.read_text(encoding="utf-8"), filename=str(p)) for p in _all_chonks_files()}
+
+# Each package is imported only where it is wrapped.
+_CONFINED_PACKAGES: dict[str, tuple[str, ...]] = {
+    "scipy": ("chonks/ops/subsystems.py",),
+    "sqlite_vec": ("chonks/storage/",),
+    "fastapi": ("chonks/serve/",),
+    "tree_sitter_language_pack": ("chonks/index/segment.py",),
+}
+
+
+def _top_level_imports(tree: ast.AST) -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+            names.add(node.module.split(".")[0])
+    return names
+
+
+@pytest.mark.parametrize("package", sorted(_CONFINED_PACKAGES))
+def test_third_party_package_stays_where_it_is_wrapped(package):
+    allowed = _CONFINED_PACKAGES[package]
+    offenders = [rel for rel, tree in _TREES.items()
+                 if package in _top_level_imports(tree) and not rel.startswith(allowed)]
+    assert offenders == []
+
+
+_ENV_READERS = ("chonks/ops/", "chonks/serve/main.py", "chonks/index/graph/knn.py")
+
+
+def _reads_environment(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Attribute) and node.attr in ("environ", "getenv")
+                and isinstance(node.value, ast.Name) and node.value.id == "os"):
+            return True
+        if isinstance(node, ast.ImportFrom) and node.module == "os" and any(
+                alias.name in ("environ", "getenv") for alias in node.names):
+            return True
+    return False
+
+
+def test_environment_is_read_only_at_entry_points():
+    offenders = [rel for rel, tree in _TREES.items()
+                 if _reads_environment(tree) and not rel.startswith(_ENV_READERS)]
+    assert offenders == []
+
+
+# Language names and the node types a spec chunks by are spelled out only in
+# chonks/languages/; edge types only there and in chonks/core/edges.py. Other
+# modules read them from the registry or from core.edges.
+_LANGUAGE_HOMES = ("chonks/languages/",)
+_EDGE_TYPE_HOMES = ("chonks/languages/", "chonks/core/edges.py")
+# Chunk types chonks assigns itself, whatever a grammar calls its nodes.
+_OWN_CHUNK_TYPES = frozenset({"module"})
+# Literals that predate this check. Remove entries; never add them.
+_KNOWN_LITERALS: set[tuple[str, str]] = {
+    ("chonks/index/plugins.py", "javascript"),
+    ("chonks/index/macro_heal.py", "class_specifier"),
+    ("chonks/index/macro_heal.py", "struct_specifier"),
+    *{("chonks/index/graph/refs.py", t)
+      for t in ("associated", "calls", "imports", "inherits", "mentions", "xlang")},
+    *{("chonks/index/refs_extract.py", t) for t in ("calls", "imports", "inherits")},
+    *{("chonks/index/rows.py", t) for t in ("calls", "imports", "inherits")},
+    *{("chonks/ops/report.py", t) for t in ("associated", "mentions", "xlang")},
+    *{("chonks/retrieval/graph_queries.py", t) for t in ("associated", "mentions", "xlang")},
+    *{("chonks/retrieval/trace.py", t) for t in ("associated", "mentions")},
+    ("chonks/storage/store.py", "mentions"),
+}
+
+
+def _language_literals() -> frozenset[str]:
+    from dataclasses import fields
+
+    from chonks.languages import REGISTRY
+    names: set[str] = set()
+    for spec in REGISTRY.specs:
+        names.add(spec.name)
+        for f in fields(spec):
+            if f.name.endswith(("_nodes", "_chunk_types")):
+                names |= getattr(spec, f.name)
+        names |= set(spec.kind_labels) | set(spec.boundary_filters) | set(spec.forward_declarations)
+    return frozenset(names - _OWN_CHUNK_TYPES)
+
+
+def _edge_type_literals() -> frozenset[str]:
+    from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS
+    return frozenset(DEFAULT_EDGE_TYPE_WEIGHTS)
+
+
+def _literals_outside_their_home() -> set[tuple[str, str]]:
+    watched = ((_language_literals(), _LANGUAGE_HOMES), (_edge_type_literals(), _EDGE_TYPE_HOMES))
+    found: set[tuple[str, str]] = set()
+    for rel, tree in _TREES.items():
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+                continue
+            for names, homes in watched:
+                if node.value in names and not rel.startswith(homes):
+                    found.add((rel, node.value))
+    return found
+
+
+def test_language_and_edge_type_literals_stay_home():
+    assert _literals_outside_their_home() - _KNOWN_LITERALS == set()
+
+
+@pytest.mark.parametrize("literal", sorted(_KNOWN_LITERALS), ids=":".join)
+def test_known_literal_still_exists(literal):
+    assert literal in _literals_outside_their_home(), f"{literal} is gone; drop it from _KNOWN_LITERALS"

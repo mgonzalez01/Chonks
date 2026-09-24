@@ -12,7 +12,7 @@ config.json
 
 # Claude Code per-user state
 .claude/*
-CLAUDE.md
+CLAUDE.local.md
 
 # Node / MCP server build artifacts
 mcp-server/node_modules/
