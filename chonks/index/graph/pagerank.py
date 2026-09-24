@@ -4,9 +4,11 @@ stale-batch skip gate, and the read path used at query time."""
 from __future__ import annotations
 
 import logging
+from array import array
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
-import networkx as nx
+import numpy as np
 
 from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, _PAGERANK_STALE_META_KEY
 
@@ -25,6 +27,54 @@ _PAGERANK_REFRESH_MIN_FRACTION = 0.20
 # Public API
 # ---------------------------------------------------------------------------
 
+def pagerank_scores(
+    node_ids: Iterable[str],
+    typed_edges: Iterable[tuple[str, str, str]],
+    edge_type_weights: dict[str, float],
+    alpha: float = 0.85,
+    max_iter: int = 100,
+    tol: float = 1.0e-6,
+) -> dict[str, float] | None:
+    """networkx.pagerank's power iteration over edge arrays. An edge
+    endpoint missing from node_ids joins the graph; unknown edge types weigh
+    1.0. None when the iteration does not converge."""
+    index: dict[str, int] = {}
+    for node_id in node_ids:
+        index.setdefault(node_id, len(index))
+    type_codes: dict[str, int] = {}
+    src, dst, codes = array("i"), array("i"), array("B")
+    for from_id, to_id, edge_type in typed_edges:
+        src.append(index.setdefault(from_id, len(index)))
+        dst.append(index.setdefault(to_id, len(index)))
+        codes.append(type_codes.setdefault(edge_type, len(type_codes)))
+    n = len(index)
+    if n == 0:
+        return {}
+
+    src_a = np.frombuffer(src, dtype=np.int32)
+    dst_a = np.frombuffer(dst, dtype=np.int32)
+    weight_of_code = np.array([edge_type_weights.get(t, 1.0) for t in type_codes], dtype=float)
+    weight = weight_of_code[np.frombuffer(codes, dtype=np.uint8)] if codes else np.zeros(0)
+    del codes
+    out_weight = np.bincount(src_a, weights=weight, minlength=n)
+    dangling = np.flatnonzero(out_weight == 0)
+    inv_out = np.zeros(n)
+    np.divide(1.0, out_weight, out=inv_out, where=out_weight != 0)
+    weight *= inv_out[src_a]
+
+    x = np.full(n, 1.0 / n)
+    # Teleport and dangling rank both spread uniformly.
+    p = np.full(n, 1.0 / n)
+    for _ in range(max_iter):
+        xlast = x
+        # Each node's rank flows along its out-edges, summed at their targets.
+        flow = np.bincount(dst_a, weights=weight * x[src_a], minlength=n)
+        x = alpha * (flow + x[dangling].sum() * p) + (1 - alpha) * p
+        if np.abs(x - xlast).sum() < n * tol:
+            return dict(zip(index, x.tolist()))
+    return None
+
+
 def _compute_pagerank_live(
     store: "Store",
     chunks: list[dict] | None = None,
@@ -38,17 +88,12 @@ def _compute_pagerank_live(
     if not chunks:
         return {}
     weights = edge_type_weights if edge_type_weights is not None else DEFAULT_EDGE_TYPE_WEIGHTS
-    G = nx.DiGraph()
-    for c in chunks:
-        G.add_node(c["id"])
-    for from_id, to_id, edge_type in store.get_all_refs_typed():
-        # chunk_refs' PK is (from_id, to_id), one edge_type per pair, so
-        # there's no duplicate-edge weight to accumulate here.
-        G.add_edge(from_id, to_id, weight=weights.get(edge_type, 1.0))
-    try:
-        return nx.pagerank(G, alpha=0.85, max_iter=100, weight="weight")
-    except nx.exception.PowerIterationFailedConvergence:
+    # chunk_refs' PK is (from_id, to_id), one edge_type per pair, so
+    # there's no duplicate edge for the matrix to sum.
+    scores = pagerank_scores((c["id"] for c in chunks), store.iter_refs_typed(), weights)
+    if scores is None:
         return {c["id"]: 1.0 for c in chunks}
+    return scores
 
 
 def persist_pagerank(

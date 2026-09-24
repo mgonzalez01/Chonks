@@ -376,6 +376,16 @@ def test_insert_refs_typed(tmp_path):
     assert set(store.get_all_refs()) == {("a", "b"), ("a", "c"), ("a", "d")}
 
 
+def test_iter_refs_typed_streams_every_edge_across_batches(tmp_path):
+    store = _make_store(tmp_path)
+    store.insert_refs([("a", "b", "calls"), ("a", "c", "imports"), ("b", "c", "mentions"),
+                       ("c", "a", "xlang"), ("d", "a", "inherits")])
+    streamed = list(store.iter_refs_typed(batch_size=2))
+    assert len(streamed) == 5
+    assert sorted(streamed) == sorted(store.get_all_refs_typed())
+    store.close()
+
+
 # --- find_usages (chunk_refs incoming edges resolved via the symbol index) --
 
 def _chunk(id, path, name, s=1, e=2):

@@ -6,8 +6,6 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING
 
-import networkx as nx
-
 from chonks.core.refresh import register_refresh
 from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
 
@@ -295,23 +293,16 @@ def _build_repomap_from_chunks(
         scope = f"under '{path_prefix}'" if path_prefix else "in the index"
         return f"No named symbols found {scope}."
 
-    G = nx.DiGraph()
-    for c in chunks:
-        G.add_node(c["id"])
-
     chunk_id_set = {c["id"] for c in chunks}
     if path_prefix is None:
         edges = store.get_all_refs()
     else:
         edges = store.get_refs_for_chunks([c["id"] for c in chunks])
 
-    for from_id, to_id in edges:
-        if from_id in chunk_id_set and to_id in chunk_id_set:
-            G.add_edge(from_id, to_id)
-
-    try:
-        pr = nx.pagerank(G, alpha=0.85, max_iter=100)
-    except nx.exception.PowerIterationFailedConvergence:
+    from chonks.index.graph.pagerank import pagerank_scores
+    untyped = ((f, t, "") for f, t in edges if f in chunk_id_set and t in chunk_id_set)
+    pr = pagerank_scores((c["id"] for c in chunks), untyped, {})
+    if pr is None:
         # Fall back to uniform scores, map still useful, just unranked.
         pr = {c["id"]: 1.0 for c in chunks}
 

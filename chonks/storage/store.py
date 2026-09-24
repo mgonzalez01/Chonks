@@ -8,6 +8,7 @@ import struct
 import threading
 import time
 from collections import defaultdict
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -1757,6 +1758,15 @@ class Store:
                 "SELECT from_id, to_id, edge_type FROM chunk_refs"
             ).fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
+
+    def iter_refs_typed(self, batch_size: int = 100_000) -> Iterator[tuple[str, str, str]]:
+        """Every (from_id, to_id, edge_type) edge, fetched a batch at a time.
+        Holds the store lock until exhausted or closed."""
+        with self._lock:
+            cursor = self._conn.execute("SELECT from_id, to_id, edge_type FROM chunk_refs")
+            while rows := cursor.fetchmany(batch_size):
+                for r in rows:
+                    yield r[0], r[1], r[2]
 
     def get_module_edge_type_counts(
         self, module_by_chunk: dict[str, str]
