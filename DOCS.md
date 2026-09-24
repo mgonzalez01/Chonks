@@ -574,7 +574,7 @@ Response:
 }
 ```
 
-There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable and expansion scoring fell back to a neutral score, the seeds still ranking by their own stored similarity, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns, and `note` the same excluded-scope note.
+There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable, the seeds then coming from keyword search in its order and expansion going unscored, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns, and `note` the same excluded-scope note.
 
 ### POST /repomap
 

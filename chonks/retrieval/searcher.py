@@ -265,6 +265,22 @@ class Searcher:
                 return []
             return self._store.search_fts(safe, top_k, path_prefix, chunk_kind=chunk_kind)
 
+    def keyword(
+        self,
+        query: str,
+        top_k: int = 50,
+        path_prefix: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """FTS for a freeform query: chunks with every word, then chunks with any."""
+        and_query = _sanitize_fts_query(query)
+        hits = self.fts(and_query, top_k, path_prefix) if and_query else []
+        or_query = _or_fts_query(query)
+        if len(hits) < top_k and or_query:
+            seen = {h["id"] for h in hits}
+            more = [h for h in self.fts(or_query, top_k, path_prefix) if h["id"] not in seen]
+            hits += more[: top_k - len(hits)]
+        return hits
+
     def regex(
         self,
         pattern: str,
