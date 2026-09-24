@@ -15,6 +15,7 @@ from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT, EMBED_WATCHDOG
 from chonks.index.pipeline import index_paths, reembed_all
 from chonks.index.plugins import load_plugins
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
+from chonks.retrieval.scope_notes import config_warnings
 from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors, validate_knn_backend
 from chonks.index.graph.refs import build_refs
@@ -318,6 +319,10 @@ def main(argv=None) -> None:
                 root = Path(*common) if common else resolved[0].parent
             except Exception:
                 root = resolved[0].parent if resolved else Path.cwd()
+
+        subsystem_prefixes = [p for ps in (config.get("subsystems") or {}).values() for p in ps]
+        for warning in config_warnings(root, exclude_list, include_list, subsystem_prefixes):
+            logger.warning(warning)
 
         # --force re-chunks every file, so a stale language_set warning would
         # contradict the run that replaces it.

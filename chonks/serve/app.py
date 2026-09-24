@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from chonks.core.refresh import register_refresh
@@ -17,6 +17,7 @@ from chonks.retrieval.trace import trace_path
 from chonks.retrieval.research import deep_research
 from chonks.retrieval import graph_queries, message_match
 from chonks.retrieval.results import detect_near_dup_wall, format_results, rank_files
+from chonks.retrieval.scope_notes import config_warnings, excluded_scope_note
 from chonks.retrieval.source import _attach_definition_source
 from chonks.retrieval.searcher import DEFAULT_BLEND_ALPHA, DEFAULT_BLEND_BETA, DEFAULT_FILE_CAP
 from chonks.serve.models import (
@@ -143,6 +144,7 @@ def search(req: SearchRequest) -> JSONResponse:
         "near_dup":         near_dup,
         "files":            rank_files(chunks),
         "query_truncated":  query_truncated,
+        "note":             excluded_scope_note(req.path_prefix, project["exclude"], project["include"]),
     })
 
 
@@ -163,6 +165,7 @@ def research(req: ResearchRequest) -> JSONResponse:
         path_prefix=req.path_prefix,
     )
     result["files"] = rank_files(result["chunks"])
+    result["note"] = excluded_scope_note(req.path_prefix, project["exclude"], project["include"])
     return JSONResponse(result)
 
 
@@ -420,15 +423,21 @@ def index(req: IndexRequest) -> JSONResponse:
 
 
 @app.get("/status")
-def status() -> JSONResponse:
+def status(scope: list[str] | None = Query(None)) -> JSONResponse:
     """Returns the legacy flat shape when only the default project exists,
-    for back-compat with existing clients; otherwise {"projects": {...}}."""
+    for back-compat with existing clients; otherwise {"projects": {...}}.
+    `scope` names paths a client scopes searches to (the MCP server's
+    subsystems); the default project warns when config excludes one."""
     project_stats: dict[str, dict] = {}
     for name, p in _projects.items():
         if p.get("store") is None:
             project_stats[name] = {"ready": False, "lazy": True}
         else:
             project_stats[name] = {"ready": True, **p["store"].stats()}
+        project_stats[name]["warnings"] = config_warnings(
+            p.get("root"), p.get("exclude") or [], p.get("include") or [],
+            (scope or []) if name == DEFAULT_PROJECT else [],
+        )
 
     if list(_projects.keys()) == [DEFAULT_PROJECT]:
         return JSONResponse(project_stats[DEFAULT_PROJECT])

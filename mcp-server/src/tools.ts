@@ -17,7 +17,7 @@ import {
   resolutionEcho,
   _formatTraceChunk,
 } from "./render.js";
-import { parseSubsystemPrefix, stripSubsystemPrefix } from "./subsystems.js";
+import { SUBSYSTEMS, parseSubsystemPrefix, stripSubsystemPrefix } from "./subsystems.js";
 import { type BranchFailure, partialSearchNote } from "./fanout.js";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +33,11 @@ function dedupeByIdKeepBest(chunks: Chunk[]): Chunk[] {
     }
   }
   return Array.from(map.values()).sort((a, b) => (b._score ?? 0) - (a._score ?? 0));
+}
+
+function formatNotes(notes: Array<string | null | undefined>): string {
+  const unique = [...new Set(notes.filter((n): n is string => !!n))];
+  return unique.length ? unique.map((n) => `note: ${n}`).join("\n") + "\n\n" : "";
 }
 
 export async function toolCodebaseSearch(args: any): Promise<string> {
@@ -60,7 +65,7 @@ export async function toolCodebaseSearch(args: any): Promise<string> {
     const nudge = docsNudgeFooter(chunkKind, res.docs_in_results, count) + nearDupFooter(res.near_dup, count);
     const filesLine = formatFilesLine(res.files ?? []);
     const filesBlock = filesLine ? `${filesLine}\n\n` : "";
-    return `(${scopeNote} · ${count} results)\n\n${filesBlock}${formatChunks(res.chunks ?? [])}${nudge}`;
+    return `${formatNotes([res.note])}(${scopeNote} · ${count} results)\n\n${filesBlock}${formatChunks(res.chunks ?? [])}${nudge}`;
   }
 
   if (paths.length === 1) {
@@ -75,7 +80,7 @@ export async function toolCodebaseSearch(args: any): Promise<string> {
     const nudge = docsNudgeFooter(chunkKind, res.docs_in_results, count) + nearDupFooter(res.near_dup, count);
     const filesLine = formatFilesLine(res.files ?? []);
     const filesBlock = filesLine ? `${filesLine}\n\n` : "";
-    return `(scope: @${name} → ${paths[0]} · ${count} results)\n\n${filesBlock}${formatChunks(res.chunks ?? [])}${nudge}`;
+    return `${formatNotes([res.note])}(scope: @${name} → ${paths[0]} · ${count} results)\n\n${filesBlock}${formatChunks(res.chunks ?? [])}${nudge}`;
   }
 
   // Nudge uses pre-merge per-branch sums, an approximation against the
@@ -109,7 +114,8 @@ export async function toolCodebaseSearch(args: any): Promise<string> {
   const filesLine = formatFilesLine(rankFilesFromChunks(top));
   const filesBlock = filesLine ? `${filesLine}\n\n` : "";
   const partial = partialSearchNote(name, paths.length, failures);
-  return `${partial}(scope: @${name} × ${paths.length} paths · ${top.length} results)\n\n${filesBlock}${formatChunks(top)}${nudge}`;
+  const notes = formatNotes(responses.map((r: any) => r.note));
+  return `${partial}${notes}(scope: @${name} × ${paths.length} paths · ${top.length} results)\n\n${filesBlock}${formatChunks(top)}${nudge}`;
 }
 
 const RESEARCH_EXPLORE_EDGE_TYPE_WEIGHTS = { calls: 8, imports: 8, inherits: 8, xlang: 8, associated: 1, mentions: 1 };
@@ -120,6 +126,7 @@ export async function toolCodebaseResearch(args: any): Promise<string> {
   // Research runs unscoped, so strip any @subsystem prefix and ignore it.
   // The iterative symbol-expansion loop benefits from full-corpus access.
   const query = stripSubsystemPrefix(rawQuery);
+  const dropped = query === rawQuery ? null : rawQuery.slice(0, rawQuery.length - query.length).trim();
   const pathPrefix = typeof args.path_prefix === "string" ? args.path_prefix : null;
   const scope = args.scope === "explore" ? "explore" : "lookup";
 
@@ -142,7 +149,11 @@ export async function toolCodebaseResearch(args: any): Promise<string> {
   const filesLine = files ? `files: ${files}\n\n` : "";
   const chunks: Chunk[] = res.chunks ?? [];
   const connectionsSection = formatConnections(res.connections, chunks);
-  return `${degradedLine}${header}\n\n${filesLine}${formatResearchChunks(chunks)}${connectionsSection}`;
+  const droppedNote = dropped
+    ? `research runs over the whole index, so ${dropped} was ignored; codebase_search scopes by subsystem.`
+    : null;
+  const notes = formatNotes([res.note, droppedNote]);
+  return `${degradedLine}${notes}${header}\n\n${filesLine}${formatResearchChunks(chunks)}${connectionsSection}`;
 }
 
 export async function toolCodebaseMap(args: any): Promise<string> {
@@ -403,9 +414,13 @@ export async function toolTracePath(args: any): Promise<string> {
 }
 
 export async function toolCodebaseStatus(): Promise<string> {
-  const s = await httpGet("/status");
+  const scopes = [...new Set(Object.values(SUBSYSTEMS).flat())];
+  const query = scopes.map((s) => `scope=${encodeURIComponent(s)}`).join("&");
+  const s = await httpGet(query ? `/status?${query}` : "/status");
+  const warnings: string[] = s?.warnings ?? [];
+  const warningLines = warnings.length ? ["  warnings:", ...warnings.map((w) => `    ${w}`)] : [];
   if (!s?.ready) {
-    return "Backend reports: not ready.";
+    return ["Backend reports: not ready.", ...warningLines].join("\n");
   }
   const files = s.files ?? "?";
   const chunks = s.chunks ?? "?";
@@ -419,5 +434,6 @@ export async function toolCodebaseStatus(): Promise<string> {
     `  db size:       ${sizeMb}`,
     `  embedding dim: ${dim}`,
     `  indexed root:  ${root}`,
+    ...warningLines,
   ].join("\n");
 }
