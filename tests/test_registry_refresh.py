@@ -1,6 +1,6 @@
 """Every module-level value derived from the language registry must be rebound
 by its module's `_refresh_from_registry` hook, and every hook must correspond
-to a real derivation. Also proves the nine hooks actually track a language
+to a real derivation. Also proves the hooks actually track a language
 added to the registry after import."""
 
 import ast

@@ -16,9 +16,21 @@ from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers
 
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
+from chonks.core.refresh import register_refresh
+from chonks.languages import union as _lang_union
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
+
+_SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
+def _refresh_from_registry() -> None:
+    global _SCOPE_CHUNK_TYPES
+    _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
+register_refresh(_refresh_from_registry)
 
 logger = logging.getLogger("repomap")
 
@@ -101,7 +113,7 @@ def _build_graph(
     # Direct registrations: a name under itself. Never touched by the bare-alias fold below.
     for c in chunks:
         name = c["name"]
-        if name and len(name) >= _MIN_NAME_LEN:
+        if name and len(name) >= _MIN_NAME_LEN and c.get("chunk_type") not in _SCOPE_CHUNK_TYPES:
             cid = c["id"]
             name_to_ids[name].append(cid)
             lang = c.get("language") or ""
@@ -138,7 +150,7 @@ def _build_graph(
 
     for c in chunks:
         name = c["name"]
-        if name and len(name) >= _MIN_NAME_LEN:
+        if name and len(name) >= _MIN_NAME_LEN and c.get("chunk_type") not in _SCOPE_CHUNK_TYPES:
             keys = _name_keys(name)
             if len(keys) > 1:
                 _add_alias(keys[1], c["id"], c.get("language") or "")
@@ -346,7 +358,7 @@ def _bare_alias_definers(
     out: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for c in store.get_named_chunks_meta():
         name = c.get("name")
-        if not name:
+        if not name or c.get("chunk_type") in _SCOPE_CHUNK_TYPES:
             continue
         keys = _name_keys(name)
         if len(keys) < 2 or keys[1] not in bare_names:

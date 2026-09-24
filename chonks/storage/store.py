@@ -20,13 +20,18 @@ from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
+from chonks.languages import union as _lang_union
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
 
 
+_SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
 def _refresh_from_registry() -> None:
-    global CODE_LANGUAGES
+    global CODE_LANGUAGES, _SCOPE_CHUNK_TYPES
     import chonks.languages as _languages
     CODE_LANGUAGES = _languages.CODE_LANGUAGES
+    _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
 
 
 register_refresh(_refresh_from_registry)
@@ -854,16 +859,18 @@ class Store:
     def get_chunk_defs_by_names(self, names: list[str]) -> dict[str, list[tuple[str, str]]]:
         """name -> [(chunk_id, language)] for build_refs' incremental name
         resolution, scoped to a candidate set via idx_chunks_name instead
-        of a full-corpus scan."""
+        of a full-corpus scan. Namespace chunks are not definers."""
         if not names:
             return {}
         out: dict[str, list[tuple[str, str]]] = defaultdict(list)
         with self._lock:
             for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
+                scopes = ",".join("?" * len(_SCOPE_CHUNK_TYPES))
                 rows = self._conn.execute(
-                    f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders})",
-                    batch,
+                    f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders}) "
+                    f"AND (chunk_type IS NULL OR chunk_type NOT IN ({scopes}))",
+                    [*batch, *sorted(_SCOPE_CHUNK_TYPES)],
                 ).fetchall()
                 for r in rows:
                     out[r["name"]].append((r["id"], r["language"]))
