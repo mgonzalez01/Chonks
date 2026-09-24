@@ -175,7 +175,7 @@ def main():
                          "and omit them for the control build.")
     ap.add_argument("--nudge-file", default=None,
                     help="file whose content replaces the built-in one-line NUDGE for the "
-                         "chonks_doc arm (e.g. mcp-server/CLAUDE.md, the documented workflow "
+                         "chonks_doc arm (e.g. mcp-server/CLAUDE.template.md, the documented workflow "
                          "guide). Measures the product-as-documented condition vs the cold floor.")
     args = ap.parse_args()
 

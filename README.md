@@ -108,7 +108,7 @@ claude mcp add chonks -s user \
 
 ### 6. Add the steering text
 
-Copy [`mcp-server/CLAUDE.md`](mcp-server/CLAUDE.md) into your project's `CLAUDE.md` or into `~/.claude/CLAUDE.md`. This step decides whether the agent uses the index at all. On a 24-question harness, a one-line recommendation led to 4 runs out of 24 using the tools, and the text in `CLAUDE.md` led to 24 of 24; see [`eval/results/F1`](eval/results/F1/README.md) for the per-run rows.
+Copy [`mcp-server/CLAUDE.template.md`](mcp-server/CLAUDE.template.md) into your project's `CLAUDE.md` or into `~/.claude/CLAUDE.md`. This step decides whether the agent uses the index at all. On a 24-question harness, a one-line recommendation led to 4 runs out of 24 using the tools, and the text in `CLAUDE.md` led to 24 of 24; see [`eval/results/F1`](eval/results/F1/README.md) for the per-run rows.
 
 ### Containers instead of steps 1 and 5
 

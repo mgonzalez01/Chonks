@@ -666,7 +666,7 @@ def _build_refs_incremental(
                 else:
                     name, receiver, arity = raw, None, None
                 ids = local_name_to_ids.get(name)
-                if not ids or len(ids) > _MAX_CROSS_LANG_OCCURRENCES:
+                if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
                 targets = (
                     _discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache)

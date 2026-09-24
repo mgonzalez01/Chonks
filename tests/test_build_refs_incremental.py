@@ -992,3 +992,25 @@ def test_a_namespace_chunk_is_never_an_edge_target(caplog):
     _assert_indegree_consistent(store)
     assert got == _full_rebuild_edges(initial + new)
     assert not {e for e in got if e[1] in scopes}
+
+
+def test_a_call_to_a_name_with_many_definers_stays_typed_incrementally(caplog):
+    """Past the fan-out cap's threshold, the cap is the only thing that drops
+    a typed edge: with it off, an incremental update keeps `calls`."""
+    store = _mk_store()
+    definers = [_chunk(f"d{i}", f"d{i}.cpp", name="tick", content=f"void tick() {{ step{i}(); }}")
+                for i in range(9)]
+    caller = _chunk("c1", "c1.cpp", name="run", content="void run() { tick(); }")
+    caller["metadata"] = {"calls": ["tick"], "imports": [], "inherits": []}
+    _insert(store, definers + [caller])
+    build_refs(store)
+
+    new = _chunk("c2", "c2.cpp", name="run2", content="void run2() { tick(); }")
+    new["metadata"] = {"calls": ["tick"], "imports": [], "inherits": []}
+    _insert(store, [new])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"c2"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    assert got == _full_rebuild_edges(definers + [caller, new])
+    assert ("c2", "d0", "calls") in got

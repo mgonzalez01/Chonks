@@ -42,7 +42,8 @@ SCHEMA_DDL = """
                 PRIMARY KEY (from_id, to_id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_chunk_refs_from ON chunk_refs(from_id);
+            -- The primary key serves lookups by from_id.
+            DROP INDEX IF EXISTS idx_chunk_refs_from;
             CREATE INDEX IF NOT EXISTS idx_chunk_refs_to   ON chunk_refs(to_id);
 
             -- Persisted PageRank, computed once at index time. Empty on a
