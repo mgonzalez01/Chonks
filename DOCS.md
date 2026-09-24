@@ -192,6 +192,8 @@ A block comment just before a directive's line continuation (`do { /* note */ \`
 
 **Macro self-heal (C, C++ and HLSL).** The macros the definitions leave open, those defined outside the repo such as Unreal's `UCLASS` and those that expand to code such as `GDCLASS` or a Unity shader's `UNITY_VERTEX_INPUT_INSTANCE_ID`, still make tree-sitter set `has_error`, so self-heal finds candidate names structurally, blanks them (arguments included, nested parentheses and all, never on a directive line), reparses, and keeps a candidate only when the error count dropped. A candidate is ALL_CAPS, optionally wrapped in underscores, or `_Capital..._`, the shape of Windows SAL annotations such as `_In_`; it is found as a call-shaped statement, in an error region, in a class head, before or after a function signature, between a return type and the name (`ULONG STDMETHODCALLTYPE AddRef()`), or before a parameter. A type the file itself defines is never a candidate, nor is a function it defines with a return type (`static void DC4(...)` also called as `DC4(dst, top);`). Because blanking either the macro or the type beside it can fix the same line, a name is dropped again when the other admitted names already fix what it fixed, likely types first, so a real type such as `RID` is not hidden. A macro in a class head (`class _WARN_UNUSED_ HashSet {`) often leaves no parse error at all, so it is admitted when blanking it turns the head back into a class body without adding an error. A macro that heals at least two distinct files in a run, counting only files whose heal removed at least half their errors, is promoted into `meta['macro_vocab']` and pre-blanked on later runs; the `macros` config key seeds that vocabulary, with the Unreal names in `config.example.json` and the Godot ones discovered on the first run. Content whose sweep admits nothing has its hash recorded in `meta['unhealable_hashes']`, FIFO-capped, so later runs including `--force` skip it; the memo is dropped when the vocabulary or the heal logic changes, so an improved heal reaches content an older one gave up on.
 
+**Config warnings.** `chonks index` logs, and `chonks doctor` prints in its Config section, every `exclude` or `include` entry that matches nothing under the root and every `subsystems` path in the config that the excludes keep out of the index. `GET /status` returns the same list as `warnings`.
+
 **Dominance warning.** `chonks doctor` groups chunks into path families by top-level path segment (root files as `(root)`), reporting per family the chunk count, corpus share, file count, chunks per file, and docs share, where docs means "not one of `chonks.index.segment.CODE_LANGUAGES`", the split `chunk_kind` also uses. `chonks index` prints a one-line warning at the end of a run when one family is both mostly docs (80% or more within it) and large (40% or more of the corpus), or when corpus-wide docs chunks reach 50%; it names the family and prints a ready-to-paste `exclude` snippet, changing nothing itself.
 
 #### Include / exclude paths
@@ -484,6 +486,8 @@ Requires no project. Response: `{ "name": "chonks", "version": "0.1.0", "descrip
 
 The health check and the source of DB statistics; a captured response is under the [`codebase_status` example](#tool-codebase_status). `never_indexed` is `true` when the DB has no chunks at all, as with a new or wiped DB. `newest_indexed_at` is the Unix timestamp of the most recently indexed file, and comparing it against the time of the last edit indicates whether a re-index is due; the API does not detect on-disk drift itself.
 
+`warnings` lists `exclude` and `include` entries that match nothing under the indexed root, which is how a versioned folder gone stale after an upgrade shows up. Repeated `scope` query parameters (`/status?scope=build/&scope=tools/`) name paths a client scopes searches to; the MCP server sends its subsystems' paths, and each one the excludes keep out of the index adds a warning. Scopes apply to the default project.
+
 In **multi-project mode** the response shape changes to:
 
 ```json
@@ -521,7 +525,9 @@ In **multi-project mode** the response shape changes to:
 | `file_cap` | int in [0, 200] | null | (semantic only) Cap chunks per path in the returned top_k, backfilling freed slots from the next-ranked chunks of other files. null (default) falls back to the project's `search.file_cap` config (0 = off). 0 disables the cap for this request regardless of config. |
 | `project` | string (max 100 chars) | null | Multi-project mode: select which configured project to query. Omit (or `"default"`) for the single-DB project. 404 if unknown. |
 
-Response: `{ chunks: [...], formatted: "...", count: N, docs_in_results: N, near_dup: {...} | null, query_truncated: bool, files: [...] }`.
+Response: `{ chunks: [...], formatted: "...", count: N, docs_in_results: N, near_dup: {...} | null, query_truncated: bool, files: [...], note: "..." | null }`.
+
+`note` says when `path_prefix` lies under an `exclude` entry, with no `include` beneath it, so nothing under it is indexed: an empty result there means excluded, not absent.
 
 `docs_in_results` counts how many returned chunks are text-fallback chunks (docs) rather than AST-tier chunks (code), which lets a caller detect a result set where docs drown out code and retry with `chunk_kind: "code"`.
 
@@ -563,11 +569,12 @@ Response:
   "iterations":  2,
   "connections": [ /* typed edges among the returned chunks: {from_id, to_id, edge_type, provenance}, capped at 40 */ ],
   "degraded":    null,
-  "files":       [ /* file-level ranking, same shape as /search's files field */ ]
+  "files":       [ /* file-level ranking, same shape as /search's files field */ ],
+  "note":        null
 }
 ```
 
-There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable and expansion scoring fell back to a neutral score, the seeds still ranking by their own stored similarity, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns.
+There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable and expansion scoring fell back to a neutral score, the seeds still ranking by their own stored similarity, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns, and `note` the same excluded-scope note.
 
 ### POST /repomap
 
@@ -774,7 +781,7 @@ codebase_search({
 @rendering ShadowAtlas         // multi-path: searches all configured rendering paths in parallel, merges results
 ```
 
-Subsystems are defined in `config.json` as arrays of path prefixes, and a multi-path subsystem runs its requests in parallel and returns deduplicated, merged, and re-sorted results.
+Subsystems are defined in `config.json` as arrays of path prefixes, and a multi-path subsystem runs its requests in parallel and returns deduplicated, merged, and re-sorted results. When a subsystem path is excluded from the index, the response opens with the backend's `note:` line instead of reading as an empty match, and `codebase_status` lists it under `warnings`.
 
 Every response opens with a `files:` line ranking the distinct files hit by the returned chunks, by best-chunk score descending, capped at 6 files with an announced `+N more` tail. Each entry is role-tagged by a path heuristic (`[impl]`, `[test]`, `[docs]`, `[gen]`), always shown, with a `×N` suffix when a file contributed more than one chunk; the chunk headers below carry the same tag only when it is not `[impl]`. This applies to the plain, `@subsystem`-scoped, and multi-path branches alike.
 
@@ -810,7 +817,7 @@ codebase_research({
 })
 ```
 
-Returns the top-ranked chunks from the iterative candidate collection loop, and the outer LLM synthesizes the answer. `@subsystem` prefixes are stripped, since research runs unscoped so the iterative symbol expansion has full-corpus reach.
+Returns the top-ranked chunks from the iterative candidate collection loop, and the outer LLM synthesizes the answer. `@subsystem` prefixes are stripped, since research runs unscoped so the iterative symbol expansion has full-corpus reach, and a `note:` line says so.
 
 `scope: "lookup"`, the default, sends no `edge_type_weights` override. `"explore"` sends `{calls: 8, imports: 8, inherits: 8, xlang: 8, associated: 1, mentions: 1}`, which suits broad architectural or cross-subsystem questions such as mapping the audio subsystem.
 
@@ -865,7 +872,7 @@ The truncation footer is the signal to narrow `path_prefix` further, for example
 codebase_status()
 ```
 
-Returns the file count, the chunk count, the DB size, the embedding dimension, and the indexed root, backing `GET /status`. It is the tool to call first when the index may be stale or missing.
+Returns the file count, the chunk count, the DB size, the embedding dimension, and the indexed root, backing `GET /status`, followed by any `warnings`: config entries that match nothing on disk and subsystems whose paths the excludes keep out of the index. It is the tool to call first when the index may be stale or missing.
 
 ```
 Chonks status:

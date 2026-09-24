@@ -64,6 +64,23 @@ def _dir_should_prune(dir_stored_path: str, excludes: list[str], includes: list[
     return True
 
 
+def _scope_exclusion(path_prefix: str, excludes: list[str], includes: list[str]) -> str | None:
+    """The exclude entry that keeps everything under path_prefix out of the
+    index, or None when some of it is indexed."""
+    scopes = _normalize_prefixes([path_prefix])
+    if not scopes:
+        return None
+    scope = scopes[0][:-1]
+    if not _dir_should_prune(scope, excludes, includes):
+        return None
+    return _longest_prefix_match(scope, excludes)
+
+
+def _missing_prefixes(root: Path, prefixes: list[str]) -> list[str]:
+    """Entries of `prefixes` that name nothing on disk under root."""
+    return [p for p in prefixes if not (root / p.rstrip("/")).exists()]
+
+
 def _dotdir_prefix(stored_dir_path: str) -> str | None:
     """First two segments of a dot-directory path; ".git" doesn't count (VCS,
     not pollution). Grouping must match chonks.ops.diagnostics.dotdir_breakdown so this and

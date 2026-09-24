@@ -24,6 +24,7 @@ from chonks.ops.diagnostics import (
     dotdir_total_share,
     family_breakdown,
 )
+from chonks.retrieval.scope_notes import config_warnings
 from chonks.storage.readonly import _connect_readonly, set_embedding_model
 from chonks.storage.schema import SCHEMA_DDL
 from chonks.storage.schema import SCHEMA_VERSION
@@ -207,6 +208,21 @@ def _staleness_section(conn: sqlite3.Connection, config: dict) -> str:
 
 
 _FAMILY_TOP_N = 10  # display cap; remainder rolls into a single "other" row
+
+
+def _config_section(conn: sqlite3.Connection, config: dict) -> str:
+    """Exclude and include entries that match nothing on disk, and
+    subsystems the excludes keep out of the index."""
+    lines = ["== Config =="]
+    root = _get_meta(conn, "indexed_root") or config.get("codebase")
+    exclude_raw = _get_meta(conn, "exclude")
+    include_raw = _get_meta(conn, "include")
+    exclude = json.loads(exclude_raw) if exclude_raw else list(config.get("exclude") or [])
+    include = json.loads(include_raw) if include_raw else list(config.get("include") or [])
+    scopes = [p for prefixes in (config.get("subsystems") or {}).values() for p in prefixes]
+    warnings = config_warnings(root if root and Path(root).is_dir() else None, exclude, include, scopes)
+    lines += [f"!! {w}" for w in warnings] or ["No exclude, include or subsystem problems found."]
+    return "\n".join(lines)
 
 
 def _path_family_section(conn: sqlite3.Connection) -> str:
@@ -407,6 +423,7 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
         _chunker_version_section(conn),
         _vitals_section(conn, db_path),
         _staleness_section(conn, config),
+        _config_section(conn, config),
         _path_family_section(conn),
         _dotdir_section(conn),
         _edges_section(conn),
