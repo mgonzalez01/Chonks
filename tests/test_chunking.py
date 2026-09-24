@@ -2013,6 +2013,50 @@ def test_hlsl_only_a_struct_with_a_body_is_a_definition(src, symbols):
     assert [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, "hlsl", src)] == symbols
 
 
+@pytest.mark.parametrize("lang,body", [
+    ("cpp", b"    IF_FEATURE(Render) {\n        draw();\n    }\n"),
+    ("cpp", b"    wl_array_for_each(state, states) {\n        use(state);\n    }\n"),
+    ("cpp", b"    LOCK_SCOPE\n    if (ready) {\n        run();\n    }\n"),
+    ("cpp", b"    LOCK_SCOPE\n    for (const auto &e : items) {\n        run(e);\n    }\n"),
+    ("cpp", b"    LOCK_SCOPE\n    while (busy) {\n        wait();\n    }\n"),
+    ("cpp", b"    LOCK_SCOPE\n    switch (mode) {\n    case 1: run(); break;\n    }\n"),
+    ("c", b"    LOCK_SCOPE\n    if (ready) {\n        run();\n    }\n"),
+], ids=["macro-block", "foreach-macro", "macro-before-if", "macro-before-range-for",
+        "macro-before-while", "macro-before-switch", "c-macro-before-if"])
+def test_c_family_statement_in_a_body_is_not_a_function(lang, body):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    src = b"void tick(int n) {\n" + body + b"}\n"
+    root = get_parser(lang).parse(src).root_node
+    got = [(s["kind"], s["name"]) for s in _collect_symbols_from_root(root, lang, src)]
+    assert got == [("function_definition", "tick")]
+
+
+@pytest.mark.parametrize("src,names", [
+    (b"void outer() {\n  if (x) {\n}\nint helper(int a) { return a; }\nFoo::Foo() {}\nFoo::~Foo() {}\n",
+     ["outer", "helper", "Foo::Foo", "Foo::~Foo"]),
+    (b"void outer() {\n  struct Local {\n    Local() {}\n  };\n}\n", ["outer", "Local"]),
+], ids=["unbalanced-braces", "local-class-constructor"])
+def test_cpp_real_functions_inside_a_body_stay_functions(src, names):
+    from chonks.index.segment import _collect_symbols_from_root
+    from tree_sitter_language_pack import get_parser
+    root = get_parser("cpp").parse(src).root_node
+    got = [s["name"] for s in _collect_symbols_from_root(root, "cpp", src) if s["kind"] == "function_definition"]
+    assert sorted(got) == sorted(names)
+
+
+def test_cpp_macro_blocks_in_a_split_function_keep_the_function_name():
+    blocks = "".join(
+        f"    IF_FEATURE(Feature{i}) {{\n"
+        + "".join(f"        step_{i}_{j}(state, {j});\n" for j in range(25))
+        + "    }\n"
+        for i in range(8))
+    src = ("void Engine::UpdateAll(State &state) {\n" + blocks + "}\n").encode()
+    chunks = segment_file(src, "cpp")
+    assert len(chunks) > 1
+    assert {c["name"] for c in chunks} == {"Engine::UpdateAll"}
+
+
 def test_cpp_anonymous_struct_with_a_body_stays_a_boundary():
     chunks = segment_file(b"struct { int x; } s;\n", "cpp")
     assert [(c["chunk_type"], c["name"]) for c in chunks] == [("struct_specifier", None)]
