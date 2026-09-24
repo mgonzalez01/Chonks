@@ -1,5 +1,6 @@
 """Progress bars of an indexing run."""
 
+import time
 from contextlib import contextmanager
 
 from tqdm import tqdm
@@ -63,3 +64,24 @@ def tqdm_reporter():
         tqdm(total=None,        desc="Embedded", unit="chunk", position=2,
              colour="yellow", bar_format=_FMT_NOTOTAL, dynamic_ncols=True) as pb_embedded:
         yield _Bars(pb_files, pb_queued, pb_embedded)
+
+
+class PassLog:
+    """Log lines for a pass with no progress bar; `progress` logs at most
+    every `every` seconds."""
+
+    def __init__(self, logger, label: str, every: float = 30.0):
+        self._logger = logger
+        self._label = label
+        self._every = every
+        self._start = self._last = time.monotonic()
+
+    def info(self, msg: str, *args) -> None:
+        self._logger.info("%s: " + msg, self._label, *args)
+
+    def progress(self, what: str, done: int, total: int) -> None:
+        now = time.monotonic()
+        if now - self._last >= self._every:
+            self._last = now
+            self.info("%s: %d of %d (%d%%), %.0fs into the pass", what, done, total,
+                      100 * done // max(total, 1), now - self._start)

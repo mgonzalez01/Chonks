@@ -11,13 +11,26 @@ import time
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, Iterator
 
+from chonks.index.progress import PassLog
 from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers
 
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
+from chonks.core.refresh import register_refresh
+from chonks.languages import union as _lang_union
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
+
+_SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
+def _refresh_from_registry() -> None:
+    global _SCOPE_CHUNK_TYPES
+    _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
+register_refresh(_refresh_from_registry)
 
 logger = logging.getLogger("repomap")
 
@@ -87,11 +100,12 @@ def _classify_mentions(
 def _build_graph(
     chunks: list[dict], sym_map: dict[str, list[str]] | None = None,
     *, cap_mentions: bool = False, associated_top_frac: float = 0.0,
-    extra_definers: list[dict] | None = None,
+    extra_definers: list[dict] | None = None, log: PassLog | None = None,
 ) -> dict[tuple[str, str], str]:
     """Builds {(from_id, to_id): edge_type} from mentions, xlang pairing, and
     typed AST facts; typed edges are added last so they supersede a mentions
-    or xlang edge for the same pair. Bare-alias fold is capped all-or-nothing per key."""
+    or xlang edge for the same pair. Bare-alias fold is capped all-or-nothing per key.
+    `log` reports each step on a full rebuild."""
     name_to_ids: dict[str, list[str]] = defaultdict(list)
     name_to_langs: dict[str, set[str]] = defaultdict(set)
     id_to_lang: dict[str, str] = {}
@@ -99,7 +113,7 @@ def _build_graph(
     # Direct registrations: a name under itself. Never touched by the bare-alias fold below.
     for c in chunks:
         name = c["name"]
-        if name and len(name) >= _MIN_NAME_LEN:
+        if name and len(name) >= _MIN_NAME_LEN and c.get("chunk_type") not in _SCOPE_CHUNK_TYPES:
             cid = c["id"]
             name_to_ids[name].append(cid)
             lang = c.get("language") or ""
@@ -136,7 +150,7 @@ def _build_graph(
 
     for c in chunks:
         name = c["name"]
-        if name and len(name) >= _MIN_NAME_LEN:
+        if name and len(name) >= _MIN_NAME_LEN and c.get("chunk_type") not in _SCOPE_CHUNK_TYPES:
             keys = _name_keys(name)
             if len(keys) > 1:
                 _add_alias(keys[1], c["id"], c.get("language") or "")
@@ -169,7 +183,10 @@ def _build_graph(
     # Two-sweep mentions pass: cap_mentions applies in sweep 1, so a
     # capped-out name never enters the PMI population _classify_mentions ranks.
     referenced_by_chunk: dict[str, set[str]] = {}
-    for c in chunks:
+    t0 = time.monotonic()
+    for i, c in enumerate(chunks):
+        if log:
+            log.progress("name scan", i, len(chunks))
         content = c["content"] or ""
         own_name = c["name"]
         cid = c["id"]
@@ -181,12 +198,20 @@ def _build_graph(
                 refs.add(word)
         referenced_by_chunk[cid] = refs
 
+    if log:
+        log.info("name scan done in %.1fs", time.monotonic() - t0)
+        t0 = time.monotonic()
     associated_pairs = _classify_mentions(referenced_by_chunk, name_to_ids, associated_top_frac)
+    if log:
+        log.info("scored mentions in %.1fs", time.monotonic() - t0)
+        t0 = time.monotonic()
 
     # sorted(refs) pins iteration order; the edges.get(key)=='associated'
     # guard makes the result order-independent anyway, since a later
     # 'mentions' write must never downgrade an already-'associated' pair.
-    for cid, refs in referenced_by_chunk.items():
+    for i, (cid, refs) in enumerate(referenced_by_chunk.items()):
+        if log:
+            log.progress("mention edges", i, len(referenced_by_chunk))
         for ref_name in sorted(refs):
             edge_type = "associated" if (cid, ref_name) in associated_pairs else "mentions"
             for target_id in name_to_ids[ref_name]:
@@ -195,6 +220,10 @@ def _build_graph(
                     if edges.get(key) == "associated":
                         continue
                     edges[key] = edge_type
+
+    if log:
+        log.info("%d mention edges in %.1fs", len(edges), time.monotonic() - t0)
+        t0 = time.monotonic()
 
     # Cross-language bidirectional edges between same-name definitions.
     for name, langs in name_to_langs.items():
@@ -218,7 +247,9 @@ def _build_graph(
     for c in extra_definers or ():
         id_to_chunk.setdefault(c["id"], c)
     arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
-    for c in chunks:
+    for i, c in enumerate(chunks):
+        if log:
+            log.progress("typed edges", i, len(chunks))
         md = c.get("metadata") or {}
         cid = c["id"]
         for edge_type in ("calls", "imports", "inherits"):
@@ -238,6 +269,9 @@ def _build_graph(
                     if target_id != cid:
                         edges[(cid, target_id)] = edge_type
 
+    if log:
+        log.info("cross-language and typed edges in %.1fs, %d edges in all",
+                 time.monotonic() - t0, len(edges))
     return edges
 
 
@@ -279,11 +313,15 @@ def build_refs(
                 batch, total,
             )
 
+    log = PassLog(logger, "chunk_refs")
+    log.info("full rebuild, loading named chunks")
+    t0 = time.monotonic()
     chunks = store.get_named_chunks()
     store.clear_refs()
     if not chunks:
         store.commit()
         return 0
+    log.info("loaded %d named chunks in %.1fs", len(chunks), time.monotonic() - t0)
     sym_map = store.get_symbol_name_chunks()
     named_ids = {c["id"] for c in chunks}
     unnamed_definer_ids = sorted(
@@ -293,8 +331,11 @@ def build_refs(
         chunks, sym_map,
         cap_mentions=cap_mentions, associated_top_frac=associated_top_frac,
         extra_definers=store.get_chunks_by_ids(unnamed_definer_ids) if unnamed_definer_ids else None,
+        log=log,
     )
     refs = [(u, v, t) for (u, v), t in edges.items()]
+    log.info("writing %d edges", len(refs))
+    t0 = time.monotonic()
     store.insert_refs(refs)
     # Indegree computed from `refs` already in memory, not a live GROUP BY
     # over chunk_refs (see get_hubs' guard): that scan is the >10-min
@@ -302,6 +343,7 @@ def build_refs(
     indegree_counts = Counter((v, t) for (u, v), t in edges.items())
     store.save_indegree(dict(indegree_counts))
     store.commit()
+    log.info("wrote edges in %.1fs", time.monotonic() - t0)
     logger.info("chunk_refs full rebuild: %d named chunks, %d edges.", len(chunks), len(refs))
     return len(refs)
 
@@ -316,7 +358,7 @@ def _bare_alias_definers(
     out: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for c in store.get_named_chunks_meta():
         name = c.get("name")
-        if not name:
+        if not name or c.get("chunk_type") in _SCOPE_CHUNK_TYPES:
             continue
         keys = _name_keys(name)
         if len(keys) < 2 or keys[1] not in bare_names:

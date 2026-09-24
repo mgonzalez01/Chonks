@@ -70,6 +70,7 @@ C_SHARP = LanguageSpec(
     },
     identifier_leaf_types=frozenset({"identifier"}),
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
+    scope_chunk_types=frozenset({"namespace_declaration"}),
     classify_param=classify_param,
     kind_labels={
         "class_declaration": "class",

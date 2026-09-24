@@ -8,6 +8,7 @@ import struct
 import threading
 import time
 from collections import defaultdict
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -20,13 +21,18 @@ from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
+from chonks.languages import union as _lang_union
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
 
 
+_SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+
+
 def _refresh_from_registry() -> None:
-    global CODE_LANGUAGES
+    global CODE_LANGUAGES, _SCOPE_CHUNK_TYPES
     import chonks.languages as _languages
     CODE_LANGUAGES = _languages.CODE_LANGUAGES
+    _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
 
 
 register_refresh(_refresh_from_registry)
@@ -854,16 +860,18 @@ class Store:
     def get_chunk_defs_by_names(self, names: list[str]) -> dict[str, list[tuple[str, str]]]:
         """name -> [(chunk_id, language)] for build_refs' incremental name
         resolution, scoped to a candidate set via idx_chunks_name instead
-        of a full-corpus scan."""
+        of a full-corpus scan. Namespace chunks are not definers."""
         if not names:
             return {}
         out: dict[str, list[tuple[str, str]]] = defaultdict(list)
         with self._lock:
             for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
+                scopes = ",".join("?" * len(_SCOPE_CHUNK_TYPES))
                 rows = self._conn.execute(
-                    f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders})",
-                    batch,
+                    f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders}) "
+                    f"AND (chunk_type IS NULL OR chunk_type NOT IN ({scopes}))",
+                    [*batch, *sorted(_SCOPE_CHUNK_TYPES)],
                 ).fetchall()
                 for r in rows:
                     out[r["name"]].append((r["id"], r["language"]))
@@ -1682,7 +1690,7 @@ class Store:
         with self._lock:
             affected_to_ids = {
                 r[0] for r in self._conn.execute(
-                    f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}"
+                    f"SELECT to_id FROM chunk_refs WHERE {where}"
                 ).fetchall()
             }
             cur = self._conn.execute(f"DELETE FROM chunk_refs WHERE {where}")
@@ -1750,6 +1758,15 @@ class Store:
                 "SELECT from_id, to_id, edge_type FROM chunk_refs"
             ).fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
+
+    def iter_refs_typed(self, batch_size: int = 100_000) -> Iterator[tuple[str, str, str]]:
+        """Every (from_id, to_id, edge_type) edge, fetched a batch at a time.
+        Holds the store lock until exhausted or closed."""
+        with self._lock:
+            cursor = self._conn.execute("SELECT from_id, to_id, edge_type FROM chunk_refs")
+            while rows := cursor.fetchmany(batch_size):
+                for r in rows:
+                    yield r[0], r[1], r[2]
 
     def get_module_edge_type_counts(
         self, module_by_chunk: dict[str, str]

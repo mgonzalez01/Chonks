@@ -121,6 +121,7 @@ CPP = LanguageSpec(
     call_receiver=qualified_receiver,
     variadic_arg_types=frozenset({"parameter_pack_expansion"}),
     class_like_chunk_types=frozenset({"class_specifier", "struct_specifier"}),
+    scope_chunk_types=frozenset({"namespace_definition", "declaration_list"}),
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
     literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),

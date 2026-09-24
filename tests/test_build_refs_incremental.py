@@ -959,3 +959,36 @@ def test_unnamed_definer_chunk_discriminated_identically_on_both_paths():
     assert got == want
     assert ("caller", "anon", "mentions") in want
     assert ("caller", "named_cls", "calls") in want
+
+
+def test_a_namespace_chunk_is_never_an_edge_target(caplog):
+    """A namespace body of declarations is named after its namespace, and a
+    namespace-wrapped codebase writes `engine::X` everywhere: every such
+    chunk mentioned every namespace chunk. Full and incremental alike."""
+    store = _mk_store()
+    initial = [
+        _chunk("ns1", "a.h", name="engine", chunk_type="declaration_list",
+               content="namespace engine { class Clock; const int kTicks = 60; }"),
+        _chunk("ns2", "b.h", name="engine", chunk_type="declaration_list",
+               content="namespace engine { struct Frame; }"),
+        _chunk("cs", "Tools.cs", name="Engine.Tools", language="c_sharp",
+               chunk_type="namespace_declaration",
+               content="namespace Engine.Tools { public delegate void Tick(); }"),
+        _chunk("adv", "advance.cpp", name="advance", content="void advance() {}"),
+        _chunk("run", "run.cpp", name="run", content="void run() { engine::advance(); Tools(); }"),
+    ]
+    _insert(store, initial)
+    build_refs(store)
+    scopes = {"ns1", "ns2", "cs"}
+    assert ("run", "adv", "mentions") in _edges(store)
+    assert not {e for e in _edges(store) if e[1] in scopes}
+
+    new = [_chunk("run2", "run2.cpp", name="run2", content="void run2() { engine::advance(); }")]
+    _insert(store, new)
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"run2"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    _assert_indegree_consistent(store)
+    assert got == _full_rebuild_edges(initial + new)
+    assert not {e for e in got if e[1] in scopes}

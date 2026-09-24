@@ -50,6 +50,9 @@ class Registry:
             if not spec.class_like_chunk_types <= spec.boundary_nodes:
                 raise ValueError(
                     f"{spec.name}: class_like_chunk_types must be a subset of boundary_nodes")
+            if not spec.scope_chunk_types <= spec.container_nodes:
+                raise ValueError(
+                    f"{spec.name}: scope_chunk_types must be a subset of container_nodes")
 
         self.ext_to_lang = MappingProxyType(ext_to_lang)
         self.code_languages = frozenset(ext_to_lang.values())

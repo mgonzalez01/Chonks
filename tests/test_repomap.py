@@ -739,7 +739,7 @@ def test_pagerank_edge_type_weighting_changes_ranking(tmp_path):
 
     store = Store(tmp_path / "t.db")
     _seed_three_named_chunks(store)
-    # a needs >1 outgoing edge: with only one, nx.pagerank's out-weight
+    # a needs >1 outgoing edge: with only one, PageRank's out-weight
     # normalization would cancel the edge weight out entirely.
     store.insert_refs([("a", "b", "calls"), ("a", "c", "mentions")])
     store.commit()
@@ -775,6 +775,48 @@ def test_pagerank_default_weights_are_identical_to_pre_weighting_behaviour(tmp_p
     for k in default:
         assert default[k] == pytest.approx(explicit_all_ones[k], abs=1e-12)
     store.close()
+
+
+def test_pagerank_scores_match_networkx():
+    """Weighted, zero-weight and unknown edge types, dangling and isolated
+    nodes, a self-loop, and an endpoint outside the node list."""
+    import random
+
+    import networkx as nx
+
+    from chonks.index.graph.pagerank import pagerank_scores
+
+    nodes = [f"n{i}" for i in range(20)]
+    rng = random.Random(7)
+    # n18 isolated, n19 dangling; one edge per pair.
+    pairs = {(f"n{rng.randrange(18)}", f"n{rng.randrange(20)}"): None for _ in range(60)}
+    pairs.pop(("n0", "n0"), None)  # the self-loop is added below
+    types = ["calls", "mentions", "associated", "imports", "not_a_type"]
+    edges = [(f, t, types[i % len(types)]) for i, (f, t) in enumerate(pairs)]
+    edges += [("n0", "n0", "calls"), ("n3", "outside", "calls")]
+    weights = {"calls": 2.0, "mentions": 0.25, "associated": 0.0}
+
+    graph = nx.DiGraph()
+    graph.add_nodes_from(nodes)
+    for f, t, e in edges:
+        graph.add_edge(f, t, weight=weights.get(e, 1.0))
+    expected = nx.pagerank(graph, alpha=0.85, max_iter=100, weight="weight")
+
+    got = pagerank_scores(nodes, edges, weights)
+    assert list(got) == list(expected)
+    assert got == pytest.approx(expected, rel=1e-12)
+
+
+def test_pagerank_scores_returns_none_when_it_does_not_converge():
+    from chonks.index.graph.pagerank import pagerank_scores
+
+    assert pagerank_scores(["a", "b"], [("a", "b", "calls")], {}, max_iter=1) is None
+
+
+def test_pagerank_scores_of_an_empty_graph():
+    from chonks.index.graph.pagerank import pagerank_scores
+
+    assert pagerank_scores([], [], {}) == {}
 
 
 def test_persist_pagerank_threads_edge_type_weights(tmp_path):
