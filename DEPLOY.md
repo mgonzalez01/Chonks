@@ -356,7 +356,7 @@ claude mcp add --transport http chonks http://<host>:11439/mcp
 
 Then `/mcp` in Claude Code confirms it, and `claude mcp remove chonks` removes it.
 
-**On another machine, the steering text.** The file [`mcp-server/CLAUDE.md`](mcp-server/CLAUDE.md) should be copied into the project's `CLAUDE.md` or into `~/.claude/CLAUDE.md`. This step is not optional. On the 24-question Godot harness with Sonnet 5 and deferred tools, a one-line recommendation led to 4 runs out of 24 using the tools, and the text placed in CLAUDE.md led to 24 of 24; see [`eval/results/F1`](eval/results/F1/README.md) for the per-run rows. The forcing therefore lives in the user's rules file and not in anything the server can send.
+**On another machine, the steering text.** The file [`mcp-server/CLAUDE.template.md`](mcp-server/CLAUDE.template.md) should be copied into the project's `CLAUDE.md` or into `~/.claude/CLAUDE.md`. This step is not optional. On the 24-question Godot harness with Sonnet 5 and deferred tools, a one-line recommendation led to 4 runs out of 24 using the tools, and the text placed in CLAUDE.md led to 24 of 24; see [`eval/results/F1`](eval/results/F1/README.md) for the per-run rows. The forcing therefore lives in the user's rules file and not in anything the server can send.
 
 **Host, Windows, serve:** `.\scripts\host.ps1 -Db <db> -Config .\config.json [-LlamaServer <exe> -EmbedModel <repo|gguf>] [-Port 11439]`. A health check from anywhere is `curl http://<host>:11439/healthz`.
 
