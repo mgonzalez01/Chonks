@@ -601,8 +601,8 @@ def test_table_sizes_include_index_pages(tmp_path):
 
     report = _report_for(tmp_path / "test.db")
     sizes = report.split("== Table sizes ==")[1].split("\n== ")[0]
-    # chunk_refs has its primary-key autoindex plus idx_chunk_refs_from/_to.
-    assert re.search(r"\nchunk_refs: 2 rows, ~[\d.]+ KB \+ ~[\d.]+ KB in 3 indexes", sizes), sizes
+    # chunk_refs has its primary-key autoindex plus idx_chunk_refs_to.
+    assert re.search(r"\nchunk_refs: 2 rows, ~[\d.]+ KB \+ ~[\d.]+ KB in 2 indexes", sizes), sizes
 
 
 def test_help_usage_names_the_subcommand(capsys):

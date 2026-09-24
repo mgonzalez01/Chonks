@@ -354,6 +354,17 @@ def test_save_pagerank_load_pagerank_roundtrip(tmp_path):
     store.close()
 
 
+def test_opening_a_db_drops_the_from_id_index(tmp_path):
+    store = _make_store(tmp_path)
+    store._conn.execute("CREATE INDEX idx_chunk_refs_from ON chunk_refs(from_id)")
+    store._conn.commit()
+    store.close()
+    store = _make_store(tmp_path)
+    names = {r[0] for r in store._conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+    assert "idx_chunk_refs_from" not in names
+    store.close()
+
+
 def test_save_pagerank_second_call_fully_replaces_first(tmp_path):
     store = _make_store(tmp_path)
     store.save_pagerank({"a": 0.5, "b": 0.25})
