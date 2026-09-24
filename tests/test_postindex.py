@@ -1,4 +1,5 @@
-"""run_post_index_passes: the one-time orphan sweep and the pass timings."""
+"""run_post_index_passes: the one-time orphan sweep, the pass timings and log lines."""
+import logging
 import time
 
 import pytest
@@ -53,3 +54,19 @@ def test_successful_folder_summaries_report_a_duration(tmp_path, monkeypatch, st
     summaries = _run(store, indexed=1)[3]
     assert summaries >= 0.02
     store.close()
+
+
+def test_each_pass_says_when_it_starts(tmp_path, monkeypatch, stub_passes, caplog):
+    monkeypatch.setattr(postindex, "build_folder_summaries", lambda *a, **k: {"refreshed": 0, "pruned": 0})
+    store = Store(tmp_path / "t.db")
+    with caplog.at_level(logging.INFO, logger="chonks.chunker"):
+        _run(store, force=True, indexed=1)
+    store.close()
+    lines = [r.getMessage() for r in caplog.records]
+    expected = ["Rebuilding the full-text index.", "Rebuilt the full-text index in",
+                "Checking for orphan edges.", "Checked for orphan edges in",
+                "Building the folder hierarchy.", "Built hierarchy:",
+                "Computing PageRank.", "Persisted 0 PageRank scores.",
+                "Refreshing folder summaries.", "Folder summaries:"]
+    found = [next(i for i, line in enumerate(lines) if line.startswith(e)) for e in expected]
+    assert found == sorted(found), lines

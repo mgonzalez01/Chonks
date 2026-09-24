@@ -22,9 +22,11 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
     # Repeated partial updates cause term-frequency drift; a rebuild corrects it.
     fts_elapsed = 0.0
     if force and indexed > 0:
+        logger.info("Rebuilding the full-text index.")
         _phase_t0 = time.monotonic()
         store.rebuild_fts()
         fts_elapsed = time.monotonic() - _phase_t0
+        logger.info("Rebuilt the full-text index in %.1fs.", fts_elapsed)
 
     # Timed independently: on a large corpus these passes can roughly double
     # wall time beyond embed_elapsed alone.
@@ -72,6 +74,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
 
         # Full rebuild every run: cheap relative to refs/kNN (see
         # rebuild_hierarchy), so no incremental path to keep in sync.
+        logger.info("Building the folder hierarchy.")
         _phase_t0 = time.monotonic()
         hierarchy = rebuild_hierarchy(store)
         hierarchy_elapsed = time.monotonic() - _phase_t0
@@ -81,6 +84,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
         # Computed here, not at query time. None ids force a full
         # recompute (same convention as build_refs/build_neighbors); 
         # with no true incremental algorithm, None here skips it, not just cheapens it.
+        logger.info("Computing PageRank.")
         _phase_t0 = time.monotonic()
         pagerank_count = persist_pagerank(
             store,
@@ -94,6 +98,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
 
         # Refresh per-folder structural summaries (incremental: only folders
         # whose aggregate content_hash changed get re-embedded).
+        logger.info("Refreshing folder summaries.")
         _phase_t0 = time.monotonic()
         try:
             with httpx.Client() as client:
@@ -116,8 +121,11 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
 
 def _orphan_sweep_once(store, force: bool) -> None:
     if force or not store.get_meta("orphan_sweep_v1"):
+        logger.info("Checking for orphan edges.")
+        _phase_t0 = time.monotonic()
         orphan_neighbors = store.purge_orphan_neighbors()
         orphan_refs = store.purge_orphan_refs()
+        logger.info("Checked for orphan edges in %.1fs.", time.monotonic() - _phase_t0)
         if orphan_neighbors:
             logger.info("Purged %d orphan chunk_neighbors edge(s).", orphan_neighbors)
         if orphan_refs:

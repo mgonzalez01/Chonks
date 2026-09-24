@@ -6,6 +6,7 @@ test_build_refs_incremental.py already proves chunk_indegree stays exact
 across every incremental build_refs mutation shape; this file covers the
 query-side surface (get_hubs/get_impact) built on top of it.
 """
+import logging
 import tempfile
 from collections import Counter
 
@@ -59,6 +60,27 @@ def _seed_hub_corpus(store: Store) -> None:
 def _indegree_table(store: Store) -> dict[tuple[str, str], int]:
     rows = store._conn.execute("SELECT chunk_id, edge_type, n FROM chunk_indegree").fetchall()
     return {(r["chunk_id"], r["edge_type"]): r["n"] for r in rows}
+
+
+def test_full_rebuild_reports_each_step(caplog):
+    # On a large index a full rebuild runs for many minutes; with no lines
+    # between loading and the end it looks stuck.
+    store = _mk_store()
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        _seed_hub_corpus(store)
+    steps = [r.getMessage().split(" in ")[0] for r in caplog.records
+             if r.getMessage().startswith("chunk_refs: ")]
+    assert steps == [
+        "chunk_refs: full rebuild, loading named chunks",
+        "chunk_refs: loaded 5 named chunks",
+        "chunk_refs: name scan done",
+        "chunk_refs: scored mentions",
+        "chunk_refs: 4 mention edges",
+        "chunk_refs: cross-language and typed edges",
+        "chunk_refs: writing 4 edges",
+        "chunk_refs: wrote edges",
+    ]
+    store.close()
 
 
 # ---------------------------------------------------------------------------

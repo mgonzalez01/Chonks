@@ -33,3 +33,19 @@ def test_finish_after_the_flip_adds_the_remaining_parsed_files():
     bars.tick(scanned=5, parsed=3, queued=0, embedded=0, cur_file=None, scan_done=True, to_index=5)
     bars.finish(parsed=5, queued=0, embedded=0)
     assert files.n == 5
+
+
+def test_pass_log_reports_progress_at_most_every_interval(monkeypatch, caplog):
+    import logging
+    import chonks.index.progress as progress
+
+    ticks = [0.0, 10.0, 31.0, 40.0, 62.0]
+    monkeypatch.setattr(progress.time, "monotonic", lambda: ticks.pop(0) if len(ticks) > 1 else ticks[0])
+    log = progress.PassLog(logging.getLogger("passlog-test"), "chunk_refs", every=30.0)
+    with caplog.at_level(logging.INFO, logger="passlog-test"):
+        for i in range(4):
+            log.progress("name scan", i, 4)
+    assert [r.getMessage() for r in caplog.records] == [
+        "chunk_refs: name scan: 1 of 4 (25%), 31s into the pass",
+        "chunk_refs: name scan: 3 of 4 (75%), 62s into the pass",
+    ]
