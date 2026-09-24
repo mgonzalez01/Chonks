@@ -390,6 +390,16 @@ class Store:
             ).fetchall()
         return {r[0] for r in rows}
 
+    def get_chunk_vectors_for_path(self, path: str) -> list[tuple[str | None, str, bytes]]:
+        """(name, content, int8 vector) of each chunk at `path` that has a
+        vector. Like get_names_for_path, call it before delete_file(path)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, name, content FROM chunks WHERE path=?", (path,)
+            ).fetchall()
+        vecs = self.get_int8_embeddings_by_ids([r["id"] for r in rows])
+        return [(r["name"], r["content"], vecs[r["id"]]) for r in rows if r["id"] in vecs]
+
     # ------------------------------------------------------------------
     # Symbols (decoupled symbol index)
     # ------------------------------------------------------------------
@@ -545,7 +555,8 @@ class Store:
         model: str | None = None,
     ) -> None:
         """Insert a batch of chunks and embeddings atomically. `model` is
-        recorded in `meta` on first insert and validated against it after."""
+        recorded in `meta` on first insert and validated against it after.
+        An embedding given as bytes is a stored int8 vector, written unchanged."""
         assert len(chunks) == len(embeddings), "chunks/embeddings length mismatch"
         if not chunks:
             return
@@ -608,10 +619,15 @@ class Store:
                         md_json,
                     ),
                 )
-                self._conn.execute(
-                    "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_quantize_int8(?, 'unit'))",
-                    (cid, _pack_f32(emb)),
-                )
+                if isinstance(emb, bytes):
+                    self._conn.execute(
+                        "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_int8(?))", (cid, emb),
+                    )
+                else:
+                    self._conn.execute(
+                        "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_quantize_int8(?, 'unit'))",
+                        (cid, _pack_f32(emb)),
+                    )
                 for lit in chunk.get("literals") or ():
                     text, line = lit[0], lit[1]
                     self._conn.execute(

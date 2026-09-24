@@ -218,6 +218,11 @@ class Embedder:
 # Embedding helpers
 # ---------------------------------------------------------------------------
 
+# Bump when compress_for_embed's output changes: the indexer reuses a stored
+# vector only for text built by the same version.
+EMBED_TEXT_VERSION = 1
+
+
 def compress_for_embed(text: str, *, name: str | None = None, path: str | None = None) -> str:
     """Strip whitespace and collapse blank lines before embedding; prepend a
     path::name breadcrumb if given. The DB always stores the original content,

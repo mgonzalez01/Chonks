@@ -211,11 +211,13 @@ flowchart TD
     PG --> DONE["DB up to date — serving flips to new graph"]
 ```
 
-`--force` re-chunks and re-embeds everything regardless of the hashes. It is needed when the pipeline changed rather than the code, for example after switching embedding model:
+`--force` re-chunks everything regardless of the hashes. It is needed when the pipeline changed rather than the code, for example after switching embedding model. A chunk whose embed text is unchanged keeps its stored vector unless the model, the document prefix or the embed text format changed, so only changed chunks go to the embedder:
 
 ```
 uv run chonks index /path/to/src --db /path/to/src/.db/chonks.db --config config.json --force
 ```
+
+A server change the model name doesn't show, such as another quantization or llama.cpp build, still leaves the old vectors in place; `--reembed` replaces every vector.
 
 `--exclude path/` adds excludes on the command line, on top of those in the config. `--rebuild-graphs` re-runs the post-index passes (`build_refs`, `build_neighbors`, `build_folder_summaries`) against the existing DB without re-parsing or re-embedding, which recovers a DB whose chunks are indexed but whose graphs are empty. `--rebuild-knn` skips `build_refs` and re-runs only `build_neighbors`, PageRank, and `build_folder_summaries`, which is the flag to use when only `chunk_neighbors` is stale, since `build_refs` dominates wall clock at scale, about 25 minutes per 385k chunks against about 8 minutes for the k-NN graph. With `chunk_refs` empty it falls back to the full `--rebuild-graphs` chain and warns.
 
