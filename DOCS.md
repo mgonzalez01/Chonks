@@ -559,7 +559,7 @@ Worked examples of `semantic` and `hybrid` are under [`codebase_search`](#tool-c
 }
 ```
 
-The same length caps as for `/search` apply to `query` (2000 characters) and `path_prefix` (500 characters). The optional `edge_type_weights: dict[str, float]` overrides the config-level map for this request only, the precedence being request, then project config, then the all-1.0 default; values must be non-negative, a 422 being returned otherwise, unknown edge-type keys are allowed, and omitting the field changes nothing. The MCP `codebase_research` tool surfaces this as `scope`.
+The same length caps as for `/search` apply to `query` (2000 characters) and `path_prefix` (500 characters). The optional `edge_type_weights: dict[str, float]` overrides the config-level map for this request only, the precedence being request, then project config, then the all-1.0 default; values must be non-negative, a 422 being returned otherwise, unknown edge-type keys are allowed, and omitting the field changes nothing. The MCP `codebase_research` tool surfaces this as `scope`. `compact: true` returns each chunk without its `content` and leaves the rest of the response as it is.
 
 Response:
 ```json
@@ -813,7 +813,8 @@ In `hybrid` mode the score line reads `rrf=0.0328  [sem#1,fts#1]` instead, the f
 codebase_research({
   query: "how does shadow cascading work",
   path_prefix: "src/rendering/",  // optional
-  scope: "lookup"                 // optional: "lookup" (default) | "explore"
+  scope: "lookup",                // optional: "lookup" (default) | "explore"
+  compact: false                  // optional: true returns chunk headers without source
 })
 ```
 
@@ -832,6 +833,18 @@ servers/rendering/renderer_rd/renderer_canvas_render_rd.cpp:3088-3165  RendererC
 ```
 
 On one rendering-device question `lookup` keeps its top hits a call apart inside `RenderingDeviceGraph`, while `explore`, asked to map the audio subsystem, pulls in the driver base class, `AudioServer::init`, and `AudioServer::get_output_device_list`.
+
+`compact: true` sends `compact` to `/research` and renders the `files:` line and one header per chunk, without source, evidence lines or the `CONNECTIONS` section. A header's `path:start-end` is enough to read that chunk from the file. On a Godot slice, 50 chunks come to under 5 KB this way, against 45 to 80 KB in full.
+
+```
+Deep research returned 50 chunks after 2 iteration(s). Source is left out; Read a chunk at its path:start-end.
+
+files: scene/main/node.cpp, scene/3d/node_3d.cpp, scene/3d/visible_on_screen_notifier_3d.cpp, ...
+
+[1] scene/main/node.cpp:323-339 (Node::_propagate_ready)  score=1.1400
+[2] scene/3d/node_3d.cpp:142-306 (Node3D::_notification)  score=1.1163
+[3] scene/3d/visible_on_screen_notifier_3d.cpp:171-193 (VisibleOnScreenEnabler3D::_notification)  score=1.0678
+```
 
 ### Tool: codebase_map
 

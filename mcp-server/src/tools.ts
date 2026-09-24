@@ -8,6 +8,7 @@ import {
   formatFilesLine,
   rankFilesFromChunks,
   formatResearchChunks,
+  formatResearchHeaders,
   formatConnections,
   docsNudgeFooter,
   nearDupFooter,
@@ -129,10 +130,14 @@ export async function toolCodebaseResearch(args: any): Promise<string> {
   const dropped = query === rawQuery ? null : rawQuery.slice(0, rawQuery.length - query.length).trim();
   const pathPrefix = typeof args.path_prefix === "string" ? args.path_prefix : null;
   const scope = args.scope === "explore" ? "explore" : "lookup";
+  const compact = args.compact === true;
 
   const body: Record<string, unknown> = { query, path_prefix: pathPrefix };
   if (scope === "explore") {
     body.edge_type_weights = RESEARCH_EXPLORE_EDGE_TYPE_WEIGHTS;
+  }
+  if (compact) {
+    body.compact = true;
   }
   const res = await httpPost("/research", body, RESEARCH_TIMEOUT_MS);
 
@@ -144,15 +149,20 @@ export async function toolCodebaseResearch(args: any): Promise<string> {
     : "";
 
   const header = `Deep research returned ${res.count ?? 0} chunks after ${res.iterations ?? 0} iteration(s). ` +
-                 `Synthesize an answer from these and cite file:line references.`;
+                 (compact
+                   ? `Source is left out; Read a chunk at its path:start-end.`
+                   : `Synthesize an answer from these and cite file:line references.`);
   const files = (res.files ?? []).slice(0, 8).map((f: any) => f.path).join(", ");
   const filesLine = files ? `files: ${files}\n\n` : "";
   const chunks: Chunk[] = res.chunks ?? [];
-  const connectionsSection = formatConnections(res.connections, chunks);
   const droppedNote = dropped
     ? `research runs over the whole index, so ${dropped} was ignored; codebase_search scopes by subsystem.`
     : null;
   const notes = formatNotes([res.note, droppedNote]);
+  if (compact) {
+    return `${degradedLine}${notes}${header}\n\n${filesLine}${formatResearchHeaders(chunks)}`;
+  }
+  const connectionsSection = formatConnections(res.connections, chunks);
   return `${degradedLine}${notes}${header}\n\n${filesLine}${formatResearchChunks(chunks)}${connectionsSection}`;
 }
 

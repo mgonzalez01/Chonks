@@ -776,3 +776,39 @@ def test_deep_research_degraded_none_when_query_embed_succeeds():
         )
     assert result["degraded"] is None
     assert "degraded" in result
+
+
+# --- compact output ----------------------------------------------------------
+
+def test_deep_research_compact_drops_content_only_from_the_returned_chunks(monkeypatch):
+    import chonks.retrieval.research as research
+
+    monkeypatch.setattr(research, "_graph_expand", lambda store, seeds, **kw: [])
+    monkeypatch.setattr(research, "_apply_structural_boost", lambda cands, store, **kw: cands)
+    regex_calls = []
+
+    class FakeSearcher:
+        store = _FakeStore(edges=[("draw", "flush", "calls")])
+        def embed_query(self, q):
+            return [1.0, 0.0]
+        def semantic(self, q, k, p):
+            return [
+                {"id": "draw", "_score": 0.9, "path": "servers/rendering/canvas.cpp", "name": "draw",
+                 "start_line": 10, "end_line": 30, "content": "void draw() { RenderingServer::flush(); }"},
+                {"id": "flush", "_score": 0.8, "path": "servers/rendering/server.cpp", "name": "flush",
+                 "start_line": 5, "end_line": 9, "content": "void flush() {}"},
+            ]
+        def regex(self, sym, top_k=10, path_prefix=None):
+            regex_calls.append(sym)
+            return []
+
+    full = research.deep_research("q", FakeSearcher(), cfg={"max_iterations": 1})
+    full_symbols = list(regex_calls)
+    regex_calls.clear()
+    compact = research.deep_research("q", FakeSearcher(), cfg={"max_iterations": 1}, compact=True)
+
+    assert regex_calls == full_symbols
+    assert "RenderingServer::flush" in regex_calls
+    assert all(c["content"] for c in full["chunks"])
+    assert compact["chunks"] == [{k: v for k, v in c.items() if k != "content"} for c in full["chunks"]]
+    assert compact["connections"] == full["connections"] != []

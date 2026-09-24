@@ -163,6 +163,7 @@ def research(req: ResearchRequest) -> JSONResponse:
         project["searcher"],
         cfg=cfg or None,
         path_prefix=req.path_prefix,
+        compact=req.compact,
     )
     result["files"] = rank_files(result["chunks"])
     result["note"] = excluded_scope_note(req.path_prefix, project["exclude"], project["include"])

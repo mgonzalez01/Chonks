@@ -79,7 +79,8 @@ export const TOOLS = [
       "depends on X, map this subsystem) trades single-target precision for ~2x " +
       "dependency-neighbourhood recall; \"lookup\" (default) is for finding a specific " +
       "symbol/implementation. Result chunk headers carry the same [test]/[docs]/[gen] " +
-      "path-heuristic role tags codebase_search uses (untagged = impl).",
+      "path-heuristic role tags codebase_search uses (untagged = impl). `compact: true` " +
+      "returns the headers without source.",
     inputSchema: {
       type: "object",
       properties: {
@@ -92,6 +93,13 @@ export const TOOLS = [
             "\"lookup\" (default): find a specific symbol/implementation. \"explore\": " +
             "neighbourhood/dependency questions — trades single-target precision for " +
             "~2x dependency-neighbourhood recall.",
+        },
+        compact: {
+          type: "boolean",
+          description:
+            "true: only the files line and one `path:start-end (symbol) score` header per " +
+            "chunk, no source; for orientation, then Read the lines you need. Default false " +
+            "returns each chunk's source.",
         },
       },
       required: ["query"],

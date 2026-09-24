@@ -472,10 +472,12 @@ def deep_research(
     cfg: dict | None = None,
     path_prefix: str | None = None,
     interleave: bool = True,
+    compact: bool = False,
 ) -> dict[str, Any]:
     """Iterative candidate collection; returns ranked chunks for the outer LLM
     to synthesize. `degraded="semantic_unavailable"` means expansion scoring
-    is a neutral fallback, not real relevance; None on the healthy path."""
+    is a neutral fallback, not real relevance; None on the healthy path.
+    `compact` leaves `content` out of the returned chunks."""
     cfg = {**_DEFAULTS, **(cfg or {})}
     top_k                = cfg["top_k"]
     oversample           = cfg["oversample_factor"]
@@ -615,6 +617,8 @@ def deep_research(
         final_chunks = all_candidates[:top_k]
 
     connections = _result_connections(store, [c["id"] for c in final_chunks])
+    if compact:
+        final_chunks = [{k: v for k, v in c.items() if k != "content"} for c in final_chunks]
 
     return {
         "chunks":      final_chunks,

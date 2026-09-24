@@ -67,7 +67,7 @@ def test_research_endpoint_injects_edge_type_weights_into_cfg(monkeypatch, tmp_p
     _run_main_with_config(monkeypatch, tmp_path, {"edge_type_weights": weights})
 
     captured = {}
-    def fake_deep_research(query, searcher, cfg=None, path_prefix=None):
+    def fake_deep_research(query, searcher, cfg=None, path_prefix=None, compact=False):
         captured["cfg"] = cfg
         return {"chunks": [], "count": 0, "iterations": 0}
     monkeypatch.setattr(serve_app, "deep_research", fake_deep_research)
@@ -88,7 +88,7 @@ def test_research_endpoint_request_level_edge_type_weights_overrides_config(monk
     _run_main_with_config(monkeypatch, tmp_path, {"edge_type_weights": config_weights})
 
     captured = {}
-    def fake_deep_research(query, searcher, cfg=None, path_prefix=None):
+    def fake_deep_research(query, searcher, cfg=None, path_prefix=None, compact=False):
         captured["cfg"] = cfg
         return {"chunks": [], "count": 0, "iterations": 0}
     monkeypatch.setattr(serve_app, "deep_research", fake_deep_research)
@@ -106,6 +106,47 @@ def test_research_endpoint_request_level_edge_type_weights_overrides_config(monk
 def test_research_request_negative_edge_type_weight_rejected():
     with pytest.raises(ValidationError):
         serve_models.ResearchRequest(query="q", edge_type_weights={"calls": -1.0})
+
+
+class _NoGraphStore:
+    def get_neighbors(self, cid, limit=None):
+        return []
+
+    def get_refs_for_chunks_typed(self, ids):
+        return []
+
+    def get_refs_to_chunks_typed(self, ids):
+        return []
+
+
+class _OneHitSearcher:
+    store = _NoGraphStore()
+
+    def embed_query(self, q):
+        return [1.0]
+
+    def semantic(self, q, k, p):
+        return [{"id": "ready", "_score": 0.5, "path": "scene/main/node.cpp", "name": "Node::_ready",
+                 "start_line": 10, "end_line": 20, "content": "void Node::_ready() {}"}]
+
+    def regex(self, sym, top_k=10, path_prefix=None):
+        return []
+
+
+def test_research_endpoint_compact_returns_chunks_without_content(monkeypatch, tmp_path):
+    _run_main_with_config(monkeypatch, tmp_path, {})
+    project = serve_projects._projects[serve_projects.DEFAULT_PROJECT]
+    project["store"] = object()
+    project["searcher"] = _OneHitSearcher()
+
+    def post(body: dict) -> dict:
+        return json.loads(serve_app.research(serve_models.ResearchRequest.model_validate(body)).body)
+
+    full = post({"query": "q"})
+    compact = post({"query": "q", "compact": True})
+    assert full["chunks"][0]["content"] == "void Node::_ready() {}"
+    assert compact["chunks"] == [{k: v for k, v in full["chunks"][0].items() if k != "content"}]
+    assert compact["files"] == full["files"] != []
 
 
 

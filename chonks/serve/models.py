@@ -43,6 +43,7 @@ class ResearchRequest(BaseModel):
     project:     str | None     = Field(default=None, max_length=_PROJECT_MAX_LEN)
     # Per-request override; precedence is request > project config > all-1.0 default.
     edge_type_weights: dict[str, float] | None = None
+    compact:     bool           = False  # chunks without `content`
 
     @field_validator("edge_type_weights")
     @classmethod
