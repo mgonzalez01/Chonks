@@ -5,9 +5,14 @@ a real index run. Proves it's correct by cross-checking a real incremental
 run against a full rebuild's ground truth on the same corpus."""
 import hashlib
 import logging
+from collections import Counter
 from unittest.mock import patch
 
-from chonks.index.pipeline import index_paths
+import httpx
+import pytest
+
+from chonks.embed.client import compress_for_embed
+from chonks.index.pipeline import EmbedderDownError, index_paths
 from chonks.storage.store import Store
 
 _DIM = 8
@@ -229,3 +234,149 @@ def test_reindex_with_zero_completed_files_still_purges_deleted_edges(tmp_path):
     assert not neighbors_after, (
         "deleted chunk's chunk_neighbors edges were not purged when 0 files completed"
     )
+
+
+def _function(name: str, extra: str = "") -> str:
+    body = "".join(f"    step_{i} = x * {i} + len('{name}')\n" for i in range(12))
+    return f"def {name}(x):\n{extra}{body}    return x\n"
+
+
+def _write_module(root, stem: str, edited: bool = False) -> None:
+    funcs = [_function(f"{stem}_alpha", "    x += 1\n" if edited else ""),
+             _function(f"{stem}_beta"), _function(f"{stem}_gamma")]
+    (root / f"{stem}.py").write_text("\n\n".join(funcs))
+
+
+class _CountingEmbedder(_FakeEmbedder):
+    def __init__(self, model="fake", doc_prefix="", salt=""):
+        self.model, self.doc_prefix, self.salt = model, doc_prefix, salt
+        self.sent: list[str] = []
+
+    def embed_documents(self, texts, client=None, **kw):
+        self.sent.extend(texts)
+        return [_deterministic_vec(self.salt + t) for t in texts]
+
+
+class _DownEmbedder(_CountingEmbedder):
+    def embed_documents(self, texts, client=None, **kw):
+        raise httpx.ConnectError("connection refused")
+
+
+def _chunk_rows(store: Store):
+    return store._conn.execute("SELECT id, name, content, path FROM chunks").fetchall()
+
+
+def _embed_texts(store: Store) -> Counter:
+    return Counter(compress_for_embed(r["content"], name=r["name"], path=r["path"])
+                   for r in _chunk_rows(store))
+
+
+def _vectors_by_text(store: Store) -> dict[str, bytes]:
+    rows = _chunk_rows(store)
+    blobs = store.get_int8_embeddings_by_ids([r["id"] for r in rows])
+    return {compress_for_embed(r["content"], name=r["name"], path=r["path"]): blobs[r["id"]]
+            for r in rows}
+
+
+@pytest.fixture
+def reuse_tree(tmp_path, monkeypatch):
+    import chonks.index.postindex as postindex
+    monkeypatch.setattr(postindex, "build_folder_summaries",
+                        lambda store, embed_fn: {"refreshed": 0, "pruned": 0})
+    for stem in ("calc", "grid", "route"):
+        _write_module(tmp_path, stem)
+    store = Store(tmp_path / "test.db")
+    index_paths([str(tmp_path)], store, _CountingEmbedder(), root=tmp_path)
+    yield tmp_path, store
+    store.close()
+
+
+def test_force_on_unchanged_tree_embeds_nothing(reuse_tree):
+    root, store = reuse_tree
+    emb = _CountingEmbedder()
+    stats = index_paths([str(root)], store, emb, root=root, force=True)
+    assert emb.sent == []
+    assert stats["chunks_reused"] == stats["chunks_embedded"] == 9
+
+
+@pytest.mark.parametrize("force", [True, False])
+def test_reindex_after_editing_one_chunk_embeds_only_that_chunk(reuse_tree, force):
+    root, store = reuse_tree
+    ids_before = {r["name"]: r["id"] for r in _chunk_rows(store)}
+    texts_before = _embed_texts(store)
+    _write_module(root, "calc", edited=True)
+    emb = _CountingEmbedder()
+    index_paths([str(root)], store, emb, root=root, force=force)
+    assert len(emb.sent) == 1
+    assert emb.sent == list((_embed_texts(store) - texts_before).elements())
+    ids_after = {r["name"]: r["id"] for r in _chunk_rows(store)}
+    assert ids_after["calc_beta"] != ids_before["calc_beta"]
+
+
+def test_reused_vectors_equal_the_stored_ones(reuse_tree):
+    root, store = reuse_tree
+    stored = _vectors_by_text(store)
+    index_paths([str(root)], store, _CountingEmbedder(salt="other"), root=root, force=True)
+    assert _vectors_by_text(store) == stored
+
+
+def test_force_with_another_model_embeds_everything(reuse_tree):
+    root, store = reuse_tree
+    texts = _embed_texts(store)
+    emb = _CountingEmbedder(model="other-model")
+    with pytest.raises(RuntimeError, match="model mismatch"):
+        index_paths([str(root)], store, emb, root=root, force=True)
+    assert Counter(emb.sent) == texts
+
+
+def test_force_with_unknown_stored_model_embeds_everything(reuse_tree):
+    root, store = reuse_tree
+    texts = _embed_texts(store)
+    with store._lock:
+        store._conn.execute("DELETE FROM meta WHERE key='embedding_model'")
+        store._conn.commit()
+    emb = _CountingEmbedder()
+    index_paths([str(root)], store, emb, root=root, force=True)
+    assert Counter(emb.sent) == texts
+
+
+def test_force_after_doc_prefix_change_embeds_everything(reuse_tree):
+    root, store = reuse_tree
+    texts = _embed_texts(store)
+    emb = _CountingEmbedder(doc_prefix="Candidate code snippet:\n")
+    index_paths([str(root)], store, emb, root=root, force=True)
+    assert Counter(emb.sent) == texts
+
+
+@pytest.mark.parametrize("doc_prefix", ["", "Candidate code snippet:\n"])
+def test_vectors_left_mixed_by_a_partial_run_are_not_reused(reuse_tree, doc_prefix):
+    root, store = reuse_tree
+    _write_module(root, "calc", edited=True)
+    index_paths([str(root)], store, _CountingEmbedder(doc_prefix="Candidate code snippet:\n"),
+                root=root)
+    emb = _CountingEmbedder(doc_prefix=doc_prefix)
+    index_paths([str(root)], store, emb, root=root, force=True)
+    assert Counter(emb.sent) == _embed_texts(store)
+
+
+def test_force_on_a_db_without_the_embed_text_stamp_reuses_vectors(reuse_tree):
+    root, store = reuse_tree
+    with store._lock:
+        store._conn.execute("DELETE FROM meta WHERE key='embed_text'")
+        store._conn.commit()
+    emb = _CountingEmbedder()
+    index_paths([str(root)], store, emb, root=root, force=True)
+    assert emb.sent == []
+
+
+@pytest.mark.parametrize("embed_batch", [1, 3])
+def test_dead_embedder_aborts_when_batches_also_hold_reused_chunks(reuse_tree, embed_batch):
+    root, store = reuse_tree
+    stems = ("calc", "grid", "route", "mesh", "tile", "zone")
+    for stem in stems:
+        _write_module(root, stem)
+    index_paths([str(root)], store, _CountingEmbedder(), root=root)
+    for stem in stems:
+        _write_module(root, stem, edited=True)
+    with pytest.raises(EmbedderDownError):
+        index_paths([str(root)], store, _DownEmbedder(), root=root, embed_batch=embed_batch)

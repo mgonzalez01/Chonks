@@ -1808,10 +1808,23 @@ def test_embed_timeout_scales_with_batch_size(tmp_path):
     assert compute_embed_timeout(10_000_000) == EMBED_TIMEOUT_CEILING_S
 
 
+def test_embed_timeout_covers_chunks_queued_ahead():
+    from chonks.index.embed_retry import (
+        EMBED_TIMEOUT_CEILING_S,
+        EMBED_TIMEOUT_PER_ITEM_S,
+        compute_embed_timeout,
+    )
+
+    assert compute_embed_timeout(64, 3 * 64) == 4 * 64 * EMBED_TIMEOUT_PER_ITEM_S
+    assert compute_embed_timeout(128, 7 * 128) > compute_embed_timeout(128)
+    assert compute_embed_timeout(128, 7 * 128) == min(EMBED_TIMEOUT_CEILING_S, 8 * 128 * EMBED_TIMEOUT_PER_ITEM_S)
+
+
 def test_embed_documents_called_with_scaled_timeout(tmp_path):
     """Same contract as test_embed_timeout_scales_with_batch_size, but pinned
     at the actual call site (chunker.embed_phase), proving the override is
-    threaded through, not just defined."""
+    threaded through, not just defined. The timeout also covers the other
+    in-flight batches queued ahead on the server."""
     from chonks.index.pipeline import index_paths
     from chonks.index.embed_retry import compute_embed_timeout
 
@@ -1830,7 +1843,8 @@ def test_embed_documents_called_with_scaled_timeout(tmp_path):
             return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
 
     store = Store(tmp_path / "test.db")
-    index_paths([str(tmp_path)], store, _TimeoutRecordingEmbedder(), root=tmp_path)
+    index_paths([str(tmp_path)], store, _TimeoutRecordingEmbedder(), root=tmp_path,
+                embed_batch=64, embed_inflight=8)
     store.close()
 
     assert seen_timeouts, "embed_documents was never called"
@@ -1840,7 +1854,7 @@ def test_embed_documents_called_with_scaled_timeout(tmp_path):
     scaled_calls = [(n, t) for n, t in seen_timeouts if t is not _NO_TIMEOUT_GIVEN]
     assert scaled_calls, f"no call site passed an explicit timeout: {seen_timeouts}"
     for n, timeout in scaled_calls:
-        assert timeout == compute_embed_timeout(n)
+        assert timeout == compute_embed_timeout(n, 7 * 64)
 
 
 def test_rebuild_knn_skips_build_refs_when_refs_present(tmp_path, monkeypatch):

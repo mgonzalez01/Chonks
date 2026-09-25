@@ -516,6 +516,21 @@ def test_or_fts_query_all_punctuation_is_empty():
     assert _or_fts_query("???") == ""
 
 
+def test_keyword_puts_chunks_with_every_word_first_then_fills_with_any(tmp_path):
+    store = Store(tmp_path / "test.db")
+    texts = {"both": "wedged embedder", "one": "wedged", "other": "embedder", "none": "alpha"}
+    store.insert_chunks(
+        [{"id": k, "path": f"{k}.py", "content": v, "name": k, "start_line": 1, "end_line": 1}
+         for k, v in texts.items()],
+        [[1.0, 0.0, 0.0, 0.0]] * len(texts),
+    )
+    searcher = Searcher(store, _FakeEmbedder([1.0, 0.0, 0.0, 0.0]))
+    ids = [h["id"] for h in searcher.keyword("wedged embedder?", top_k=5)]
+    assert ids[0] == "both" and sorted(ids[1:]) == ["one", "other"]
+    assert [h["id"] for h in searcher.keyword("wedged embedder", top_k=1)] == ["both"]
+    store.close()
+
+
 def _vec_for_cos(c):
     """Unit vector at cosine c to the query direction [1, 0, 0, 0]."""
     return [c, math.sqrt(1.0 - c * c), 0.0, 0.0]

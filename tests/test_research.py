@@ -493,6 +493,8 @@ def test_graph_seed_confidence_gate_filters_low_scorers(monkeypatch):
             @staticmethod
             def get_refs_for_chunks_typed(ids):
                 return []
+        def embed_query(self, q):
+            return [0.0]
         def semantic(self, q, k, p):
             return [
                 {"id": "hi", "_score": 0.8, "content": "", "path": "a"},
@@ -500,10 +502,6 @@ def test_graph_seed_confidence_gate_filters_low_scorers(monkeypatch):
             ]
         def regex(self, *a, **k):
             return []
-    class FakeEmbedder:
-        def embed_query(self, q):
-            return [0.0]
-    monkeypatch.setattr(research, "_embed_query", lambda *a, **k: None, raising=False)
 
     for thr, expected in [(0.0, {"hi", "lo"}), (0.7, {"hi"})]:
         captured.clear()
@@ -717,10 +715,7 @@ def test_result_connections_empty_ids_returns_empty():
 
 # --- degraded-state signalling ----------------------------------------------
 
-def test_deep_research_degraded_flag_set_when_query_embed_fails(monkeypatch):
-    """deep_research's honest-degradation fallback (neutral 0 scores when
-    the embedder is unreachable) used to be invisible to the caller; the
-    payload must say so via `degraded`, additive only (ranking untouched)."""
+def test_deep_research_seeds_from_keywords_when_the_embedder_is_down(monkeypatch):
     import chonks.retrieval.research as research
 
     monkeypatch.setattr(research, "_graph_expand", lambda store, seeds, **kw: [])
@@ -737,7 +732,9 @@ def test_deep_research_degraded_flag_set_when_query_embed_fails(monkeypatch):
         def embed_query(self, q):
             raise ConnectionError("embedder unreachable")
         def semantic(self, q, k, p):
-            return [{"id": "hi", "_score": 0.8, "content": "", "path": "a"}]
+            raise ConnectionError("embedder unreachable")
+        def keyword(self, q, k, p):
+            return [{"id": "hi", "content": "", "path": "a"}]
         def regex(self, *a, **k):
             return []
 
@@ -745,8 +742,7 @@ def test_deep_research_degraded_flag_set_when_query_embed_fails(monkeypatch):
         "q", FakeSearcher(), cfg={"max_iterations": 1},
     )
     assert result["degraded"] == "semantic_unavailable"
-    assert [c["id"] for c in result["chunks"]] == ["hi"], \
-        "seed still ranks by its own stored score — degraded is a signal, not a ranking change"
+    assert [c["id"] for c in result["chunks"]] == ["hi"]
 
 
 def test_deep_research_degraded_none_when_query_embed_succeeds():
@@ -776,3 +772,39 @@ def test_deep_research_degraded_none_when_query_embed_succeeds():
         )
     assert result["degraded"] is None
     assert "degraded" in result
+
+
+# --- compact output ----------------------------------------------------------
+
+def test_deep_research_compact_drops_content_only_from_the_returned_chunks(monkeypatch):
+    import chonks.retrieval.research as research
+
+    monkeypatch.setattr(research, "_graph_expand", lambda store, seeds, **kw: [])
+    monkeypatch.setattr(research, "_apply_structural_boost", lambda cands, store, **kw: cands)
+    regex_calls = []
+
+    class FakeSearcher:
+        store = _FakeStore(edges=[("draw", "flush", "calls")])
+        def embed_query(self, q):
+            return [1.0, 0.0]
+        def semantic(self, q, k, p):
+            return [
+                {"id": "draw", "_score": 0.9, "path": "servers/rendering/canvas.cpp", "name": "draw",
+                 "start_line": 10, "end_line": 30, "content": "void draw() { RenderingServer::flush(); }"},
+                {"id": "flush", "_score": 0.8, "path": "servers/rendering/server.cpp", "name": "flush",
+                 "start_line": 5, "end_line": 9, "content": "void flush() {}"},
+            ]
+        def regex(self, sym, top_k=10, path_prefix=None):
+            regex_calls.append(sym)
+            return []
+
+    full = research.deep_research("q", FakeSearcher(), cfg={"max_iterations": 1})
+    full_symbols = list(regex_calls)
+    regex_calls.clear()
+    compact = research.deep_research("q", FakeSearcher(), cfg={"max_iterations": 1}, compact=True)
+
+    assert regex_calls == full_symbols
+    assert "RenderingServer::flush" in regex_calls
+    assert all(c["content"] for c in full["chunks"])
+    assert compact["chunks"] == [{k: v for k, v in c.items() if k != "content"} for c in full["chunks"]]
+    assert compact["connections"] == full["connections"] != []

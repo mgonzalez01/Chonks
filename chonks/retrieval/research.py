@@ -472,10 +472,13 @@ def deep_research(
     cfg: dict | None = None,
     path_prefix: str | None = None,
     interleave: bool = True,
+    compact: bool = False,
 ) -> dict[str, Any]:
     """Iterative candidate collection; returns ranked chunks for the outer LLM
-    to synthesize. `degraded="semantic_unavailable"` means expansion scoring
-    is a neutral fallback, not real relevance; None on the healthy path."""
+    to synthesize. `degraded="semantic_unavailable"` means the query could not
+    be embedded: seeds come from keyword search and nothing is scored; None on
+    the healthy path.
+    `compact` leaves `content` out of the returned chunks."""
     cfg = {**_DEFAULTS, **(cfg or {})}
     top_k                = cfg["top_k"]
     oversample           = cfg["oversample_factor"]
@@ -517,13 +520,16 @@ def deep_research(
         if iteration == 0:
             fetch_k = top_k * oversample
             try:
-                hits = searcher.semantic(query, fetch_k, path_prefix)
+                if query_vec is None:
+                    hits = searcher.keyword(query, fetch_k, path_prefix)
+                else:
+                    hits = searcher.semantic(query, fetch_k, path_prefix)
                 for h in hits:
                     h["_origin"]    = "seed"
                     h["_iteration"] = 0
                 all_candidates.extend(hits)
             except Exception as e:
-                logger.warning("semantic seed failed: %s", e)
+                logger.warning("seed search failed: %s", e)
 
         _score_candidates(all_candidates, query_vec, store)
         all_candidates = _rank_and_cap(all_candidates, max_candidates)
@@ -615,6 +621,8 @@ def deep_research(
         final_chunks = all_candidates[:top_k]
 
     connections = _result_connections(store, [c["id"] for c in final_chunks])
+    if compact:
+        final_chunks = [{k: v for k, v in c.items() if k != "content"} for c in final_chunks]
 
     return {
         "chunks":      final_chunks,

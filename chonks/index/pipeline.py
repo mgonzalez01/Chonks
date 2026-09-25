@@ -31,7 +31,12 @@ from chonks.index.embed_retry import (
     _should_truncate_and_retry,
     compute_embed_timeout,
 )
-from chonks.embed.client import Embedder, compress_for_embed as _compress_for_embed
+from chonks.embed.client import (
+    EMBED_TEXT_VERSION,
+    Embedder,
+    compress_for_embed as _compress_for_embed,
+    resolve_prefixes,
+)
 from chonks.index.admission import (
     DEFAULT_DATA_BLOB_SIZE_LIMIT,
     DEFAULT_FALLBACK_EXTENSIONS,
@@ -92,6 +97,7 @@ class RunState:
     unhealable_hashes: set[str]
     unhealable_order: list[str]
     new_unhealable: bool
+    reuse_vectors: bool
 
 
 class _DaemonPool:
@@ -172,7 +178,7 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
             if item is _SENTINEL:
                 embed_q.put(_SENTINEL)
                 return
-            fpath, content_hash, stored_path = item
+            fpath, content_hash, stored_path, old_vecs = item
             try:
                 with lock:
                     state["current_file"] = fpath.name
@@ -238,6 +244,7 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                 chunk_dicts: list = []
                 for seg in segs:
                     cid = _chunk_id(stored_path, seg["start_line"], seg["content"])
+                    text = _compress_for_embed(seg["content"], name=seg["name"], path=stored_path)
                     chunk_ranges.append((seg["start_line"], seg["end_line"], cid))
                     chunk_dicts.append({
                         "id":           cid,
@@ -255,6 +262,8 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                         "_content_hash": content_hash,
                         "_file_total":   n,
                         "_stat":         stat,
+                        "_text":         text,
+                        "_vec":          old_vecs.get(text),
                     })
                 # Map each symbol to its containing chunk (ranges tile the
                 # file). Handed to the embedder thread to write on commit.
@@ -312,29 +321,39 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
     file_meta: dict[str, tuple]            = {}  # fpath → (hash, total, stat)
     batch: list[dict]                      = []
 
-    def embed_phase(snapshot: list[dict], client: httpx.Client) -> tuple[list[dict], list[list[float]], int, list[tuple[dict, Exception | None]], int, Exception | None]:
+    def embed_phase(snapshot: list[dict], client: httpx.Client) -> tuple[list[dict], list[list[float] | bytes], int, list[tuple[dict, Exception | None]], int, Exception | None]:
         """Network phase (thread pool); only shared-state touch is the
-        watchdog clock. Returns batch_exc, the top-level failure if any,
-        for commit_phase's embedder-down circuit breaker."""
-        texts = [_compress_for_embed(c["content"], name=c.get("name"), path=c.get("path")) for c in snapshot]
+        watchdog clock. Chunks holding a stored vector are not sent. Returns
+        batch_exc, the top-level failure if any, for commit_phase's
+        embedder-down circuit breaker."""
+        fresh = [c for c in snapshot if c["_vec"] is None]
 
         def _embed_live(ts: list[str]) -> list[list[float]]:
             """Resets the watchdog clock on every round trip that RETURNS,
             success or exception. This is why the no-progress watchdog can't
             catch a fast-failing dead embedder (see EmbedderDownError)."""
             try:
-                return embedder.embed_documents(ts, client, timeout=compute_embed_timeout(len(ts)))
+                return embedder.embed_documents(
+                    ts, client, timeout=compute_embed_timeout(len(ts), (embed_inflight - 1) * embed_batch))
             finally:
                 with lock:
                     state["last_progress_ts"] = time.monotonic()
 
-        with lock:
-            state["inflight_batches"][id(snapshot)] = _batch_label(snapshot)
-        try:
-            return _embed_phase_inner(snapshot, texts, _embed_live)
-        finally:
+        embedded, embeddings, truncated, errors, failed, batch_exc = [], [], 0, [], 0, None
+        if fresh:
             with lock:
-                state["inflight_batches"].pop(id(snapshot), None)
+                state["inflight_batches"][id(snapshot)] = _batch_label(fresh)
+            try:
+                embedded, embeddings, truncated, errors, failed, batch_exc = _embed_phase_inner(
+                    fresh, [c["_text"] for c in fresh], _embed_live)
+            finally:
+                with lock:
+                    state["inflight_batches"].pop(id(snapshot), None)
+        # Back into submission order, so reuse doesn't change insertion order.
+        vecs = {id(c): e for c, e in zip(embedded, embeddings)}
+        vecs.update((id(c), c["_vec"]) for c in snapshot if c["_vec"] is not None)
+        done = [c for c in snapshot if id(c) in vecs]
+        return done, [vecs[id(c)] for c in done], truncated, errors, failed, batch_exc
 
     def _embed_phase_inner(snapshot: list[dict], texts: list[str], _embed_live) -> tuple[list[dict], list[list[float]], int, list[tuple[dict, Exception | None]], int, Exception | None]:
         try:
@@ -382,10 +401,13 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
 
         # See EmbedderDownError. A 4xx (oversize chunk) doesn't count:
         # bisection handles it legitimately, so it shouldn't trip this streak.
-        if chunks_to_insert or not batch_failed:
+        # Reused chunks say nothing about the embedder, so a batch of only
+        # reused chunks leaves the streak as it was.
+        embedded_now = sum(c["_vec"] is None for c in chunks_to_insert)
+        if embedded_now or (batch_failed and _should_truncate_and_retry(batch_exc)):
             with lock:
                 state["consecutive_batch_failures"] = 0
-        elif not _should_truncate_and_retry(batch_exc):
+        elif batch_failed:
             with lock:
                 state["consecutive_batch_failures"] += 1
                 n = state["consecutive_batch_failures"]
@@ -396,9 +418,6 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
                     f"embedder appears down. Aborting rather than silently "
                     f"dropping the rest of the corpus."
                 )
-        else:
-            with lock:
-                state["consecutive_batch_failures"] = 0
 
         touched: set[str] = set()
 
@@ -444,6 +463,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         store.commit()
         with lock:
             state["chunks_embedded"] += len(chunks_to_insert)
+            state["chunks_reused"]   += len(chunks_to_insert) - embedded_now
             state["truncated"]       += truncated
 
     try:
@@ -584,6 +604,33 @@ def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str
     return build_table(records)
 
 
+_EMBED_TEXT_META_KEY = "embed_text"
+
+
+def _embed_text_format(embedder) -> str:
+    """What the text sent for a chunk depends on besides the chunk itself."""
+    return json.dumps([EMBED_TEXT_VERSION, getattr(embedder, "doc_prefix", "")])
+
+
+def _claim_embed_text(store: Store, embedder) -> bool:
+    """True when every stored vector came from this run's model and text
+    format. Otherwise marks the DB mixed until a run re-embeds all of it."""
+    model = store.get_meta("embedding_model")
+    recorded = store.get_meta(_EMBED_TEXT_META_KEY)
+    if recorded is None and model is not None:
+        # A DB from before this stamp: version 1 text, the model's preset prefix.
+        recorded = json.dumps([1, resolve_prefixes(model)[1]])
+    current = _embed_text_format(embedder)
+    store.set_meta(_EMBED_TEXT_META_KEY, current if recorded == current else "mixed")
+    return recorded == current and model == embedder.model
+
+
+def _stored_vectors(store: Store, path: str) -> dict[str, bytes]:
+    """The stored vector of each chunk of `path`, keyed by its embed text."""
+    return {_compress_for_embed(content, name=name, path=path): vec
+            for name, content, vec in store.get_chunk_vectors_for_path(path)}
+
+
 def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, store: Store, force: bool,
                   excludes: list[str], includes: list[str], fallback_exts: set[str], data_limit: int) -> None:
     state = rs.state
@@ -635,15 +682,18 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                     with lock:
                         state["skipped"] += 1
                     return
+                old_vecs: dict[str, bytes] = {}
                 if stored_hash is not None:
                     removed_names = store.get_names_for_path(stored_path)
+                    if rs.reuse_vectors:
+                        old_vecs = _stored_vectors(store, stored_path)
                     removed_ids = store.delete_file(stored_path)
                     with lock:
                         deleted_chunk_ids.update(removed_ids)
                         deleted_chunk_names.update(removed_names)
                 with lock:
                     state["to_index"] += 1
-                parse_q.put((fpath, content_hash, stored_path))
+                parse_q.put((fpath, content_hash, stored_path, old_vecs))
             except Exception as e:
                 with lock:
                     state["errors"] += 1
@@ -860,6 +910,7 @@ def index_paths(
     # indexer ignores instead of flagging mtime churn on them as stale.
     store.set_meta("exclude", json.dumps(excludes))
     store.set_meta("include", json.dumps(includes))
+    reuse_vectors = _claim_embed_text(store, embedder)
 
     # --------------------------------------------------------- shared state
     state = {
@@ -867,6 +918,7 @@ def index_paths(
         "files_scanned":   0,       # unique files the producer has discovered (drives the bar pre-scan-complete)
         "chunks_queued":   0,
         "chunks_embedded": 0,
+        "chunks_reused":   0,       # of chunks_embedded, those given their stored vector instead
         "indexed":         0,
         "errors":          0,
         "truncated":       0,
@@ -924,7 +976,7 @@ def index_paths(
         deleted_chunk_ids=deleted_chunk_ids, deleted_chunk_names=deleted_chunk_names,
         parse_q=parse_q, embed_q=embed_q, macro_file_counts=macro_file_counts,
         unhealable_hashes=unhealable_hashes, unhealable_order=unhealable_order,
-        new_unhealable=new_unhealable,
+        new_unhealable=new_unhealable, reuse_vectors=reuse_vectors,
     )
 
     # ---------------------------------------------------- start threads
@@ -1029,13 +1081,14 @@ def index_paths(
     embed_elapsed = time.monotonic() - t0
     with lock:
         chunks_embedded_total = state["chunks_embedded"]
+        chunks_reused = state["chunks_reused"]
         pruned = state["pruned"]
         skipped = state["skipped"]
         indexed = state["indexed"]
     chunks_per_s = chunks_embedded_total / embed_elapsed if embed_elapsed > 0 else 0.0
     logger.info(
-        "Embedded %d chunks in %.1fs (%.1f chunks/s).",
-        chunks_embedded_total, embed_elapsed, chunks_per_s,
+        "Embedded %d chunks (%d reused a stored vector) in %.1fs (%.1f chunks/s).",
+        chunks_embedded_total, chunks_reused, embed_elapsed, chunks_per_s,
     )
 
     # Only claim a clean chunker-version match when skipped==0 (every tracked
@@ -1068,10 +1121,11 @@ def index_paths(
     # skipped==0 alone isn't sufficient here (a --force on a path subset also
     # yields it): also require indexed == tracked_file_count, so this run
     # demonstrably covered every file the DB tracks, not just what it targeted.
-    if store.get_meta("literal_index_version") is not None or (
-        skipped == 0 and indexed == store.tracked_file_count()
-    ):
+    covered_all = skipped == 0 and indexed == store.tracked_file_count()
+    if store.get_meta("literal_index_version") is not None or covered_all:
         store.set_meta("literal_index_version", "1")
+    if covered_all:
+        store.set_meta(_EMBED_TEXT_META_KEY, _embed_text_format(embedder))
 
     fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed = run_post_index_passes(
         store, embedder,
@@ -1092,6 +1146,7 @@ def index_paths(
             "dirs_pruned":     state["dirs_pruned"],
             "truncated":       state["truncated"],
             "chunks_embedded": chunks_embedded_total,
+            "chunks_reused":   chunks_reused,
             "elapsed_s":       round(embed_elapsed, 1),
             "chunks_per_s":    round(chunks_per_s, 1),
             "batch_failures":  state["batch_failures"],
@@ -1133,6 +1188,7 @@ def reembed_all(
     Only chunk_vecs is updated; the chunks table is untouched. Useful after changing
     the embedding format (e.g. adding breadcrumb prepending) without re-parsing source."""
     stats: dict[str, int] = {"reembedded": 0, "errors": 0}
+    _claim_embed_text(store, embedder)
     total = store._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
     logger.info("Re-embedding %d chunks from DB (vectors only)...", total)
 
@@ -1175,4 +1231,6 @@ def reembed_all(
 
                 offset += PAGE
 
+    if stats["errors"] == 0:
+        store.set_meta(_EMBED_TEXT_META_KEY, _embed_text_format(embedder))
     return stats

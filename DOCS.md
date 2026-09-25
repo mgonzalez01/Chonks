@@ -152,6 +152,8 @@ In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus 
 
 **Embedding.** Chunks go out in batches of `embed_batch` (default 128) with `embed_inflight` (default 2) requests in flight, both settable from config and from `--embed-batch` and `--embed-inflight`. `embed_phase` runs in a `ThreadPoolExecutor(max_workers=embed_inflight)` and `commit_phase` runs serially on the embedder thread, draining futures FIFO, so insertion order matches submission order. Before a chunk is sent, leading and trailing whitespace is stripped per line and consecutive blank lines are collapsed, while the DB stores the original content; embeddings are fetched as `encoding_format: base64`, and a server that returns float arrays instead still works.
 
+**Vector reuse.** Before the scan deletes a re-indexed file's rows, it reads the file's stored vectors keyed by embed text, the `path :: name` breadcrumb plus the compressed content. A new chunk with the same embed text gets that int8 vector unchanged instead of being sent, so a `--force` run, or an edit that shifts the chunks below it, embeds only the chunks whose text changed. The breadcrumb holds the path, so a key never matches across files. Reuse needs the DB's `embedding_model` to equal the configured model, and `meta.embed_text` to equal this run's `EMBED_TEXT_VERSION` and document prefix. A run whose format differs sets `meta.embed_text` to `mixed`, which turns reuse off until a run covering every tracked file, or a `--reembed` without errors, records the new format. A DB from before the key is read as version 1 with the model's preset prefix.
+
 **Retry and bisection.** A failed batch, for example one holding a chunk over the server's per-slot token budget, goes to `_embed_isolating`, which retries each half at full length and recurses only into the half that still fails, so the offender's batch-mates keep full-length embeddings. A failed batch bumps `state["batch_failures"]`, a truncated chunk `state["truncated"]`, and a dropped chunk `state["errors"]`, all three appearing in the end-of-run summary.
 
 **Post-commit passes**, churn-gated, in this order: `build_refs` (typed, mentions, and xlang edges), `build_neighbors` (semantic k-NN), `persist_pagerank` (weighted by `edge_type_weights`), `build_folder_summaries`. Each consumes the same changed and deleted chunk-id delta, collected once in `index_paths`.
@@ -559,7 +561,7 @@ Worked examples of `semantic` and `hybrid` are under [`codebase_search`](#tool-c
 }
 ```
 
-The same length caps as for `/search` apply to `query` (2000 characters) and `path_prefix` (500 characters). The optional `edge_type_weights: dict[str, float]` overrides the config-level map for this request only, the precedence being request, then project config, then the all-1.0 default; values must be non-negative, a 422 being returned otherwise, unknown edge-type keys are allowed, and omitting the field changes nothing. The MCP `codebase_research` tool surfaces this as `scope`.
+The same length caps as for `/search` apply to `query` (2000 characters) and `path_prefix` (500 characters). The optional `edge_type_weights: dict[str, float]` overrides the config-level map for this request only, the precedence being request, then project config, then the all-1.0 default; values must be non-negative, a 422 being returned otherwise, unknown edge-type keys are allowed, and omitting the field changes nothing. The MCP `codebase_research` tool surfaces this as `scope`. `compact: true` returns each chunk without its `content` and leaves the rest of the response as it is.
 
 Response:
 ```json
@@ -574,7 +576,7 @@ Response:
 }
 ```
 
-There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable and expansion scoring fell back to a neutral score, the seeds still ranking by their own stored similarity, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns, and `note` the same excluded-scope note.
+There is no `answer` field, since the outer LLM synthesizes from the chunks. `connections` carries the typed edges (calls, imports, inherits, xlang, associated, mentions) linking the returned chunks to each other, unstripped, so a caller sees the structure among the result set without a follow-up `/usages` or `/outgoing` round trip. `degraded` is `"semantic_unavailable"` when the embedder was unreachable, the seeds then coming from keyword search in its order and expansion going unscored, and `null` on the healthy path; the MCP tool renders it as a `DEGRADED` first line. `files` is the same aggregated file-level ranking `/search` returns, and `note` the same excluded-scope note.
 
 ### POST /repomap
 
@@ -813,7 +815,8 @@ In `hybrid` mode the score line reads `rrf=0.0328  [sem#1,fts#1]` instead, the f
 codebase_research({
   query: "how does shadow cascading work",
   path_prefix: "src/rendering/",  // optional
-  scope: "lookup"                 // optional: "lookup" (default) | "explore"
+  scope: "lookup",                // optional: "lookup" (default) | "explore"
+  compact: false                  // optional: true returns chunk headers without source
 })
 ```
 
@@ -832,6 +835,18 @@ servers/rendering/renderer_rd/renderer_canvas_render_rd.cpp:3088-3165  RendererC
 ```
 
 On one rendering-device question `lookup` keeps its top hits a call apart inside `RenderingDeviceGraph`, while `explore`, asked to map the audio subsystem, pulls in the driver base class, `AudioServer::init`, and `AudioServer::get_output_device_list`.
+
+`compact: true` sends `compact` to `/research` and renders the `files:` line and one header per chunk, without source, evidence lines or the `CONNECTIONS` section. A header's `path:start-end` is enough to read that chunk from the file. On a Godot slice, 50 chunks come to under 5 KB this way, against 45 to 80 KB in full.
+
+```
+Deep research returned 50 chunks after 2 iteration(s). Source is left out; Read a chunk at its path:start-end.
+
+files: scene/main/node.cpp, scene/3d/node_3d.cpp, scene/3d/visible_on_screen_notifier_3d.cpp, ...
+
+[1] scene/main/node.cpp:323-339 (Node::_propagate_ready)  score=1.1400
+[2] scene/3d/node_3d.cpp:142-306 (Node3D::_notification)  score=1.1163
+[3] scene/3d/visible_on_screen_notifier_3d.cpp:171-193 (VisibleOnScreenEnabler3D::_notification)  score=1.0678
+```
 
 ### Tool: codebase_map
 

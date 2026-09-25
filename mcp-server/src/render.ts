@@ -10,7 +10,8 @@ export type Chunk = {
   name?: string | null;
   start_line: number;
   end_line: number;
-  content: string;
+  // Absent from a compact /research response.
+  content?: string;
   distance?: number;
   _score?: number;
   // Set on hybrid (RRF) results: 1-indexed rank within each branch, or null
@@ -165,6 +166,11 @@ export function formatResearchChunks(chunks: Chunk[]): string {
     parts.push(`${formatChunkHeader(c, i)}${evidenceLine}\n\`\`\`${lang}\n${c.content}\n\`\`\``);
   });
   return parts.join("\n\n");
+}
+
+export function formatResearchHeaders(chunks: Chunk[]): string {
+  if (!chunks.length) return "No results.";
+  return chunks.map((c, i) => formatChunkHeader(c, i)).join("\n");
 }
 
 // Returns "" (not null) when empty, so callers can append it directly.
