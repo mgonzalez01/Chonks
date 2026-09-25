@@ -7,15 +7,22 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-def last_identifier(node: Node, src: bytes) -> str | None:
+# `f<T>(x)` in C++ and C#: the type arguments are not the called name.
+_TYPE_ARGUMENT_LISTS = frozenset({"template_argument_list", "type_argument_list"})
+
+
+def last_identifier(node: Node, src: bytes, skip: Collection[str] = ()) -> str | None:
     """Rightmost identifier-like leaf of a dotted/member chain (a.b.c):
-    the referenced name, not the receiver it's called through."""
+    the referenced name, not the receiver it's called through. Children
+    whose type is in `skip` are not searched."""
     for child in reversed(node.children):
+        if child.type in skip:
+            continue
         if child.type in ("identifier", "field_identifier", "type_identifier"):
             return src[child.start_byte:child.end_byte].decode(errors="replace")
         # recurse into nested chains (field_expression/member_access_expression/attribute)
         if child.is_named:
-            found = last_identifier(child, src)
+            found = last_identifier(child, src, skip)
             if found:
                 return found
     return None
@@ -45,7 +52,7 @@ def name_call_target(n: Node, src: bytes) -> str | None:
     # qualified/namespaced name, ...).
     if n.type in ("identifier", "field_identifier"):
         return name_text(n, src)
-    return last_identifier(n, src)
+    return last_identifier(n, src, _TYPE_ARGUMENT_LISTS)
 
 
 def name_strip_angle_brackets(n: Node, src: bytes) -> str:

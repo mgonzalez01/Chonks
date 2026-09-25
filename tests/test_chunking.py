@@ -1174,6 +1174,22 @@ void driver() {
     assert _call_entry(refs, "method") == {"name": "method", "receiver": "C", "arity": 2}
 
 
+def test_templated_call_names_the_function_not_its_type_argument():
+    cpp = b'''
+void driver(Node *p) {
+    Object::cast_to<GraphFrame>(p);
+    make_ref<Texture>(1);
+}
+'''
+    refs = _refs(segment_file(cpp, "cpp", path="t.cpp"), "driver")
+    assert _call_names(refs) >= {"cast_to", "make_ref"}
+    assert not _call_names(refs) & {"GraphFrame", "Texture"}
+    cs = b"class A { void Driver() { var r = GetComponent<Rigidbody>(); Foo.Bar<Baz>(1); } }\n"
+    refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
+    assert _call_names(refs) >= {"GetComponent", "Bar"}
+    assert not _call_names(refs) & {"Rigidbody", "Baz"}
+
+
 def test_call_arity_varargs_and_defaults_wildcard_python():
     src = b'''
 def driver():
