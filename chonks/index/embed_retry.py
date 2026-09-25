@@ -28,20 +28,20 @@ EMBED_MIN_CHARS = 200
 # for a hang. config key `embed_watchdog_secs`.
 EMBED_WATCHDOG_SECS = 300
 
-# Per-request timeout scales with batch size: a fixed 120s can fire on a slow-but-alive
-# large batch, which gets misclassified non-retryable (_should_truncate_and_retry) and
-# drops the whole batch. See compute_embed_timeout.
-EMBED_TIMEOUT_PER_ITEM_S = 1.0     # seconds budgeted per chunk in a batch
+# Per-request timeout covers the chunks the server processes before this request
+# completes: llama-server serves concurrent requests' inputs in arrival order, so a
+# batch waits behind the other in-flight batches. See compute_embed_timeout.
+EMBED_TIMEOUT_PER_ITEM_S = 1.0     # seconds budgeted per chunk
 EMBED_TIMEOUT_FLOOR_S    = 120.0
 EMBED_TIMEOUT_CEILING_S  = 900.0   # cap so a huge batch can't hang one request indefinitely
 
 
-def compute_embed_timeout(batch_size: int) -> float:
-    """Per-request timeout for a batch: linear in size, floored at
-    EMBED_TIMEOUT_FLOOR_S, capped at EMBED_TIMEOUT_CEILING_S. Only the
-    indexer's embed call site uses this; other callers keep the 120s default."""
+def compute_embed_timeout(batch_size: int, queued: int = 0) -> float:
+    """Per-request timeout for a batch with `queued` chunks from other in-flight
+    batches ahead of it: linear in both, floored and capped. Only the indexer's
+    embed call site uses this; other callers keep the 120s default."""
     return min(EMBED_TIMEOUT_CEILING_S,
-               max(EMBED_TIMEOUT_FLOOR_S, batch_size * EMBED_TIMEOUT_PER_ITEM_S))
+               max(EMBED_TIMEOUT_FLOOR_S, (batch_size + queued) * EMBED_TIMEOUT_PER_ITEM_S))
 
 
 def _should_truncate_and_retry(exc: BaseException) -> bool:

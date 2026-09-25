@@ -333,7 +333,8 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
             success or exception. This is why the no-progress watchdog can't
             catch a fast-failing dead embedder (see EmbedderDownError)."""
             try:
-                return embedder.embed_documents(ts, client, timeout=compute_embed_timeout(len(ts)))
+                return embedder.embed_documents(
+                    ts, client, timeout=compute_embed_timeout(len(ts), (embed_inflight - 1) * embed_batch))
             finally:
                 with lock:
                     state["last_progress_ts"] = time.monotonic()
