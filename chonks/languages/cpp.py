@@ -95,6 +95,7 @@ BASES = Children((
 
 CPP = LanguageSpec(
     name="cpp",
+    typed_ref_languages=frozenset({"c"}),
     grammar="cpp",
     version="4",
     display_name="C++",

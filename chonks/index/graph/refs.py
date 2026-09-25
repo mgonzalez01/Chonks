@@ -17,17 +17,26 @@ from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_de
 
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 from chonks.core.refresh import register_refresh
-from chonks.languages import union as _lang_union
+from chonks.languages import table as _lang_table, union as _lang_union
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
 
 _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+_TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
 
 
 def _refresh_from_registry() -> None:
-    global _SCOPE_CHUNK_TYPES
+    global _SCOPE_CHUNK_TYPES, _TYPED_REF_LANGUAGES
     _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
+    _TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
+
+
+def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> list[str]:
+    """The definers in `ids` whose language a `lang` chunk's calls, imports
+    and bases can name."""
+    reach = _TYPED_REF_LANGUAGES.get(lang, frozenset()) | {lang}
+    return [i for i in ids if (id_to_chunk.get(i) or {}).get("language") in reach]
 
 
 register_refresh(_refresh_from_registry)
@@ -258,7 +267,7 @@ def _build_graph(
                     name, receiver, arity = _call_entry_fields(raw)
                 else:
                     name, receiver, arity = raw, None, None
-                ids = name_to_ids.get(name)
+                ids = _typed_targets(name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
                 targets = (
@@ -642,18 +651,18 @@ def _build_refs_incremental(
         edges[(id_a, id_b)] = "xlang"
         edges[(id_b, id_a)] = "xlang"
 
-    # Typed edges, highest precedence, run through the same
-    # _discriminate_definers as _build_graph's bulk pass; id_to_chunk here
-    # only needs 'calls' target chunks, not the whole corpus.
-    call_target_ids: set[str] = set()
+    # Typed edges, highest precedence, run through the same language filter
+    # and _discriminate_definers as _build_graph's bulk pass; id_to_chunk here
+    # only needs the typed target chunks, not the whole corpus.
+    typed_target_ids: set[str] = set()
     for c in ref_chunks:
         md = c.get("metadata") or {}
-        for raw in md.get("calls") or ():
-            name = _call_entry_name(raw)
-            call_target_ids.update(local_name_to_ids.get(name) or ())
+        for edge_type in ("calls", "imports", "inherits"):
+            for raw in md.get(edge_type) or ():
+                typed_target_ids.update(local_name_to_ids.get(_call_entry_name(raw)) or ())
     id_to_chunk = (
-        {row["id"]: row for row in store.get_chunks_by_ids(list(call_target_ids))}
-        if call_target_ids else {}
+        {row["id"]: row for row in store.get_chunks_by_ids(list(typed_target_ids))}
+        if typed_target_ids else {}
     )
     arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
 
@@ -665,7 +674,7 @@ def _build_refs_incremental(
                     name, receiver, arity = _call_entry_fields(raw)
                 else:
                     name, receiver, arity = raw, None, None
-                ids = local_name_to_ids.get(name)
+                ids = _typed_targets(local_name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
                 targets = (

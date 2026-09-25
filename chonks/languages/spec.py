@@ -109,6 +109,9 @@ class LanguageSpec:
     class_like_chunk_types: frozenset[str] = frozenset()
     # Chunks that only scope other code: named, but never an edge target.
     scope_chunk_types: frozenset[str] = frozenset()
+    # Other languages whose definitions this one's calls, imports and bases
+    # can name; its own always can.
+    typed_ref_languages: frozenset[str] = frozenset()
     def_signature_keyword: str | None = None
     classify_param: "Callable[[str], str | object] | None" = None
     strip_implicit_params: "Callable[[list[str]], list[str]] | None" = None

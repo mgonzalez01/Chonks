@@ -58,6 +58,7 @@ TS_NAME_RULES = (
 
 JAVASCRIPT = LanguageSpec(
     name="javascript",
+    typed_ref_languages=frozenset({"typescript", "tsx"}),
     grammar="javascript",
     version="1",
     extensions=frozenset({".js", ".jsx", ".mjs", ".cjs"}),
@@ -81,6 +82,7 @@ JAVASCRIPT = LanguageSpec(
 
 TYPESCRIPT = LanguageSpec(
     name="typescript",
+    typed_ref_languages=frozenset({"javascript", "tsx"}),
     grammar="typescript",
     version="1",
     extensions=frozenset({".ts"}),
@@ -111,6 +113,7 @@ TYPESCRIPT = LanguageSpec(
 
 TSX = LanguageSpec(
     name="tsx",
+    typed_ref_languages=frozenset({"javascript", "typescript"}),
     grammar="tsx",
     version="1",
     extensions=frozenset({".tsx"}),

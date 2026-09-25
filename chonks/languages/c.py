@@ -22,6 +22,7 @@ def is_tag_definition(node: Node, src: bytes) -> bool:
 
 C = LanguageSpec(
     name="c",
+    typed_ref_languages=frozenset({"cpp"}),
     grammar="c",
     version="4",
     extensions=frozenset({".c"}),
