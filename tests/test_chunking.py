@@ -810,6 +810,16 @@ def test_leading_guard_absorbed_into_function_below():
     assert "#endif" in segs[0]["content"]
 
 
+def test_leading_comment_keeps_the_function_refs():
+    for lang, comment in (("cpp", "// Adds the steps."), ("python", "# Adds the steps.")):
+        src = (_bigfunc("A", lang) + "\n\n" + comment + "\n" + _bigfunc("B", lang) + "\n").encode()
+        segs = segment_file(src, lang)
+        b = next(s for s in segs if s["name"] == "func_B")
+        assert comment in b["content"]
+        called = {e["name"] for e in b["refs"]["calls"]}
+        assert "step_B_0" in called, lang
+
+
 def test_trailing_namespace_comment_attaches_backward():
     """_attach_or_drop_comments: a trailing small labeled comment must attach
     BACKWARD to the last emitted segment, the blind spot distinct from the

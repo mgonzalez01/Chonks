@@ -819,7 +819,7 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
         if pending is not None:  # attach held comment to this real boundary
             seg = _SyntheticSegment(
                 pending.content(src) + "\n" + seg.content(src), pending.start_line, seg.end_line,
-                chunk_type=seg.chunk_type, name=seg.name)
+                chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
             pending = None
         out.append(seg)
     if pending is not None:
