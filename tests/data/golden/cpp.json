@@ -7997,21 +7997,6 @@
                 "arity": 4,
                 "name": "computeStep",
                 "receiver": null
-              },
-              {
-                "arity": 3,
-                "name": "computeAdjustment",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingElse",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingThird",
-                "receiver": null
               }
             ],
             "imports": [],
@@ -8036,16 +8021,6 @@
               {
                 "arity": 3,
                 "name": "computeAdjustment",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingElse",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingThird",
                 "receiver": null
               }
             ],

@@ -47,6 +47,31 @@ def test_split_big_method_keeps_its_name():
     assert all(z <= CHUNK_MAX for z in _sizes(segs))
 
 
+def test_split_method_pieces_carry_only_their_own_calls():
+    body = "\n".join(f"    total += compute_{i}(x) * {i};" for i in range(400))
+    src = f"int applyStep(int x) {{\n    int total = 0;\n{body}\n    return total;\n}}\n".encode()
+    segs = segment_file(src, "cpp")
+    assert len(segs) > 1
+    seen: set[str] = set()
+    for s in segs:
+        called = {e["name"] for e in s["refs"]["calls"]}
+        own_lines = src.decode().splitlines()[s["start_line"] - 1:s["end_line"]]
+        assert called == {f"compute_{i}" for i in range(400) if any(f"compute_{i}(" in ln for ln in own_lines)}
+        seen |= called
+    assert seen == {f"compute_{i}" for i in range(400)}
+
+
+def test_split_class_header_keeps_its_bases_but_not_member_calls():
+    m = []
+    for i in range(8):
+        b = "\n".join(f"    acc += f{j}(x) * {j};" for j in range(40))
+        m.append(f"  int method_{i}(int x) {{\n    int acc = 0;\n{b}\n    return acc;\n  }}")
+    src = ("class Store : public Base {\npublic:\n" + "\n".join(m) + "\n};\n").encode()
+    header = next(s for s in segment_file(src, "cpp") if s["name"] == "Store")
+    assert header["refs"]["inherits"] == ["Base"]
+    assert header["refs"]["calls"] == []
+
+
 def test_giant_single_line_is_hard_split_no_monster():
     line = "static const float noise[] = {" + ",".join(str(i) for i in range(50_000)) + "};\n"
     src = line.encode()
