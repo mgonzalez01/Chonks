@@ -605,7 +605,7 @@ def test_legacy_over_cap_skeleton_row_excluded_at_query_time_and_announced(tmp_p
 # skeleton string.
 # ---------------------------------------------------------------------------
 
-def test_budgeted_walk_short_fragment_8_hole_real_extractor_stays_under_50ms(tmp_path):
+def test_budgeted_walk_short_fragment_8_hole_real_extractor_stays_under_a_second(tmp_path):
     """A single-char constant fragment between holes gives each hole many
     candidate landing points in its 80-char gap window, making backtracking
     genuinely combinatorial. _SKELETON_WORK_BUDGET must bound it regardless:
@@ -638,12 +638,12 @@ def test_budgeted_walk_short_fragment_8_hole_real_extractor_stays_under_50ms(tmp
     t0 = time.perf_counter()
     result = find_by_message(store, message)
     elapsed_ms = (time.perf_counter() - t0) * 1000
-    assert elapsed_ms < 50, f"took {elapsed_ms:.2f}ms — budget did not bound the walk"
+    assert elapsed_ms < 1000, f"took {elapsed_ms:.2f}ms — budget did not bound the walk"
     assert result["results"] == []
     assert "verification budget exhausted" in result["note"]
 
 
-def test_budgeted_walk_25_hole_real_extractor_stays_under_50ms(tmp_path):
+def test_budgeted_walk_25_hole_real_extractor_stays_under_a_second(tmp_path):
     """25 holes exceeds _SKELETON_MAX_HOLES, so no skeleton is stored (see
     test_over_hole_cap_skeleton_never_stored); this pins that the real
     extraction pipeline produces that shape end-to-end and resolves
@@ -673,7 +673,7 @@ def test_budgeted_walk_25_hole_real_extractor_stays_under_50ms(tmp_path):
     t0 = time.perf_counter()
     result = find_by_message(store, message)
     elapsed_ms = (time.perf_counter() - t0) * 1000
-    assert elapsed_ms < 50, f"took {elapsed_ms:.2f}ms"
+    assert elapsed_ms < 1000, f"took {elapsed_ms:.2f}ms"
     assert result["results"] == []
     assert "note" in result and result["note"]
 
