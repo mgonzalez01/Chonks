@@ -200,7 +200,7 @@ A block comment just before a directive's line continuation (`do { /* note */ \`
 
 #### Include / exclude paths
 
-The scan producer skips files whose portable path starts with a configured exclude prefix, from `exclude` in `config.json` or `--exclude`. The optional `include` list (peer to `exclude`, also `--include`) overrides a matching exclude when strictly more specific. Both lists are normalised to forward-slash form with a trailing slash, and matching is by longest prefix:
+The scan producer skips files whose portable path starts with a configured exclude prefix, from `exclude` in `config.json` or `--exclude`. The optional `include` list (peer to `exclude`, also `--include`) overrides a matching exclude when strictly more specific. Both lists are normalised to forward-slash form with a trailing slash, and matching is by longest prefix, ignoring case on Windows and macOS, whose file systems ignore it by default:
 
 - `exclude: ["tmp/"]`, `include: ["tmp/git/a/"]` → everything under `tmp/` is skipped except files under `tmp/git/a/`.
 - `exclude: ["thirdparty/"]`, `include: ["thirdparty/embree/"]` → only that vendored library gets indexed.

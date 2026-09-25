@@ -778,6 +778,24 @@ def test_dir_should_prune_helper():
     assert _dir_should_prune("src", excludes, includes) is False
 
 
+def test_path_filters_ignore_case_where_the_file_system_does(monkeypatch):
+    from chonks.core import paths
+    from chonks.core.paths import _dir_should_prune, _path_allowed, _scope_exclusion
+
+    excludes = ["vendor/"]
+    includes = ["vendor/keep/"]
+    monkeypatch.setattr(paths, "_IGNORE_CASE", True)
+    assert _path_allowed("Vendor/junk/a.py", excludes, includes) is False
+    assert _path_allowed("VENDOR/Keep/b.py", excludes, includes) is True
+    assert _dir_should_prune("Vendor/junk", excludes, includes) is True
+    assert _dir_should_prune("Vendor", excludes, includes) is False
+    assert _scope_exclusion("Vendor/junk", excludes, includes) == "vendor/"
+
+    monkeypatch.setattr(paths, "_IGNORE_CASE", False)
+    assert _path_allowed("Vendor/junk/a.py", excludes, includes) is True
+    assert _dir_should_prune("Vendor/junk", excludes, includes) is False
+
+
 def test_include_rescues_subtree_nested_below_include_prefix(tmp_path):
     """Regression: exclude=["vendor/"] + include=["vendor/keep_me/"] must
     rescue everything nested under vendor/keep_me/, not just that dir itself.
