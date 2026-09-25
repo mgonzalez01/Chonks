@@ -1,5 +1,12 @@
 """Path normalization and filtering helpers for chunking."""
+import sys
 from pathlib import Path
+
+_IGNORE_CASE = sys.platform in ("win32", "darwin")
+
+
+def _fold(path: str) -> str:
+    return path.lower() if _IGNORE_CASE else path
 
 
 def _to_stored_path(fpath: Path, root: Path | None) -> str:
@@ -32,10 +39,13 @@ def _normalize_prefixes(prefixes: list[str] | None) -> list[str]:
 
 def _longest_prefix_match(stored_path: str, prefixes: list[str]) -> str | None:
     """Longest prefix in `prefixes` matching `stored_path` (path equals the
-    prefix's directory or starts with it), or None."""
+    prefix's directory or starts with it), or None. Case is ignored where
+    the file system ignores it by default."""
+    path = _fold(stored_path)
     best: str | None = None
     for p in prefixes:
-        if stored_path == p[:-1] or stored_path.startswith(p):
+        fp = _fold(p)
+        if path == fp[:-1] or path.startswith(fp):
             if best is None or len(p) > len(best):
                 best = p
     return best
@@ -57,9 +67,10 @@ def _path_allowed(stored_path: str, excludes: list[str], includes: list[str]) ->
 def _dir_should_prune(dir_stored_path: str, excludes: list[str], includes: list[str]) -> bool:
     if _path_allowed(dir_stored_path, excludes, includes):
         return False
-    probe = dir_stored_path + "/"
+    probe = _fold(dir_stored_path) + "/"
     for inc in includes:
-        if inc == probe or inc.startswith(probe):
+        fi = _fold(inc)
+        if fi == probe or fi.startswith(probe):
             return False
     return True
 
