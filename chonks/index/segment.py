@@ -50,7 +50,7 @@ logger = logging.getLogger("chunking")
 # Bump when a change here would alter chunk boundaries for already-indexed
 # content. Provenance only (meta table, doctor.py); nothing reads it back
 # to gate behavior.
-CHUNKER_VERSION = 4
+CHUNKER_VERSION = 5
 
 # Chunk-size constants: CHUNK_TARGET is UTF-8 characters; CHUNK_MIN/MAX are
 # UTF-8 bytes. Don't mix the two when comparing.
@@ -333,12 +333,25 @@ class _SyntheticSegment:
         return len(self._content.encode("utf-8"))
 
 
+_WORD_RE = re.compile(r"\w")
+
+
 def _merge_small(segs: list, src: bytes) -> list:
-    """Coalesces consecutive sub-CHUNK_MIN segments. BOTH sides must be
-    trivia: absorbing a substantive boundary into a small one would erase
-    its name from the symbol graph. Never merges past CHUNK_MAX."""
+    """Coalesces consecutive sub-CHUNK_MIN segments with no line of words
+    between them. BOTH sides must be trivia: absorbing a substantive boundary
+    into a small one would erase its name from the symbol graph. Never
+    merges past CHUNK_MAX."""
     if not segs:
         return segs
+
+    lines: list[str] = []
+
+    def words_between(prev, seg) -> bool:
+        if seg.start_line <= prev.end_line + 1:
+            return False
+        if not lines:
+            lines.extend(src.decode(errors="replace").split("\n"))
+        return any(_WORD_RE.search(ln) for ln in lines[prev.end_line:seg.start_line - 1])
 
     merged: list = [segs[0]]
     for seg in segs[1:]:
@@ -348,9 +361,11 @@ def _merge_small(segs: list, src: bytes) -> list:
         merged_size = prev_size + 1 + seg.size(src)
         # seg.start_line > prev.end_line excludes salvage's deliberate
         # container/nested-boundary overlap; merging those would corrupt
-        # the synthetic segment's line span.
+        # the synthetic segment's line span. A merged span covers the lines
+        # between its parts, and _fill_coverage_gaps treats spanned lines as chunked.
         if (prev_size < CHUNK_MIN and seg.size(src) < CHUNK_MIN
-                and merged_size <= CHUNK_MAX and seg.start_line > prev.end_line):
+                and merged_size <= CHUNK_MAX and seg.start_line > prev.end_line
+                and not words_between(prev, seg)):
             pc = prev.content(src)
             # Only add a separator when prev's content doesn't already end in "\n".
             combined = pc + ("" if pc.endswith("\n") else "\n") + seg.content(src)
@@ -474,7 +489,7 @@ def _absorb_identity_free_fragments(segs: list, src: bytes, lang: str) -> list:
                 return False
             nc = nxt.content(src)
             combined = text + ("" if text.endswith("\n") else "\n") + nc
-            end_line = _span_end_line(seg.start_line, combined)
+            end_line = max(nxt.end_line, _span_end_line(seg.start_line, combined))
             out[i + 1] = _SyntheticSegment(combined, seg.start_line, end_line,
                                            chunk_type=nxt.chunk_type, name=nxt.name,
                                            refs=nxt.refs)

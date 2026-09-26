@@ -1,5 +1,6 @@
 """test_chunking.py: segment_file's CHUNK_MAX ceiling guarantee against
 noise tables and giant single lines, and named-method preservation."""
+import re
 from pathlib import Path
 
 import pytest
@@ -316,6 +317,38 @@ def test_coverage_completeness_split_inter_child_captured():
     joined = "\n".join(s["content"] for s in segs)
     for k in range(4):
         assert f"ORCH_LINE_{k}" in joined, f"orchestration line {k} dropped between split children"
+    assert all(z <= CHUNK_MAX for z in _sizes(segs))
+
+
+def test_split_class_member_lines_are_in_every_chunk_spanning_them():
+    fields = "\n".join(f"    int light_mask_{i} = {i};" for i in range(20))
+    decls = "\n".join(
+        f"    void draw_shape_{i}(const Point2 &p_from, const Point2 &p_to, float p_width = -1.0);"
+        for i in range(70))
+    src = (
+        "class Canvas {\n"
+        "    struct Data {\n"
+        "        int index = 0;\n"
+        "    };\n"
+        f"{fields}\n"
+        "    bool is_dirty() const { return dirty; }\n"
+        f"{decls}\n"
+        "    int get_id() const { return id; }\n"
+        "};\n"
+    ).encode()
+    assert len(src) > CHUNK_MAX
+
+    segs = segment_file(src, "cpp")
+    own = [{ln.strip() for ln in s["content"].splitlines()} for s in segs]
+    for n, line in enumerate(src.decode().splitlines(), start=1):
+        if not re.search(r"\w", line):
+            continue
+        spanning = [i for i, s in enumerate(segs) if s["start_line"] <= n <= s["end_line"]]
+        assert spanning, f"line {n} is in no chunk: {line.strip()}"
+        for i in spanning:
+            assert line.strip() in own[i], (
+                f"chunk {segs[i]['name']} {segs[i]['start_line']}-{segs[i]['end_line']} "
+                f"spans line {n} but lacks it: {line.strip()}")
     assert all(z <= CHUNK_MAX for z in _sizes(segs))
 
 
@@ -946,6 +979,15 @@ def test_bare_namespace_opening_absorbed_forward_not_backward():
     assert "namespace Foo {" in func_b["content"], (
         "namespace opening was not absorbed forward into the function it introduces"
     )
+
+
+def test_forward_absorbed_namespace_opening_keeps_the_function_end_line():
+    body = _bigfunc("B")
+    src = ("namespace Foo {\n\n" + body + "\n\n}\n").encode()
+    segs = segment_file(src, "cpp")
+    func_b = next(s for s in segs if s["name"] == "func_B")
+    assert "namespace Foo {" in func_b["content"]
+    assert func_b["end_line"] == 2 + len(body.split("\n"))
 
 
 def test_small_named_function_not_merged_into_large_neighbor():
