@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Callable, Mapping
 from ._ast import name_call_target, name_text
 
 if TYPE_CHECKING:
+    import re
+
     from tree_sitter import Node
 
 
@@ -60,6 +62,52 @@ class LiteralSpec:
     plus_type: str | None = None     # binary +/concat node type; only joined if pure literals
     plus_op: str = "+"               # the concat operator token inside plus_type
     skip_fn: "Callable[[Node], bool] | None" = None  # leaf-level exclusion (e.g. docstrings)
+
+
+@dataclass(frozen=True)
+class CallSiteSpec:
+    """Node facts for a call's receiver chain, the declarations that type its
+    head, and the class the call sits in."""
+    # receiver chains: node type -> field names
+    member_access: Mapping[str, tuple[str, str, str]]  # (object, operator, member)
+    scope_access: Mapping[str, tuple[str, str]]        # (scope, name)
+    scope_operator: str
+    calls: Mapping[str, str]                           # callee field
+    type_argument_wrappers: Mapping[str, tuple[str, str]]  # (bare name, type arguments)
+    parenthesized: frozenset[str]
+    subscripts: Mapping[str, str]                      # object field
+    dereferences: Mapping[str, tuple[str, str, str]]   # (operand, operator field, operator)
+    this_expressions: frozenset[str]
+    names: frozenset[str]
+    # expressions that state their own type
+    casts: Mapping[str, str]                           # type field
+    allocations: Mapping[str, str]                     # type field; result is `<type><allocation_suffix>`
+    allocation_suffix: str
+    typed_literals: Mapping[str, str]                  # type field
+    # callee names whose one type argument is the result type
+    type_argument_calls: "re.Pattern[str]"
+    # declarations
+    functions: frozenset[str]                          # a declaration lookup stops here
+    parameter_owners: Mapping[str, "str | None"]       # field leading to the parameter list; None: on the node
+    parameters_field: str
+    parameters: frozenset[str]
+    blocks: frozenset[str]
+    transparent_blocks: frozenset[str]                 # their declarations count in the enclosing block
+    declarations: frozenset[str]
+    declaration_scopes: Mapping[str, tuple[str, ...]]  # statement -> fields whose declarations it scopes
+    range_loops: Mapping[str, str]                     # the field that does not see the loop variable
+    declarators: Mapping[str, str]                     # wrapper -> suffix it adds to the type
+    declarator_names: frozenset[str]
+    binding_declarators: frozenset[str]                # declare several untyped names
+    inferred_types: frozenset[str]
+    type_qualifiers: Mapping[str, frozenset[str]]      # node type -> the words that belong to the type
+    type_field: str
+    declarator_field: str
+    value_field: str
+    # calling class
+    classes: frozenset[str]
+    namespaces: frozenset[str]
+    name_field: str
 
 
 NOT_HANDLED = object()  # returned by a hook to make the engine use its generic code
@@ -137,6 +185,7 @@ class LanguageSpec:
     chain_base_fields: Mapping[str, str] = field(default_factory=dict)
     identifier_leaf_types: frozenset[str] = frozenset()
     call_receiver: "Callable[[Node, Node, bytes], str | None | object] | None" = None
+    call_sites: "CallSiteSpec | None" = None
     variadic_arg_types: frozenset[str] = frozenset()
     keyword_arg_types: frozenset[str] = frozenset()
     class_like_chunk_types: frozenset[str] = frozenset()

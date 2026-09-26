@@ -319,23 +319,48 @@
             "calls": [
               {
                 "arity": 0,
+                "cls": "ns::Widget",
                 "name": "helper",
                 "receiver": null
               },
               {
                 "arity": 1,
+                "cls": "ns::Widget",
                 "name": "call",
-                "receiver": "other"
+                "racc": "->",
+                "receiver": "other",
+                "rhead": {
+                  "name": "this",
+                  "type": null,
+                  "via": "this"
+                },
+                "rpath": [
+                  "other"
+                ]
               },
               {
                 "arity": 0,
+                "cls": "ns::Widget",
                 "name": "Static",
-                "receiver": "ns"
+                "racc": "::",
+                "receiver": "ns",
+                "rhead": {
+                  "name": "ns",
+                  "type": "ns",
+                  "via": "type"
+                }
               },
               {
                 "arity": 0,
+                "cls": "ns::Widget",
                 "name": "Qux",
-                "receiver": "Baz"
+                "racc": "::",
+                "receiver": "Baz",
+                "rhead": {
+                  "name": "Bar::Baz",
+                  "type": "Bar::Baz",
+                  "via": "type"
+                }
               }
             ],
             "imports": [
@@ -364,6 +389,7 @@
             "calls": [
               {
                 "arity": 0,
+                "cls": "ns::Plain",
                 "name": "plain_call",
                 "receiver": null
               }
@@ -2669,7 +2695,13 @@
               {
                 "arity": 2,
                 "name": "method",
-                "receiver": "C"
+                "racc": "::",
+                "receiver": "C",
+                "rhead": {
+                  "name": "A::B::C",
+                  "type": "A::B::C",
+                  "via": "type"
+                }
               }
             ],
             "imports": [],
@@ -2738,12 +2770,33 @@
               {
                 "arity": 1,
                 "name": "d",
-                "receiver": "c"
+                "racc": ".",
+                "receiver": "c",
+                "rhead": {
+                  "name": "a",
+                  "type": null,
+                  "via": "unknown"
+                },
+                "rpath": [
+                  "b",
+                  "c"
+                ]
               },
               {
                 "arity": 0,
                 "name": "z",
-                "receiver": "y"
+                "racc": "->",
+                "receiver": "y",
+                "rhead": {
+                  "name": "obj",
+                  "type": null,
+                  "via": "unknown"
+                },
+                "rpath": [
+                  "w",
+                  "x",
+                  "y"
+                ]
               }
             ],
             "imports": [],
@@ -3290,6 +3343,7 @@
             "calls": [
               {
                 "arity": 0,
+                "cls": "AThing",
                 "name": "go",
                 "receiver": null
               }
@@ -4288,18 +4342,36 @@
             "calls": [
               {
                 "arity": 0,
+                "cls": "Foo",
                 "name": "helper",
                 "receiver": null
               },
               {
                 "arity": 1,
+                "cls": "Foo",
                 "name": "call",
-                "receiver": "other"
+                "racc": "->",
+                "receiver": "other",
+                "rhead": {
+                  "name": "this",
+                  "type": null,
+                  "via": "this"
+                },
+                "rpath": [
+                  "other"
+                ]
               },
               {
                 "arity": 0,
+                "cls": "Foo",
                 "name": "Static",
-                "receiver": "Bar"
+                "racc": "::",
+                "receiver": "Bar",
+                "rhead": {
+                  "name": "Bar",
+                  "type": "Bar",
+                  "via": "type"
+                }
               }
             ],
             "imports": [
@@ -7521,6 +7593,7 @@
             "calls": [
               {
                 "arity": 1,
+                "cls": "AThing",
                 "name": "ASSERT",
                 "receiver": null
               }

@@ -252,12 +252,13 @@ Every other field has a default, and the defaults give no typed edges, no litera
 
 Then run `uv run pytest -q`. The registry refuses the module at import when a boundary type has no label, when another language owns the extension, or when a label conflicts with another language's label for the same node type. Run `uv run python scripts/gen_language_tables.py` to rewrite the language tables here and in README.md; a test fails while they are stale. Add three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error. Bump `CHUNKER_VERSION` only when an existing corpus would chunk differently. A new extension causes that only when the text fallback indexed it before.
 
-**Tier 2, full fidelity**, four more fields on the same spec, each independent:
+**Tier 2, full fidelity**, more fields on the same spec, each independent except where noted:
 
 - `refs_spec` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`Field`, `FieldChildren`, or `Children` from `chonks/languages/spec.py`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
 - `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
 - `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
 - `class_model` is a `ClassModelSpec` that names the namespace, class and function node types, the member declarations of a class body with the reader that turns each into members, a `Children` rule for the bases, and the using-directive node types. It fills `members`, `class_bases` and `using_namespaces`. C++ has one.
+- `call_sites` is a `CallSiteSpec` naming the node types and fields of receiver chains, local declarations and classes, which adds call-site evidence to `calls` entries. Needs `refs_spec`; C++ sets it.
 
 Nothing outside `chonks/languages/` carries a language list. `chonks/index/`, `chonks/index/graph/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
 
@@ -275,7 +276,16 @@ A plugin extension already claimed by one of the indexer's admission sets — `D
 
 #### Typed edges (calls, imports, inherits)
 
-At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, hlsl, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, deduplicated on the full fingerprint and capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
+At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, hlsl, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
+
+In a language whose spec sets `call_sites` (C++), a `calls` entry also carries call-site evidence, each key present only when it applies:
+
+- `racc`: `.`, `->` or `::`, how the callee is reached.
+- `rhead`: `{"name", "via", "type"}`, the root of the receiver chain. `via` is `param` or `local` when the enclosing function declares it, `this`, `type` for a `X::` qualifier, else `unknown`. `type` is the declared type as written, or the type the expression states (a cast, `new T`, `T{}`, `make_*<T>`), else null; a call head is named `f()`.
+- `rpath`: the member steps from the head to the callee, calls written `get()`, plus `[]` and `*`.
+- `cls`: the calling class, qualified by its namespaces and outer classes, template arguments stripped.
+
+Entries that differ only in evidence count as one receiver and arity variant, which keeps at most 4 of them (`_REFS_MAX_EVIDENCE_PER_CALL`). The graph build reads only `name`, `receiver` and `arity`.
 
 `index.graph.refs.build_refs` resolves the buckets against the symbol-name index and writes `'calls'`, `'imports'`, or `'inherits'` into `chunk_refs.edge_type`. A typed reference only resolves to definers in the caller's own language or one its `LanguageSpec.typed_ref_languages` names: C++ and C name each other, GDScript names C++ (its classes extend the engine's), and JavaScript, TypeScript and TSX name each other. For `calls`, `_discriminate_definers` narrows a multi-definer name collision to the definers whose owning qualifier or class matches the call's receiver token, then to those arity-compatible with the argument count (a C++ method defined outside its class also takes the declarations in its class, where default arguments live), falling back to the full name-index fan-out only when the call site carries no receiver or arity evidence. Content-scan edges are `'mentions'`, or its high-PMI slice `'associated'`; cross-language same-name pairing is `'xlang'`. A C++ namespace body or C# namespace chunk keeps its name but is never the target of an edge, since `ns::X` qualifies a name rather than depending on the namespace. A typed edge supersedes a `'mentions'` or `'associated'` edge for the same `(from_id, to_id)` pair.
 
