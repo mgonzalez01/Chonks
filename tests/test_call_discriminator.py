@@ -9,6 +9,7 @@ from chonks.index.graph.call_resolve import (
     _discriminate_definers,
 )
 from chonks.index.graph.refs import _build_graph
+from chonks.languages.cpp import member_declaration_at
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +114,40 @@ def test_arity_compatible_anchors_on_called_name_not_chunk_own_name():
     assert _arity_compatible("id1", chunk, "strip", 2, cache) is False
     assert _arity_compatible("id1", chunk, "__init__", 0, cache) is True
     assert set(cache) == {("id1", "strip"), ("id1", "__init__")}
+
+
+def test_arity_scan_does_not_read_a_longer_name_as_the_called_one():
+    chunk = {"name": "Vector", "language": "cpp",
+             "content": "class Vector {\n  void resize(int p_size);\n  int size() const;\n};"}
+    assert _arity_compatible("v", chunk, "size", 0, {}) is True
+    assert _arity_compatible("v", chunk, "size", 1, {}) is False
+
+
+_THREAD_START = {"name": "Thread::start", "chunk_type": "function_definition", "language": "cpp",
+                 "content": "Error Thread::start(Callback p_cb, void *p_ud) {\n  return OK;\n}"}
+_THREAD_CLASS = {"name": "Thread", "chunk_type": "class_specifier", "language": "cpp",
+                 "content": "class Thread {\npublic:\n  Error start(Callback p_cb, void *p_ud = nullptr);\n"
+                            "  void restart() { worker.start(a, b, c); }\n};"}
+
+
+def _thread_decls(qualifier: str) -> list[dict]:
+    return [_THREAD_CLASS] if qualifier == "Thread" else []
+
+
+def test_arity_compatible_takes_defaults_from_the_class_declaration():
+    assert _arity_compatible("t", _THREAD_START, "start", 1, {}, _thread_decls) is True
+    assert _arity_compatible("t", _THREAD_START, "start", 1, {}) is False
+    assert _arity_compatible("t", _THREAD_START, "start", 3, {}, _thread_decls) is False
+
+
+def test_cpp_member_declaration_has_a_type_before_the_name():
+    cases = [
+        ("Error start(", True), ("const T &start(", True), ("Vector<int> start(", True), ("T *start(", True),
+        ("x.start(", False), ("p->start(", False), ("return start(", False), ("a && start(", False),
+        ("{ start(", False), ("Ns::start(", False),
+    ]
+    for text, declares in cases:
+        assert member_declaration_at(text, text.rindex("start(")) is declares, text
 
 
 # ---------------------------------------------------------------------------
@@ -301,3 +336,17 @@ def test_build_graph_typed_edges_only_reach_languages_the_caller_can_name():
     edges = _build_graph(chunks)
     assert {v for (u, v), t in edges.items() if u == "cpp_caller" and t == "calls"} == {"cpp_tick", "c_tick"}
     assert edges.get(("gd_caller", "cpp_node")) == "inherits"
+
+
+def test_build_graph_calls_resolve_through_a_default_declared_in_the_class():
+    chunks = [
+        {"id": "caller", "name": "run", "language": "cpp", "content": "void run() { start(cb); }",
+         "metadata": {"calls": [{"name": "start", "receiver": None, "arity": 1}]}},
+        {"id": "thread_cls", **_THREAD_CLASS},
+        {"id": "thread_start", **_THREAD_START},
+        {"id": "timer_start", "name": "Timer::start", "chunk_type": "function_definition",
+         "language": "cpp", "content": "void Timer::start(int a, int b) {}"},
+    ]
+    edges = _build_graph(chunks, {"start": ["thread_start", "timer_start"]}, owner_decls=_thread_decls)
+    assert edges.get(("caller", "thread_start")) == "calls"
+    assert edges.get(("caller", "timer_start")) != "calls"

@@ -1,6 +1,7 @@
 """C++ language plugin data."""
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from ._ast import (
@@ -11,8 +12,14 @@ from ._naming import (
     cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
     template_inner_name, typedef_name,
 )
+from ._members import (
+    class_name, name_without_template_args, read_definition, read_member, type_ref,
+    using_namespace_name,
+)
 from .spec import (
-    ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED,
+    CallSiteSpec, ChildSpec, Children, ClassModelSpec, Field, LanguageSpec, LiteralSpec, NameRule,
+    NestedSpec,
+    NOT_HANDLED,
 )
 
 if TYPE_CHECKING:
@@ -83,6 +90,89 @@ def classify_param(part: str) -> "str | object":
     return NOT_HANDLED
 
 
+# Words that make the `name(` after them a call, not a declaration.
+_CALL_CONTEXT_WORDS = frozenset({
+    "return", "else", "case", "new", "delete", "throw", "co_return", "co_yield",
+    "sizeof", "alignof", "decltype", "typeid", "noexcept", "and", "or", "not",
+})
+
+
+def member_declaration_at(content: str, pos: int) -> bool:
+    """A type comes right before `name(` at `pos`: `Error start(` and
+    `const T &get(` declare, `x.start(`, `p->get(` and `return get(` call."""
+    j = pos - 1
+    while j >= 0 and content[j].isspace():
+        j -= 1
+    if j < 0:
+        return False
+    ch = content[j]
+    if ch == "*":
+        return True
+    if ch == "&":
+        return content[j - 1:j] != "&"
+    if ch == ">":
+        return content[j - 1:j] != "-"
+    if not (ch.isalnum() or ch == "_"):
+        return False
+    k = j
+    while k >= 0 and (content[k].isalnum() or content[k] == "_"):
+        k -= 1
+    return content[k + 1:j + 1] not in _CALL_CONTEXT_WORDS
+
+
+_PREPROC_BLOCKS = frozenset({"preproc_if", "preproc_ifdef", "preproc_else", "preproc_elif", "preproc_elifdef"})
+
+CALL_SITES = CallSiteSpec(
+    member_access={"field_expression": ("argument", "operator", "field")},
+    scope_access={"qualified_identifier": ("scope", "name")},
+    scope_operator="::",
+    calls={"call_expression": "function"},
+    type_argument_wrappers={
+        t: ("name", "arguments") for t in ("template_function", "template_method", "template_type")
+    },
+    parenthesized=frozenset({"parenthesized_expression"}),
+    subscripts={"subscript_expression": "argument"},
+    dereferences={"pointer_expression": ("argument", "operator", "*")},
+    this_expressions=frozenset({"this"}),
+    names=frozenset({"identifier"}),
+    casts={"cast_expression": "type"},
+    allocations={"new_expression": "type"},
+    allocation_suffix=" *",
+    typed_literals={"compound_literal_expression": "type"},
+    type_argument_calls=re.compile(r"(?i)\w*cast\w*|make_\w+"),
+    functions=frozenset({"function_definition"}),
+    parameter_owners={"function_definition": "declarator", "lambda_expression": "declarator",
+                      "catch_clause": None},
+    parameters_field="parameters",
+    parameters=frozenset({"parameter_declaration", "optional_parameter_declaration"}),
+    blocks=frozenset({"compound_statement", "case_statement"}) | _PREPROC_BLOCKS,
+    transparent_blocks=_PREPROC_BLOCKS,
+    declarations=frozenset({"declaration"}),
+    declaration_scopes={
+        "for_statement": ("initializer",),
+        "if_statement": ("condition",),
+        "while_statement": ("condition",),
+        "switch_statement": ("condition",),
+    },
+    range_loops={"for_range_loop": "right"},
+    declarators={
+        "init_declarator": "", "pointer_declarator": "*", "reference_declarator": "&",
+        "array_declarator": "[]", "parenthesized_declarator": "", "attributed_declarator": "",
+        # `Foo f(Bar());` in a body parses as a function declaration.
+        "function_declarator": "",
+    },
+    declarator_names=frozenset({"identifier"}),
+    binding_declarators=frozenset({"structured_binding_declarator"}),
+    inferred_types=frozenset({"placeholder_type_specifier"}),
+    type_qualifiers={"type_qualifier": frozenset({"const", "volatile"})},
+    type_field="type",
+    declarator_field="declarator",
+    value_field="value",
+    classes=frozenset({"class_specifier", "struct_specifier", "union_specifier"}),
+    namespaces=frozenset({"namespace_definition"}),
+    name_field="name",
+)
+
 INCLUDE = Children((
     ChildSpec(("string_literal",), "imports",
               nested=NestedSpec(("string_content",), name_text)),
@@ -92,6 +182,26 @@ BASES = Children((
     ChildSpec(("base_class_clause",), "inherits",
               nested=NestedSpec(("type_identifier", "qualified_identifier"), name_last_or_text)),
 ))
+
+CLASS_MODEL = ClassModelSpec(
+    namespaces={"namespace_definition": namespace_name},
+    classes={t: class_name for t in (*_CLASS_TYPES, "union_specifier")},
+    members={t: read_member for t in ("field_declaration", "declaration", "function_definition")},
+    functions={"function_definition": read_definition},
+    bases=Children((
+        ChildSpec(("base_class_clause",), "bases",
+                  nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"),
+                                    name_without_template_args)),
+    )),
+    using_namespaces={"using_declaration": using_namespace_name},
+    transparent=frozenset({
+        "template_declaration", "preproc_if", "preproc_ifdef", "preproc_elif", "preproc_elifdef",
+        "preproc_else",
+    }),
+    type_ref=type_ref,
+    pointer_access="->",
+    operator_members={"->": "operator->", "[]": "operator[]", "*": "operator*"},
+)
 
 CPP = LanguageSpec(
     name="cpp",
@@ -151,11 +261,14 @@ CPP = LanguageSpec(
         "identifier", "field_identifier", "type_identifier", "namespace_identifier",
     }),
     call_receiver=qualified_receiver,
+    call_sites=CALL_SITES,
     variadic_arg_types=frozenset({"parameter_pack_expansion"}),
     class_like_chunk_types=frozenset({"class_specifier", "struct_specifier"}),
     scope_chunk_types=frozenset({"namespace_definition", "declaration_list"}),
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
+    member_declaration_at=member_declaration_at,
+    class_model=CLASS_MODEL,
     literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
                          concat_types=("concatenated_string",)),
     header_exts=frozenset({"h", "hh", "hpp", "hxx"}),

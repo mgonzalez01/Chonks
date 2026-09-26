@@ -1064,11 +1064,17 @@ public:
     assert _call_names(refs) == {"helper", "call", "Static"}
     assert set(refs["imports"]) == {"foo.h", "bar.h"}
     assert set(refs["inherits"]) == {"Base", "IOther"}
-    assert _call_entry(refs, "helper") == {"name": "helper", "receiver": None, "arity": 0}
-    assert _call_entry(refs, "call") == {"name": "call", "receiver": "other", "arity": 1}
+    assert _call_entry(refs, "helper") == {"name": "helper", "receiver": None, "arity": 0, "cls": "Foo"}
+    assert _call_entry(refs, "call") == {
+        "name": "call", "receiver": "other", "arity": 1, "racc": "->",
+        "rhead": {"name": "this", "via": "this", "type": None}, "rpath": ["other"], "cls": "Foo",
+    }
     # Bar::Static() is a single-level qualified call: receiver is the whole
     # (only) qualifier, 'Bar'.
-    assert _call_entry(refs, "Static") == {"name": "Static", "receiver": "Bar", "arity": 0}
+    assert _call_entry(refs, "Static") == {
+        "name": "Static", "receiver": "Bar", "arity": 0, "racc": "::",
+        "rhead": {"name": "Bar", "via": "type", "type": "Bar"}, "cls": "Foo",
+    }
 
 
 def test_extract_refs_c_sharp():
@@ -1178,8 +1184,14 @@ void driver() {
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
     refs = _refs(segs, "driver")
-    assert _call_entry(refs, "d") == {"name": "d", "receiver": "c", "arity": 1}
-    assert _call_entry(refs, "z") == {"name": "z", "receiver": "y", "arity": 0}
+    assert _call_entry(refs, "d") == {
+        "name": "d", "receiver": "c", "arity": 1, "racc": ".",
+        "rhead": {"name": "a", "via": "unknown", "type": None}, "rpath": ["b", "c"],
+    }
+    assert _call_entry(refs, "z") == {
+        "name": "z", "receiver": "y", "arity": 0, "racc": "->",
+        "rhead": {"name": "obj", "via": "unknown", "type": None}, "rpath": ["w", "x", "y"],
+    }
 
 
 def test_call_receiver_is_immediate_not_root_python():
@@ -1213,7 +1225,10 @@ void driver() {
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
     refs = _refs(segs, "driver")
-    assert _call_entry(refs, "method") == {"name": "method", "receiver": "C", "arity": 2}
+    assert _call_entry(refs, "method") == {
+        "name": "method", "receiver": "C", "arity": 2, "racc": "::",
+        "rhead": {"name": "A::B::C", "via": "type", "type": "A::B::C"},
+    }
 
 
 def test_templated_call_names_the_function_not_its_type_argument():

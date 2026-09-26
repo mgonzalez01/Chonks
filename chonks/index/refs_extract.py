@@ -6,6 +6,11 @@ import sys
 from tree_sitter import Node
 
 from chonks.core.refresh import register_refresh
+from chonks.index.call_sites import (
+    CallSites as _CallSites,
+    call_evidence as _call_evidence,
+    sites_for as _sites_for,
+)
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table
 from chonks.languages._ast import terminal_identifier as _terminal_identifier
 from chonks.languages.spec import (
@@ -27,6 +32,9 @@ _REFS_MAX_NAMES = 200
 # Bounds one name's own receiver/arity fan-out so it can't consume many
 # of the 200 name slots by itself (dedup is by full fingerprint, not name).
 _REFS_MAX_CALL_VARIANTS_PER_NAME = 8
+
+# Entries sharing one (name, receiver, arity) that differ only in call-site evidence.
+_REFS_MAX_EVIDENCE_PER_CALL = 4
 
 
 # Call-site fingerprint: receiver is the IMMEDIATE token adjacent to the
@@ -103,39 +111,59 @@ def _call_entry_name(entry: "str | dict") -> str | None:
     return entry["name"] if isinstance(entry, dict) else entry
 
 
+def _call_fingerprint(entry: "str | dict") -> tuple:
+    if isinstance(entry, dict):
+        return entry.get("name"), entry.get("receiver"), entry.get("arity")
+    return entry, None, None
+
+
 def _add_call_entry(lst: list, entry: "str | dict") -> None:
-    """Dedups on (name, receiver, arity) but caps on distinct NAMES. Shared
-    by extraction and _merge_refs; both must use this or a merge undoes the cap."""
+    """Dedups on the whole entry. The caps count (name, receiver, arity)
+    fingerprints, so evidence keys never change which fingerprints are kept.
+    Shared by extraction and _merge_refs; both must use this or a merge undoes the cap."""
     if entry in lst:
         return
     name = _call_entry_name(entry)
     if not name:
         return
-    same_name = 0
+    fingerprint = _call_fingerprint(entry)
+    same_fingerprint = 0
+    same_name: set[tuple] = set()
     distinct_names: set[str] = set()
     for e in lst:
         n = _call_entry_name(e)
         distinct_names.add(n)
         if n == name:
-            same_name += 1
-    if same_name >= _REFS_MAX_CALL_VARIANTS_PER_NAME:
+            f = _call_fingerprint(e)
+            same_name.add(f)
+            if f == fingerprint:
+                same_fingerprint += 1
+    if same_fingerprint:
+        if same_fingerprint < _REFS_MAX_EVIDENCE_PER_CALL:
+            lst.append(entry)
+        return
+    if len(same_name) >= _REFS_MAX_CALL_VARIANTS_PER_NAME:
         return
     if name not in distinct_names and len(distinct_names) >= _REFS_MAX_NAMES:
         return
     lst.append(entry)
 
 
-def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: bytes, lang: str) -> None:
+def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: bytes, lang: str,
+                sites: "_CallSites | None" = None) -> None:
     def add(bucket: str, name: str | None) -> None:
         lst = refs[bucket]
         if name and name not in lst and len(lst) < _REFS_MAX_NAMES:
             lst.append(name)
 
-    def add_call(name: str | None, receiver: str | None, arity: int | None) -> None:
+    def add_call(name: str | None, receiver: str | None, arity: int | None, callee: Node) -> None:
         # New entries are fingerprint dicts, not bare strings (legacy shape).
         if not name:
             return
-        _add_call_entry(refs["calls"], {"name": name, "receiver": receiver, "arity": arity})
+        entry = {"name": name, "receiver": receiver, "arity": arity}
+        if sites is not None:
+            entry.update(_call_evidence(n, callee, sites))
+        _add_call_entry(refs["calls"], entry)
 
     if isinstance(rule, _Field):
         target = n.child_by_field_name(rule.field)
@@ -145,6 +173,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                     rule.name_fn(target, src),
                     _receiver(n, target, src, lang),
                     _call_arity(n.child_by_field_name("arguments"), lang),
+                    target,
                 )
             else:
                 add(rule.bucket, rule.name_fn(target, src))
@@ -174,6 +203,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                         spec.name_fn(c, src),
                         receiver,
                         _call_arity(n.child_by_field_name("arguments"), lang),
+                        c,
                     )
                 else:
                     add(spec.bucket, spec.name_fn(c, src))
@@ -355,18 +385,21 @@ def _extract_refs(node: Node, lang: str, src: bytes,
     """{"calls", "imports", "inherits", "literals"} lists. "calls" entries
     are fingerprint dicts; a legacy bare string is treated as receiver=None,
     arity=None so old stored data still resolves. `lines` (first, last, 1-based)
-    keeps only references that start on those lines, for one piece of a split node."""
+    keeps only references that start on those lines, for one piece of a split node;
+    call-site evidence still reads declarations anywhere in the tree."""
     refs: dict[str, list[str]] = {"calls": [], "imports": [], "inherits": [], "literals": []}
     first, last = lines if lines is not None else (0, sys.maxsize)
 
     spec = LANG_REFS_SPECS.get(lang)
     if spec is not None:
+        sites = _sites_for(node, lang, src)
+
         def walk(n: Node) -> None:
             if n.end_point[0] + 1 < first or n.start_point[0] + 1 > last:
                 return
             rule = spec.get(n.type)
             if rule is not None and n.start_point[0] + 1 >= first:
-                _apply_rule(n, rule, refs, src, lang)
+                _apply_rule(n, rule, refs, src, lang, sites)
             for child in n.children:
                 walk(child)
 

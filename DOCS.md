@@ -99,6 +99,7 @@ flowchart TD
     CHUNKS --> PR["chunk_pagerank&#10;chunk_id PK + score&#10;written at index time by persist_pagerank"]
     CHUNKS --> INDEG["chunk_indegree&#10;chunk_id + edge_type &middot; n&#10;precomputed fan-in, kept in sync with chunk_refs"]
     CHUNKS --> SYMS["symbols&#10;decoupled named boundaries"]
+    CHUNKS --> MEMB["members &middot; class_bases &middot; using_namespaces&#10;class model: members and bases per class"]
     CHUNKS --> LIT["chunk_literals&#10;chunk_id &middot; text &middot; skeleton &middot; line&#10;source-literal index for find_by_message"]
     LIT -->|mirrors| LFTS["literals_fts&#10;FTS5 virtual &mdash; literal/message search"]
     FOLD["folder_summaries&#10;per-folder summary + embedding"]
@@ -118,10 +119,11 @@ The tables:
 - `chunk_pagerank`, precomputed ranking written at index time and read at every `/repomap` call.
 - `chunk_indegree`, the fan-in of `chunk_refs` per `(chunk_id, edge_type)`, written at graph-build time and read by `/hubs`.
 - `symbols`, the decoupled named-boundary index, since the chunker sometimes folds several named things into one `chunks` row while `find_symbol` and `find_usages` need every name individually addressable.
+- `members`, `class_bases` and `using_namespaces`, the class model: each class's fields, method declarations and method definitions, with type text, arity range and flags (`virtual`, `pure`, `static`, `const`, `override`), and its bases. The owner is qualified by namespace and outer class, without template arguments (`scene::List::Element`); an out-of-class definition belongs to its qualifier resolved against the enclosing namespaces. `using_namespaces` holds each file's `using namespace` directives with the namespace they appear in. A member's `chunk_id` is the chunk holding its line. Written per file with `symbols`; the graph build reads them to resolve C++ calls that carry call-site evidence. The `class_model_version` meta flag is set once a full or `--force` run has written every file's rows.
 - `chunk_literals`, mirrored into `literals_fts`, holding every decoded string literal a chunk contains plus a hole-collapsed skeleton, populated at parse time and consumed only by `find_by_message`.
 - `folder_summaries`, one row per folder with its summary text and embedding.
 - `macro_definitions`, each C, C++ and HLSL file's `#define` lines and type names under its content hash, read by the indexer before parsing.
-- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
+- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`, `class_model_version`.
 - `graph_nodes` and `graph_edges`, the directory and file containment hierarchy (`dir:` and `file:` nodes plus `contains` edges), kept separate from `chunks` and `chunk_refs`.
 
 ---
@@ -138,7 +140,7 @@ Writes `config.json` for a new install, from `uv run chonks init` or `make init`
 
 ### chonks/index/ — Indexing Pipeline
 
-In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
+In: a source tree. Out: rows in `chunks`, `symbols`, `members`, `class_bases`, `using_namespaces`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
 
 **Scan.** The producer walks the tree, applies the exclude and include prefixes, hashes each file inline, and pushes it to `parse_q` when the hash changed. It runs the orphan prune itself after the walk, since pruning needs the complete `scanned_stored` set, and commits its pre-deletes and prunes once at the end. The progress bar starts as an indeterminate `Scanning N file` counter and switches to `Parsed n/M` when the scan finishes.
 
@@ -250,11 +252,13 @@ Every other field has a default, and the defaults give no typed edges, no litera
 
 Then run `uv run pytest -q`. The registry refuses the module at import when a boundary type has no label, when another language owns the extension, or when a label conflicts with another language's label for the same node type. Run `uv run python scripts/gen_language_tables.py` to rewrite the language tables here and in README.md; a test fails while they are stale. Add three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error. Bump `CHUNKER_VERSION` only when an existing corpus would chunk differently. A new extension causes that only when the text fallback indexed it before.
 
-**Tier 2, full fidelity**, three more fields on the same spec, each independent:
+**Tier 2, full fidelity**, more fields on the same spec, each independent except where noted:
 
 - `refs_spec` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`Field`, `FieldChildren`, or `Children` from `chonks/languages/spec.py`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
 - `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
 - `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+- `class_model` is a `ClassModelSpec` that names the namespace, class and function node types, the member declarations of a class body with the reader that turns each into members, a `Children` rule for the bases, and the using-directive node types. It fills `members`, `class_bases` and `using_namespaces`. Its `type_ref`, `pointer_access` and `operator_members` let the graph build read written types and member access through it. C++ has one.
+- `call_sites` is a `CallSiteSpec` naming the node types and fields of receiver chains, local declarations and classes, which adds call-site evidence to `calls` entries. Needs `refs_spec`; C++ sets it.
 
 Nothing outside `chonks/languages/` carries a language list. `chonks/index/`, `chonks/index/graph/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
 
@@ -272,9 +276,25 @@ A plugin extension already claimed by one of the indexer's admission sets — `D
 
 #### Typed edges (calls, imports, inherits)
 
-At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, hlsl, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, deduplicated on the full fingerprint and capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
+At parse time `chonks/index/refs_extract.py`'s `_extract_refs` walks each boundary node in cpp, c, hlsl, c_sharp, python, and gdscript for three reference buckets, stored under `chunks.metadata` as `"calls"`, `"imports"`, and `"inherits"`. `imports` and `inherits` are deduplicated name lists capped at 200 entries. A `calls` entry is a call-site fingerprint of `{"name", "receiver", "arity"}`, capped at 200 distinct names with at most 8 receiver and arity variants per name (`_REFS_MAX_CALL_VARIANTS_PER_NAME`). Every other language (JavaScript, TypeScript/TSX, Lua) gets empty lists and falls back to untyped behaviour.
 
-`index.graph.refs.build_refs` resolves the buckets against the symbol-name index and writes `'calls'`, `'imports'`, or `'inherits'` into `chunk_refs.edge_type`. A typed reference only resolves to definers in the caller's own language or one its `LanguageSpec.typed_ref_languages` names: C++ and C name each other, GDScript names C++ (its classes extend the engine's), and JavaScript, TypeScript and TSX name each other. For `calls`, `_discriminate_definers` narrows a multi-definer name collision to the definers whose owning qualifier or class matches the call's receiver token, then to those arity-compatible with the argument count, falling back to the full name-index fan-out only when the call site carries no receiver or arity evidence. Content-scan edges are `'mentions'`, or its high-PMI slice `'associated'`; cross-language same-name pairing is `'xlang'`. A C++ namespace body or C# namespace chunk keeps its name but is never the target of an edge, since `ns::X` qualifies a name rather than depending on the namespace. A typed edge supersedes a `'mentions'` or `'associated'` edge for the same `(from_id, to_id)` pair.
+In a language whose spec sets `call_sites` (C++), a `calls` entry also carries call-site evidence, each key present only when it applies:
+
+- `racc`: `.`, `->` or `::`, how the callee is reached.
+- `rhead`: `{"name", "via", "type"}`, the root of the receiver chain. `via` is `param` or `local` when the enclosing function declares it, `this`, `type` for a `X::` qualifier, else `unknown`. `type` is the declared type as written, or the type the expression states (a cast, `new T`, `T{}`, `make_*<T>`), else null; a call head is named `f()`.
+- `rpath`: the member steps from the head to the callee, calls written `get()`, plus `[]` and `*`.
+- `cls`: the calling class, qualified by its namespaces and outer classes, template arguments stripped.
+
+Entries that differ only in evidence count as one receiver and arity variant, which keeps at most 4 of them (`_REFS_MAX_EVIDENCE_PER_CALL`).
+
+`index.graph.refs.build_refs` resolves the buckets against the symbol-name index and writes `'calls'`, `'imports'`, or `'inherits'` into `chunk_refs.edge_type`. A typed reference only resolves to definers in the caller's own language or one its `LanguageSpec.typed_ref_languages` names: C++ and C name each other, GDScript names C++ (its classes extend the engine's), and JavaScript, TypeScript and TSX name each other. For `calls`, `_discriminate_definers` narrows a multi-definer name collision to the definers whose owning qualifier or class matches the call's receiver token, then to those arity-compatible with the argument count (a C++ method defined outside its class also takes the declarations in its class, where default arguments live), falling back to the full name-index fan-out only when the call site carries no receiver or arity evidence. Content-scan edges are `'mentions'`, or its high-PMI slice `'associated'`; cross-language same-name pairing is `'xlang'`. A C++ namespace body or C# namespace chunk keeps its name but is never the target of an edge, since `ns::X` qualifies a name rather than depending on the namespace. A typed edge supersedes a `'mentions'` or `'associated'` edge for the same `(from_id, to_id)` pair.
+
+Once every file has class-model rows (`class_model_version`), a call with call-site evidence is first resolved through the class model (`index/graph/members.py`):
+
+- The receiver's class comes from `rhead`'s type, then each `rpath` step through the member's field or return type; `->` on a class goes through its `operator->`, and a class template written with one argument stands for it. `this` and a bare call use the calling class `cls`, a field head is a field of it, and `X::f()` names the class `X`.
+- Names resolve through the calling class and its enclosing scopes, the file's `using namespace` directives, and, for code outside any class, the namespaces the file declares classes in.
+- The call links the method's rows in that class or the nearest base that has it: definitions that fit the argument count (a definition outside its class also fits through a declaration of the same width), else fitting declarations (defined outside the corpus, or pure), else every definition. These targets need not be in the name index.
+- A call whose class, with every base known, lacks the method, or whose evidence names a class the model does not have, links nothing (`UNRESOLVED_TARGETS`). A bare call the calling class does not have, `X::f()` where `X` is no class, and every call without evidence take the name index as above.
 
 **PMI-scored `associated` edges (`associated_top_frac`, default `0.02`).** The mentions pass yields a `(chunk, referenced name)` pair for every name a chunk's `_WORD_RE` scan finds among the indexed symbol names, after `cap_mentions_fanout`. `index.graph.refs._classify_mentions` scores each pair corpus-wide as `PMI(A, n) = log2(T / (|referenced(A)| * df(n)))`, where `T` is the total pair count, `df(n)` the number of chunks referencing `n`, and `|referenced(A)|` chunk `A`'s distinct-name count, and relabels the top `associated_top_frac` fraction as `'associated'`, every definer edge of a promoted pair inheriting the label. Only the full-rebuild path computes PMI, so existing labels stand until `chonks index --rebuild-graphs`.
 

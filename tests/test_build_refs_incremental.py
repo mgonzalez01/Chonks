@@ -1014,3 +1014,134 @@ def test_a_call_to_a_name_with_many_definers_stays_typed_incrementally(caplog):
     got = _edges(store)
     assert got == _full_rebuild_edges(definers + [caller, new])
     assert ("c2", "d0", "calls") in got
+
+
+def test_an_incremental_call_takes_defaults_from_a_class_split_into_pieces(caplog):
+    """The declaration sits in a later piece of the class, not the one
+    named after it; the class's symbol span finds it."""
+    store = _mk_store()
+    corpus = [
+        _chunk("thread_head", "thread.h", name="Thread", chunk_type="class_specifier",
+               start_line=1, end_line=2, content="class Thread {\n  int id = 0;"),
+        _chunk("thread_rest", "thread.h", name="<block>", chunk_type="module", start_line=3, end_line=4,
+               content="  Error start(Callback p_cb, void *p_ud = nullptr);\n};"),
+        _chunk("thread_start", "thread.cpp", name="Thread::start",
+               content="Error Thread::start(Callback p_cb, void *p_ud) { return OK; }"),
+        _chunk("timer_start", "timer.cpp", name="Timer::start", content="void Timer::start(int a, int b) {}"),
+    ]
+    symbols = [{"path": "thread.h", "name": "Thread", "kind": "class_specifier", "language": "cpp",
+                "start_line": 1, "end_line": 4, "chunk_id": "thread_head"}]
+    _insert(store, corpus)
+    store.insert_symbols(symbols)
+    build_refs(store)
+
+    new = _chunk("c1", "c1.cpp", name="run", content="void run() { start(cb); }",
+                 metadata={"calls": [{"name": "start", "receiver": None, "arity": 1}]})
+    _insert(store, [new])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _insert(ref, corpus + [new])
+    ref.insert_symbols(symbols)
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "thread_start", "calls") in got
+    assert ("c1", "timer_start", "calls") not in got
+
+
+def _member(owner: str, name: str, kind: str, line: int, chunk_id: str, path: str,
+            type_text: str | None = None) -> dict:
+    return {"path": path, "language": "cpp", "owner": owner, "name": name, "kind": kind,
+            "type_text": type_text, "arity_min": 0, "arity_max": 0, "variadic": 0, "flags": None,
+            "line": line, "chunk_id": chunk_id}
+
+
+def _class_span(name: str, path: str, start: int, end: int, chunk_id: str) -> dict:
+    return {"path": path, "name": name, "kind": "class_specifier", "language": "cpp",
+            "start_line": start, "end_line": end, "chunk_id": chunk_id}
+
+
+def _with_class_model(store: Store, chunks: list[dict], model: dict[str, list[dict]],
+                      spans: list[dict]) -> None:
+    _insert(store, chunks)
+    for path, rows in model.items():
+        store.replace_class_model(path, rows, [], [])
+    store.insert_symbols(spans)
+    store.set_meta("class_model_version", "1")
+
+
+_DRAW_CALL = {"name": "draw", "receiver": "s", "arity": 0, "racc": "->",
+              "rhead": {"name": "s", "via": "param", "type": "Shape *"}}
+
+
+def test_an_incremental_call_resolves_through_the_class_model(caplog):
+    corpus = [
+        _chunk("shape_h", "shape.h", name="Shape", chunk_type="class_specifier", start_line=1, end_line=4,
+               content="class Shape {\npublic:\n  virtual void draw() = 0;\n};"),
+        _chunk("canvas_draw", "canvas.cpp", name="Canvas::draw", content="void Canvas::draw() {}"),
+    ]
+    model = {"shape.h": [_member("Shape", "draw", "method_decl", 3, "shape_h", "shape.h")]}
+    spans = [_class_span("Shape", "shape.h", 1, 4, "shape_h")]
+    store = _mk_store()
+    _with_class_model(store, corpus, model, spans)
+    build_refs(store)
+
+    new = _chunk("c1", "use.cpp", name="render", content="void render(Shape *s) { s->draw(); }",
+                 metadata={"calls": [_DRAW_CALL]})
+    _insert(store, [new])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _with_class_model(ref, corpus + [new], model, spans)
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "shape_h", "calls") in got
+    assert ("c1", "canvas_draw", "calls") not in got
+
+
+def test_an_incremental_class_change_retargets_a_call_that_names_only_the_member(caplog):
+    """The caller reaches Shape through a field and never names it; the
+    declaration it now resolves to is a member of the changed class."""
+    canvas = _chunk("canvas_h", "canvas.h", name="Canvas", chunk_type="class_specifier", start_line=1, end_line=3,
+                    content="class Canvas {\n  Shape *surface;\n};")
+    caller = _chunk("c1", "use.cpp", name="render", content="void render(Canvas *c) { c->surface->outline(); }",
+                    metadata={"calls": [{"name": "outline", "receiver": "surface", "arity": 0, "racc": "->",
+                                         "rhead": {"name": "c", "via": "param", "type": "Canvas *"},
+                                         "rpath": ["surface"]}]})
+    old_shape = _chunk("shape_h", "shape.h", name="Shape", chunk_type="class_specifier", start_line=1, end_line=3,
+                       content="class Shape {\n  void draw();\n};")
+    new_shape = _chunk("shape_h2", "shape.h", name="Shape", chunk_type="class_specifier", start_line=1, end_line=4,
+                       content="class Shape {\n  void draw();\n  void outline();\n};")
+    filler = [_chunk(f"filler{i}", f"filler{i}.cpp", name=f"filler{i}", content=f"void filler{i}() {{}}")
+              for i in range(12)]
+    canvas_rows = [_member("Canvas", "surface", "field", 2, "canvas_h", "canvas.h", "Shape *")]
+    spans = [_class_span("Canvas", "canvas.h", 1, 3, "canvas_h")]
+    store = _mk_store()
+    _with_class_model(store, [canvas, caller, old_shape] + filler, {
+        "canvas.h": canvas_rows, "shape.h": [_member("Shape", "draw", "method_decl", 2, "shape_h", "shape.h")],
+    }, spans + [_class_span("Shape", "shape.h", 1, 3, "shape_h")])
+    build_refs(store)
+
+    deleted_ids: set[str] = set()
+    deleted_names: set[str] = set()
+    _delete_tracked(store, "shape.h", deleted_ids, deleted_names)
+    new_rows = [_member("Shape", "draw", "method_decl", 2, "shape_h2", "shape.h"),
+                _member("Shape", "outline", "method_decl", 3, "shape_h2", "shape.h")]
+    new_span = _class_span("Shape", "shape.h", 1, 4, "shape_h2")
+    _insert(store, [new_shape])
+    store.replace_class_model("shape.h", new_rows, [], [])
+    store.insert_symbols([new_span])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"shape_h2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _with_class_model(ref, [canvas, caller, new_shape] + filler,
+                      {"canvas.h": canvas_rows, "shape.h": new_rows}, spans + [new_span])
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "shape_h2", "calls") in got
