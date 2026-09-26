@@ -1579,7 +1579,7 @@ def test_watchdog_does_not_fire_during_bisection_recovery(tmp_path):
         model = "fake"
         url   = "http://localhost:9999"
         def embed_documents(self, texts, client=None, **kw):
-            time.sleep(0.08)  # each round trip is fast; the SEQUENCE is long
+            time.sleep(0.25)  # each round trip is fast; the SEQUENCE is long
             if any("CRC_TABLE" in t for t in texts):
                 raise RuntimeError("400: input exceeds per-slot token budget")
             return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
@@ -1589,7 +1589,7 @@ def test_watchdog_does_not_fire_during_bisection_recovery(tmp_path):
     store = Store(tmp_path / "test.db")
     result = index_paths(
         [str(tmp_path)], store, _OffenderEmbedder(),
-        root=tmp_path, embed_batch=8, no_progress_timeout=0.3,
+        root=tmp_path, embed_batch=8, no_progress_timeout=1.0,
     )
     store.close()
 
