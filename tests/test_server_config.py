@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -17,6 +18,28 @@ def _run_main_with_config(monkeypatch, tmp_path, config: dict) -> None:
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config))
     serve_main.main(["--config", str(config_path), "--db", str(tmp_path / "x.db")])
+
+
+def _default_db_for(monkeypatch, tmp_path, config: dict, *argv: str):
+    monkeypatch.setattr(serve_main.uvicorn, "run", lambda *a, **kw: None)
+    monkeypatch.chdir(tmp_path)
+    serve_projects._projects.clear()
+    (tmp_path / "config.json").write_text(json.dumps(config))
+    serve_main.main(["--config", str(tmp_path / "config.json"), *argv])
+    return serve_projects._projects[serve_projects.DEFAULT_PROJECT]["db_path"]
+
+
+def test_db_flag_overrides_the_config_db(monkeypatch, tmp_path):
+    got = _default_db_for(monkeypatch, tmp_path, {"db": "from_config.db"}, "--db", "from_flag.db")
+    assert got == Path("from_flag.db")
+
+
+def test_config_db_is_used_without_the_flag(monkeypatch, tmp_path):
+    assert _default_db_for(monkeypatch, tmp_path, {"db": "from_config.db"}) == Path("from_config.db")
+
+
+def test_db_defaults_without_flag_or_config(monkeypatch, tmp_path):
+    assert _default_db_for(monkeypatch, tmp_path, {}) == Path(".db/chonks.db")
 
 
 def test_default_project_picks_up_top_level_edge_type_weights(monkeypatch, tmp_path):
