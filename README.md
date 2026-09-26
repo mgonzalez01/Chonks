@@ -1,6 +1,14 @@
-# Chonks: local code retrieval for codebases too big to grep
-
-[![CI](https://github.com/mgonzalez01/Chonks/actions/workflows/ci.yml/badge.svg)](https://github.com/mgonzalez01/Chonks/actions/workflows/ci.yml)
+<p align="center">
+  <img src="assets/chonks-icon.svg" width="96" alt="Chonks logo: a cat-shaped code editor">
+</p>
+<h1 align="center">Chonks</h1>
+<p align="center"><strong>Local code retrieval for codebases too big to grep</strong></p>
+<p align="center">
+  <a href="https://github.com/mgonzalez01/Chonks/actions/workflows/ci.yml"><img src="https://github.com/mgonzalez01/Chonks/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
+<p align="center">
+  <img src="assets/chonks-hero.svg" width="100%" alt="Chonks cuts a source file into chunks at function boundaries, links them by calls and name mentions, answers who calls load_texture() with three chunks and their line ranges, then zooms out as the rest of the codebase joins the graph.">
+</p>
 
 Chonks indexes a large codebase into one local SQLite file and serves it to Claude Code, or any MCP harness, as retrieval tools. There is no LLM inside the pipeline. Retrieval is embeddings, BM25, and graph traversal, and the coding agent does the thinking.
 
