@@ -13,7 +13,8 @@ from ._naming import (
     template_inner_name, typedef_name,
 )
 from ._members import (
-    class_name, name_without_template_args, read_definition, read_member, using_namespace_name,
+    class_name, name_without_template_args, read_definition, read_member, type_ref,
+    using_namespace_name,
 )
 from .spec import (
     CallSiteSpec, ChildSpec, Children, ClassModelSpec, Field, LanguageSpec, LiteralSpec, NameRule,
@@ -197,6 +198,9 @@ CLASS_MODEL = ClassModelSpec(
         "template_declaration", "preproc_if", "preproc_ifdef", "preproc_elif", "preproc_elifdef",
         "preproc_else",
     }),
+    type_ref=type_ref,
+    pointer_access="->",
+    operator_members={"->": "operator->", "[]": "operator[]", "*": "operator*"},
 )
 
 CPP = LanguageSpec(

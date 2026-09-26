@@ -18,7 +18,7 @@ import sqlite_vec
 from chonks.core.batching import batched
 from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
-from chonks.core.symbols import FORWARD_DECLARATION
+from chonks.core.symbols import FIELD, FORWARD_DECLARATION
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
 from chonks.languages import union as _lang_union
@@ -388,8 +388,9 @@ class Store:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT name FROM chunks WHERE path=? AND name IS NOT NULL "
-                "UNION SELECT name FROM symbols WHERE path=?",
-                (path, path),
+                "UNION SELECT name FROM symbols WHERE path=? "
+                "UNION SELECT name FROM members WHERE path=?",
+                (path, path, path),
             ).fetchall()
         return {r[0] for r in rows}
 
@@ -602,6 +603,11 @@ class Store:
                 f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner = ? AND name = ? "
                 "ORDER BY path, line", (owner, name)).fetchall()]
 
+    def get_member_owners_by_path(self, path: str) -> list[str]:
+        with self._lock:
+            return [r[0] for r in self._conn.execute(
+                "SELECT DISTINCT owner FROM members WHERE path = ? ORDER BY owner", (path,)).fetchall()]
+
     def get_members_by_owners(self, owners: list[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
         with self._lock:
@@ -620,6 +626,31 @@ class Store:
                 out.extend(dict(r) for r in self._conn.execute(
                     f"SELECT path, owner, base, line FROM class_bases "
                     f"WHERE owner IN ({placeholders}) ORDER BY owner, path, line", batch).fetchall())
+        return out
+
+    def get_class_owners(self, class_kinds: list[str]) -> set[str]:
+        """Owners a class body declares: those with a base, a field, or a
+        member row inside a span of one of `class_kinds` in the same file.
+        A member defined outside its class does not count."""
+        placeholders = ",".join("?" * len(class_kinds)) or "NULL"
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT owner FROM class_bases UNION SELECT owner FROM members WHERE kind = ? "
+                "UNION SELECT m.owner FROM members m WHERE EXISTS (SELECT 1 FROM symbols s "
+                f"WHERE s.path = m.path AND s.kind IN ({placeholders}) AND s.start_line <= m.line "
+                "AND m.line <= COALESCE(s.end_line, s.start_line))",
+                [FIELD, *class_kinds],
+            ).fetchall()
+        return {r[0] for r in rows}
+
+    def get_member_names_by_chunk_ids(self, chunk_ids: list[str]) -> set[str]:
+        out: set[str] = set()
+        with self._lock:
+            for batch in batched(list(chunk_ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.update(r[0] for r in self._conn.execute(
+                    f"SELECT DISTINCT name FROM members WHERE chunk_id IN ({placeholders})",
+                    batch).fetchall())
         return out
 
     def get_using_namespaces(self, paths: list[str]) -> list[dict[str, Any]]:

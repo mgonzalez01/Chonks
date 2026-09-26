@@ -140,6 +140,15 @@ MemberFn = Callable[["Node", bytes, str], "list[Member]"]  # (node, src, class n
 
 
 @dataclass(frozen=True)
+class TypeRef:
+    """A written type as the class it names: `const ns::Vector<Ref<Foo>> *` ->
+    name `ns::Vector`, args ("Ref<Foo>",), pointers 1."""
+    name: str
+    args: tuple[str, ...] = ()
+    pointers: int = 0
+
+
+@dataclass(frozen=True)
 class ClassModelSpec:
     """Node facts for the class model: the members and bases of each class."""
     namespaces: Mapping[str, NameFn]  # nodes that open a named scope
@@ -154,6 +163,12 @@ class ClassModelSpec:
     transparent: frozenset[str] = frozenset()  # read through in a class body
     body_field: str = "body"
     separator: str = "::"
+    # Resolving calls through the model: the class a written type names, the
+    # access that goes through a pointer, and the member that overloads an
+    # access or a receiver step (`->` -> `operator->`, `[]` -> `operator[]`).
+    type_ref: "Callable[[str], TypeRef | None] | None" = None
+    pointer_access: str | None = None
+    operator_members: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

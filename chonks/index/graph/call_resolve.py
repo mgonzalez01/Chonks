@@ -2,10 +2,14 @@
 
 import re
 from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING
 
 from chonks.core.refresh import register_refresh
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table, union as _lang_union
 from chonks.languages.spec import NOT_HANDLED as _NOT_HANDLED
+
+if TYPE_CHECKING:
+    from chonks.index.graph.members import MemberIndex
 
 
 # ---------------------------------------------------------------------------
@@ -109,10 +113,19 @@ def _discriminate_definers(
     id_to_chunk: dict[str, dict],
     arity_cache: dict,
     owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
+    *,
+    evidence: "dict | str | None" = None,
+    caller: dict | None = None,
+    members: "MemberIndex | None" = None,
 ) -> list[str]:
     """Narrows a name collision's definer set by receiver-qualifier match
     and/or arity compatibility (owner match wins when both apply). NOT a
-    recall-safe filter: a qualifier collision can silently drop the true definer."""
+    recall-safe filter: a qualifier collision can silently drop the true definer.
+    A call whose `evidence` places it in `members` takes that resolution instead."""
+    if members is not None and isinstance(evidence, dict) and caller is not None:
+        resolved = members.resolve(name, arity, evidence, caller)
+        if resolved is not None and resolved.targets is not None:
+            return resolved.targets
     owner_survivors: list[str] | None = None
     if receiver is not None:
         exact = [i for i in ids if receiver in _definer_qualifiers(id_to_chunk.get(i) or {})]

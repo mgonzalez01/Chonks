@@ -7,7 +7,7 @@ from chonks.core.symbols import FIELD, METHOD_DECLARATION, METHOD_DEFINITION
 
 from ._ast import name_text
 from ._naming import _operator_cast_name
-from .spec import Member
+from .spec import Member, TypeRef
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -25,6 +25,54 @@ def strip_template_args(text: str) -> str:
         elif depth == 0 and not ch.isspace():
             out.append(ch)
     return "".join(out)
+
+
+_TYPE_WORDS = frozenset({"const", "volatile", "class", "struct", "union", "enum", "typename"})
+
+
+def type_ref(text: str) -> TypeRef | None:
+    """The class a written type names, its last component's template arguments and its
+    pointer depth (`[]` counts); None for function types, `decltype` or `unsigned int`."""
+    if not text or "(" in text:
+        return None
+    outer: list[str] = []
+    args: list[str] = []
+    arg: list[str] = []
+    depth = 0
+    for ch in text:
+        if ch == "<":
+            if depth:
+                arg.append(ch)
+            else:
+                args, arg = [], []
+            depth += 1
+        elif ch == ">" and depth:
+            depth -= 1
+            if depth:
+                arg.append(ch)
+            else:
+                args.append("".join(arg).strip())
+        elif ch == "," and depth == 1:
+            args.append("".join(arg).strip())
+            arg = []
+        elif depth:
+            arg.append(ch)
+        else:
+            if ch == ":":
+                args = []
+            outer.append(ch)
+    body = "".join(outer)
+    pointers = body.count("*") + body.count("[")
+    for mark in "*&[]":
+        body = body.replace(mark, " ")
+    body = "::".join(part.strip() for part in body.split("::"))
+    words = [w for w in body.split() if w not in _TYPE_WORDS]
+    if len(words) != 1:
+        return None
+    name = words[0].removeprefix("::")
+    if name == "auto" or not all(part.isidentifier() for part in name.split("::")):
+        return None
+    return TypeRef(name, tuple(a for a in args if a), pointers)
 
 
 def name_without_template_args(node: Node, src: bytes) -> str | None:
