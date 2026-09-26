@@ -31,9 +31,10 @@ logger = logging.getLogger("chonks.server")
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Chonks server")
-    parser.add_argument("--db",        default=".db/chonks.db",
-                        help="Path to sqlite DB file (used for the default project; "
-                             "ignored if config defines a 'projects' map without 'default').")
+    parser.add_argument("--db",        default=None,
+                        help="Path to sqlite DB file for the default project. Default: config.json's "
+                             "`db` key, else .db/chonks.db (ignored if config defines a 'projects' "
+                             "map without 'default').")
     parser.add_argument("--port",      type=int, default=11438)
     parser.add_argument("--host",      default="127.0.0.1",
                         help="Bind address (default 127.0.0.1). Use 0.0.0.0 to expose on the LAN.")
@@ -92,7 +93,7 @@ def main(argv=None) -> None:
     default_exclude  = list(full.get("exclude") or [])
     default_include  = list(full.get("include") or [])
     default_root     = resolve_codebase(full.get("codebase"), explicit_config, logger)
-    default_db       = Path(full.get("db") or args.db)
+    default_db       = Path(args.db or full.get("db") or ".db/chonks.db")
     # Per-project so one deployment can mix a LAN GPU and a localhost embedder.
     default_embed_url   = full.get("embed_url",   DEFAULT_EMBED_URL)
     default_embed_model = full.get("embed_model", DEFAULT_EMBED_MODEL)
