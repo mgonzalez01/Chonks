@@ -525,6 +525,19 @@ class Store:
                 out.update(r[0] for r in rows)
         return out
 
+    def get_symbol_spans(self, name: str, kinds: list[str]) -> list[tuple[str, str, int, int]]:
+        """(path, language, start_line, end_line) of every symbol with this
+        name and one of these kinds."""
+        if not kinds:
+            return []
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT path, language, start_line, end_line FROM symbols "
+                f"WHERE name = ? AND kind IN ({','.join('?' * len(kinds))})",
+                [name, *kinds],
+            ).fetchall()
+        return [(r["path"], r["language"], r["start_line"], r["end_line"] or r["start_line"]) for r in rows]
+
     def get_symbol_chunk_ids_by_names(self, names: list[str]) -> dict[str, list[str]]:
         """name -> [chunk_id], scoped variant of get_symbol_name_chunks for
         the incremental build_refs update, so it avoids a full table scan."""

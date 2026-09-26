@@ -1,6 +1,7 @@
 """Receiver and arity discrimination of the definers of a called name."""
 
 import re
+from collections.abc import Callable, Iterable
 
 from chonks.core.refresh import register_refresh
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table, union as _lang_union
@@ -15,6 +16,7 @@ from chonks.languages.spec import NOT_HANDLED as _NOT_HANDLED
 # _definer_qualifiers; omits types whose call sites never carry a
 # receiver fingerprint anyway (JS/TS/lua).
 _CLASS_LIKE_CHUNK_TYPES = _lang_union("class_like_chunk_types")
+_MEMBER_DECLARATION_AT = _lang_table("member_declaration_at")
 
 
 def _call_entry_fields(entry: "str | dict") -> tuple[str | None, str | None, int | None]:
@@ -36,26 +38,60 @@ def _definer_qualifiers(chunk: dict) -> set[str]:
     out: set[str] = set()
     if not name:
         return out
-    dotted = name.replace("::", ".")
-    if "." in dotted:
-        prefix = dotted.rsplit(".", 1)[0]
-        qualifier = prefix.rsplit(".", 1)[-1]
-        if qualifier:
-            out.add(qualifier)
+    qualifier = _name_qualifier(name)
+    if qualifier:
+        out.add(qualifier)
     if chunk.get("chunk_type") in _CLASS_LIKE_CHUNK_TYPES:
         out.add(name)
     return out
 
 
-def _arity_compatible(cid: str, chunk: dict, name: str, call_arity: int, arity_cache: dict) -> bool:
+def _name_qualifier(name: str) -> str | None:
+    """`Cls` for `Ns::Cls::method` or `Cls.method`."""
+    dotted = name.replace("::", ".")
+    if "." not in dotted:
+        return None
+    return dotted.rsplit(".", 1)[0].rsplit(".", 1)[-1] or None
+
+
+def _owner_qualifier(chunk: dict) -> str | None:
+    """The class an out-of-class definition belongs to, in languages that
+    declare methods in the class."""
+    if (chunk.get("language") or "") not in _MEMBER_DECLARATION_AT:
+        return None
+    return _name_qualifier(chunk.get("name") or "")
+
+
+def _owner_class_kinds() -> list[str]:
+    """Symbol kinds of the classes whose members _owner_qualifier points at."""
+    return sorted({t for lang in _MEMBER_DECLARATION_AT for t in _lang_spec(lang).class_like_chunk_types})
+
+
+def _arity_compatible(
+    cid: str,
+    chunk: dict,
+    name: str,
+    call_arity: int,
+    arity_cache: dict,
+    owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
+) -> bool:
     """True if `chunk` could accept `call_arity` positional args (exact
     match or variadic widening); True when no signature is found. Keyed on
-    `name`, not the chunk's own name, since a folded chunk holds several signatures."""
+    `name`, not the chunk's own name, since a folded chunk holds several signatures.
+    An out-of-class definition adds the declarations `owner_decls` finds in
+    its class, where C++ keeps default arguments."""
     key = (cid, name)
     if key not in arity_cache:
-        arity_cache[key] = _definer_param_arity(
-            chunk.get("content") or "", name, chunk.get("language") or "",
-        )
+        lang = chunk.get("language") or ""
+        sig = _definer_param_arity(chunk.get("content") or "", name, lang)
+        owner = _owner_qualifier(chunk)
+        if sig is not None and owner and owner_decls is not None:
+            accept = _MEMBER_DECLARATION_AT[lang]
+            for cls in owner_decls(owner):
+                if cls.get("language") == lang:
+                    declared = _definer_param_arity(cls.get("content") or "", name, lang, accept)
+                    sig = _union_arity(sig, declared)
+        arity_cache[key] = sig
     sig = arity_cache[key]
     if sig is None:
         return True
@@ -72,6 +108,7 @@ def _discriminate_definers(
     arity: int | None,
     id_to_chunk: dict[str, dict],
     arity_cache: dict,
+    owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
 ) -> list[str]:
     """Narrows a name collision's definer set by receiver-qualifier match
     and/or arity compatibility (owner match wins when both apply). NOT a
@@ -94,7 +131,7 @@ def _discriminate_definers(
     if arity is not None:
         arity_survivors = [
             i for i in ids
-            if _arity_compatible(i, id_to_chunk.get(i) or {}, name, arity, arity_cache)
+            if _arity_compatible(i, id_to_chunk.get(i) or {}, name, arity, arity_cache, owner_decls)
         ]
 
     # owner_survivors is None or non-empty; "found nothing" and "doesn't
@@ -120,28 +157,35 @@ _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
 
 
 def _refresh_from_registry() -> None:
-    global _CLASS_LIKE_CHUNK_TYPES, _DEF_SIGNATURE_KEYWORD
+    global _CLASS_LIKE_CHUNK_TYPES, _DEF_SIGNATURE_KEYWORD, _MEMBER_DECLARATION_AT
     _CLASS_LIKE_CHUNK_TYPES = _lang_union("class_like_chunk_types")
     _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
+    _MEMBER_DECLARATION_AT = _lang_table("member_declaration_at")
 
 
 register_refresh(_refresh_from_registry)
 
 
-def _find_signature_param_texts(content: str, name: str, lang: str) -> list[str]:
+def _find_signature_param_texts(
+    content: str, name: str, lang: str, accept: "Callable[[str, int], bool] | None" = None,
+) -> list[str]:
     """Param-list text for EVERY same-named signature in `content`, not
     just the first, since Python @overload stacks can differ in arity.
     A match whose parens never balance is skipped, not fatal."""
     if not name:
         return []
-    keyword = _DEF_SIGNATURE_KEYWORD.get(lang, "")
-    pattern = re.compile(keyword + re.escape(name) + r"\s*\(")
+    # Without a keyword, `size(` must not match inside `resize(`.
+    lead = _DEF_SIGNATURE_KEYWORD.get(lang) or r"(?<![\w$])"
+    pattern = re.compile(lead + "(" + re.escape(name) + r")\s*\(")
     out: list[str] = []
     pos = 0
     while True:
         m = pattern.search(content, pos)
         if m is None:
             break
+        if accept is not None and not accept(content, m.start(1)):
+            pos = m.end()
+            continue
         start = m.end() - 1  # index of the anchor '('
         depth = 0
         end = None
@@ -220,10 +264,20 @@ def _classify_param(part: str, lang: str) -> str:
     return "required"
 
 
-def _definer_param_arity(content: str, name: str, lang: str) -> "tuple[int, int, bool] | None":
+def _union_arity(
+    a: "tuple[int, int, bool]", b: "tuple[int, int, bool] | None",
+) -> "tuple[int, int, bool]":
+    if b is None:
+        return a
+    return (min(a[0], b[0]), max(a[1], b[1]), a[2] or b[2])
+
+
+def _definer_param_arity(
+    content: str, name: str, lang: str, accept: "Callable[[str, int], bool] | None" = None,
+) -> "tuple[int, int, bool] | None":
     """(min_required, max_params, has_variadic) or None (always compatible).
     Overloads WIDEN together (recall over precision); C#'s `this` isn't stripped."""
-    params_texts = _find_signature_param_texts(content, name, lang)
+    params_texts = _find_signature_param_texts(content, name, lang, accept)
     if not params_texts:
         return None
     spec = _lang_spec(lang)

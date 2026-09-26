@@ -1014,3 +1014,38 @@ def test_a_call_to_a_name_with_many_definers_stays_typed_incrementally(caplog):
     got = _edges(store)
     assert got == _full_rebuild_edges(definers + [caller, new])
     assert ("c2", "d0", "calls") in got
+
+
+def test_an_incremental_call_takes_defaults_from_a_class_split_into_pieces(caplog):
+    """The declaration sits in a later piece of the class, not the one
+    named after it; the class's symbol span finds it."""
+    store = _mk_store()
+    corpus = [
+        _chunk("thread_head", "thread.h", name="Thread", chunk_type="class_specifier",
+               start_line=1, end_line=2, content="class Thread {\n  int id = 0;"),
+        _chunk("thread_rest", "thread.h", name="<block>", chunk_type="module", start_line=3, end_line=4,
+               content="  Error start(Callback p_cb, void *p_ud = nullptr);\n};"),
+        _chunk("thread_start", "thread.cpp", name="Thread::start",
+               content="Error Thread::start(Callback p_cb, void *p_ud) { return OK; }"),
+        _chunk("timer_start", "timer.cpp", name="Timer::start", content="void Timer::start(int a, int b) {}"),
+    ]
+    symbols = [{"path": "thread.h", "name": "Thread", "kind": "class_specifier", "language": "cpp",
+                "start_line": 1, "end_line": 4, "chunk_id": "thread_head"}]
+    _insert(store, corpus)
+    store.insert_symbols(symbols)
+    build_refs(store)
+
+    new = _chunk("c1", "c1.cpp", name="run", content="void run() { start(cb); }",
+                 metadata={"calls": [{"name": "start", "receiver": None, "arity": 1}]})
+    _insert(store, [new])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _insert(ref, corpus + [new])
+    ref.insert_symbols(symbols)
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "thread_start", "calls") in got
+    assert ("c1", "timer_start", "calls") not in got

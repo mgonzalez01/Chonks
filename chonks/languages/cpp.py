@@ -83,6 +83,36 @@ def classify_param(part: str) -> "str | object":
     return NOT_HANDLED
 
 
+# Words that make the `name(` after them a call, not a declaration.
+_CALL_CONTEXT_WORDS = frozenset({
+    "return", "else", "case", "new", "delete", "throw", "co_return", "co_yield",
+    "sizeof", "alignof", "decltype", "typeid", "noexcept", "and", "or", "not",
+})
+
+
+def member_declaration_at(content: str, pos: int) -> bool:
+    """A type comes right before `name(` at `pos`: `Error start(` and
+    `const T &get(` declare, `x.start(`, `p->get(` and `return get(` call."""
+    j = pos - 1
+    while j >= 0 and content[j].isspace():
+        j -= 1
+    if j < 0:
+        return False
+    ch = content[j]
+    if ch == "*":
+        return True
+    if ch == "&":
+        return content[j - 1:j] != "&"
+    if ch == ">":
+        return content[j - 1:j] != "-"
+    if not (ch.isalnum() or ch == "_"):
+        return False
+    k = j
+    while k >= 0 and (content[k].isalnum() or content[k] == "_"):
+        k -= 1
+    return content[k + 1:j + 1] not in _CALL_CONTEXT_WORDS
+
+
 INCLUDE = Children((
     ChildSpec(("string_literal",), "imports",
               nested=NestedSpec(("string_content",), name_text)),
@@ -156,6 +186,7 @@ CPP = LanguageSpec(
     scope_chunk_types=frozenset({"namespace_definition", "declaration_list"}),
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
+    member_declaration_at=member_declaration_at,
     literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
                          concat_types=("concatenated_string",)),
     header_exts=frozenset({"h", "hh", "hpp", "hxx"}),

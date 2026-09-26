@@ -253,15 +253,6 @@
             false
           ],
           "chunk_index": 1,
-          "name": "call"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 1,
           "name": "plain_call"
         }
       ],

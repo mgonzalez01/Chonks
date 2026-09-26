@@ -116,6 +116,9 @@ class LanguageSpec:
     classify_param: "Callable[[str], str | object] | None" = None
     strip_implicit_params: "Callable[[list[str]], list[str]] | None" = None
     empty_param_spellings: frozenset[str] = frozenset()
+    # For methods defined outside their class: whether the `name(` at this
+    # offset of a class chunk declares a member, so its defaults count.
+    member_declaration_at: "Callable[[str, int], bool] | None" = None
     # tier 2: literals
     literals: "LiteralSpec | None" = None
     literal_wrapper: "Callable[[str], tuple[str, str] | object] | None" = None
