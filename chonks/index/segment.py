@@ -11,6 +11,7 @@ from tree_sitter_language_pack import get_parser
 
 from chonks.core.refresh import register_refresh
 from chonks.core.symbols import FORWARD_DECLARATION
+from chonks.index import class_model as _class_model
 from chonks.index.macro_heal import (
     _MACRO_LANGS,
     _MAX_MACRO_CANDIDATES,
@@ -977,6 +978,8 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
 
     if counters is not None:
         counters["symbols"] = _collect_symbols_from_root(root, lang, src)
+        counters.update((key, rows) for key, rows in _class_model.collect(root, lang, src).items()
+                        if rows)
 
     boundary_nodes = _collect_boundaries(root, lang, src, counters)
 

@@ -9,11 +9,13 @@ import math
 import re
 import time
 from collections import Counter, defaultdict
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Iterator
 
 from chonks.index.progress import PassLog
 from chonks.index.refs_extract import _call_entry_name
-from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers
+from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
+from chonks.index.graph.members import MemberIndex, has_evidence, members_index
 
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 from chonks.core.refresh import register_refresh
@@ -110,6 +112,8 @@ def _build_graph(
     chunks: list[dict], sym_map: dict[str, list[str]] | None = None,
     *, cap_mentions: bool = False, associated_top_frac: float = 0.0,
     extra_definers: list[dict] | None = None, log: PassLog | None = None,
+    owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
+    members: MemberIndex | None = None,
 ) -> dict[tuple[str, str], str]:
     """Builds {(from_id, to_id): edge_type} from mentions, xlang pairing, and
     typed AST facts; typed edges are added last so they supersede a mentions
@@ -268,10 +272,15 @@ def _build_graph(
                 else:
                     name, receiver, arity = raw, None, None
                 ids = _typed_targets(name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
-                if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
+                if cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES:
+                    ids = []
+                if not ids and not (edge_type == "calls" and members is not None and has_evidence(raw)):
                     continue
                 targets = (
-                    _discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache)
+                    _discriminate_definers(
+                        ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls,
+                        evidence=raw, caller=c, members=members,
+                    )
                     if edge_type == "calls" else ids
                 )
                 for target_id in targets:
@@ -282,6 +291,23 @@ def _build_graph(
         log.info("cross-language and typed edges in %.1fs, %d edges in all",
                  time.monotonic() - t0, len(edges))
     return edges
+
+
+def _owner_decls(store: "Store") -> "Callable[[str], list[dict]]":
+    """Every chunk inside the classes of a name, so the member declarations
+    of a class split into pieces are all found."""
+    kinds = _owner_class_kinds()
+    memo: dict[str, list[dict]] = {}
+
+    def lookup(qualifier: str) -> list[dict]:
+        if qualifier not in memo:
+            memo[qualifier] = [
+                c for path, _lang, start, end in store.get_symbol_spans(qualifier, kinds)
+                for c in store.get_chunks_by_path_line_range(path, start - 1, end)
+            ]
+        return memo[qualifier]
+
+    return lookup
 
 
 def build_refs(
@@ -340,7 +366,7 @@ def build_refs(
         chunks, sym_map,
         cap_mentions=cap_mentions, associated_top_frac=associated_top_frac,
         extra_definers=store.get_chunks_by_ids(unnamed_definer_ids) if unnamed_definer_ids else None,
-        log=log,
+        log=log, owner_decls=_owner_decls(store), members=members_index(store),
     )
     refs = [(u, v, t) for (u, v), t in edges.items()]
     log.info("writing %d edges", len(refs))
@@ -474,6 +500,7 @@ def _build_refs_incremental(
         removed += removed_n
         indegree_dirty |= deleted_to_ids
 
+    members = members_index(store)
     changed_ids_named: set[str] = set()
     changed_own_names: set[str] = set()
     if changed_ids:
@@ -482,6 +509,8 @@ def _build_refs_incremental(
                 changed_ids_named.add(c["id"])
                 changed_own_names.add(c["name"])
         changed_own_names |= store.get_symbol_names_by_chunk_ids(list(changed_ids))
+        if members is not None:
+            changed_own_names |= store.get_member_names_by_chunk_ids(list(changed_ids))
 
     # Alias-expanded: a changed/deleted qualified name must also touch its
     # bare alias, or a bare-indexed sibling definer would miss the update.
@@ -665,6 +694,7 @@ def _build_refs_incremental(
         if typed_target_ids else {}
     )
     arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
+    owner_decls = _owner_decls(store)
 
     for c in ref_chunks:
         md = c.get("metadata") or {}
@@ -675,10 +705,15 @@ def _build_refs_incremental(
                 else:
                     name, receiver, arity = raw, None, None
                 ids = _typed_targets(local_name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
-                if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
+                if cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES:
+                    ids = []
+                if not ids and not (edge_type == "calls" and members is not None and has_evidence(raw)):
                     continue
                 targets = (
-                    _discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache)
+                    _discriminate_definers(
+                        ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls,
+                        evidence=raw, caller=c, members=members,
+                    )
                     if edge_type == "calls" else ids
                 )
                 for target_id in targets:

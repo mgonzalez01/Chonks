@@ -86,7 +86,7 @@ class RunState:
     state: dict
     lock: threading.Lock
     done_event: threading.Event
-    file_symbols: dict[str, list[dict]]
+    file_symbols: dict[str, tuple[list[dict], ...]]
     worker_exc: list[Exception | None]
     changed_chunk_ids: set[str]
     deleted_chunk_ids: set[str]
@@ -280,9 +280,18 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                     }
                     for sym in (_oc.get("symbols") or [])
                 ]
+                member_rows = [
+                    {**m, "path": stored_path,
+                     "chunk_id": next((cc for cs, ce, cc in chunk_ranges
+                                       if cs <= m["line"] <= ce), None)}
+                    for m in (_oc.get("members") or [])
+                ]
+                base_rows = [{**b, "path": stored_path} for b in (_oc.get("bases") or [])]
+                using_rows = [{**u, "path": stored_path}
+                              for u in (_oc.get("using_namespaces") or [])]
                 with lock:
-                    if sym_rows:
-                        file_symbols[stored_path] = sym_rows
+                    if sym_rows or member_rows or base_rows or using_rows:
+                        file_symbols[stored_path] = (sym_rows, member_rows, base_rows, using_rows)
                     state["files_parsed"]  += 1
                     state["chunks_queued"] += n
                 # embed_q.put() must NOT be called under `lock`: commit_phase
@@ -377,14 +386,15 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
             return
         ch, _, stat = file_meta[fp]
         store.upsert_file(fp, stat.st_size, stat.st_mtime, ch)
-        # Refresh the file's decoupled symbols. delete-then-insert is
-        # idempotent on re-index; written here on the single-writer
-        # thread so symbols stay consistent with the file's chunks.
+        # Refresh the file's decoupled symbols and class model.
+        # delete-then-insert is idempotent on re-index; written here on the
+        # single-writer thread so they stay consistent with the file's chunks.
         with lock:
-            rows = file_symbols.pop(fp, None)
+            rows, members, bases, usings = file_symbols.pop(fp, None) or ([], [], [], [])
         store.delete_symbols_for_path(fp)
         if rows:
             store.insert_symbols(rows)
+        store.replace_class_model(fp, members, bases, usings)
         with lock:
             state["indexed"] += 1
 
@@ -954,9 +964,9 @@ def index_paths(
     }
     lock       = threading.Lock()
     done_event = threading.Event()
-    # Decoupled symbol rows per file, handed from the parser thread to the
-    # embedder thread. Guarded by `lock`.
-    file_symbols: dict[str, list[dict]] = {}
+    # Decoupled symbol, member, class-base and using-namespace rows per file,
+    # handed from the parser thread to the embedder thread. Guarded by `lock`.
+    file_symbols: dict[str, tuple[list[dict], ...]] = {}
     worker_exc: list[Exception | None] = [None, None]  # [parser_exc, embedder_exc]
     # Chunk ids inserted/deleted this run, threaded to build_neighbors so it can
     # take the exact incremental k-NN update path. Guarded by `lock`: deletes
@@ -1124,6 +1134,8 @@ def index_paths(
     covered_all = skipped == 0 and indexed == store.tracked_file_count()
     if store.get_meta("literal_index_version") is not None or covered_all:
         store.set_meta("literal_index_version", "1")
+    if store.get_meta("class_model_version") is not None or covered_all:
+        store.set_meta("class_model_version", "1")
     if covered_all:
         store.set_meta(_EMBED_TEXT_META_KEY, _embed_text_format(embedder))
 
