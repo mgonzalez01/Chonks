@@ -33,6 +33,7 @@ def call_receiver(call_node: Node, callee: Node, src: bytes) -> str | None:
 
 GDSCRIPT = LanguageSpec(
     name="gdscript",
+    typed_ref_languages=frozenset({"cpp"}),
     grammar="gdscript",
     version="2",
     extensions=frozenset({".gd"}),

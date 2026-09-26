@@ -1,6 +1,7 @@
 """Typed reference (calls/imports/inherits) and literal extraction from AST nodes."""
 
 import re
+import sys
 
 from tree_sitter import Node
 
@@ -349,17 +350,22 @@ def _collect_literals(node: Node, lang: str, src: bytes) -> list[tuple[str, int]
 _literal_cap_state = {"capped_chunks": 0, "dropped": 0}
 
 
-def _extract_refs(node: Node, lang: str, src: bytes) -> dict[str, list[str]]:
+def _extract_refs(node: Node, lang: str, src: bytes,
+                  lines: tuple[int, int] | None = None) -> dict[str, list[str]]:
     """{"calls", "imports", "inherits", "literals"} lists. "calls" entries
     are fingerprint dicts; a legacy bare string is treated as receiver=None,
-    arity=None so old stored data still resolves."""
+    arity=None so old stored data still resolves. `lines` (first, last, 1-based)
+    keeps only references that start on those lines, for one piece of a split node."""
     refs: dict[str, list[str]] = {"calls": [], "imports": [], "inherits": [], "literals": []}
+    first, last = lines if lines is not None else (0, sys.maxsize)
 
     spec = LANG_REFS_SPECS.get(lang)
     if spec is not None:
         def walk(n: Node) -> None:
+            if n.end_point[0] + 1 < first or n.start_point[0] + 1 > last:
+                return
             rule = spec.get(n.type)
-            if rule is not None:
+            if rule is not None and n.start_point[0] + 1 >= first:
                 _apply_rule(n, rule, refs, src, lang)
             for child in n.children:
                 walk(child)
@@ -369,6 +375,8 @@ def _extract_refs(node: Node, lang: str, src: bytes) -> dict[str, list[str]]:
     # _collect_literals already caps/tallies; this loop only adds dedup.
     lst = refs["literals"]
     for text, line in _collect_literals(node, lang, src):
+        if not first <= line <= last:
+            continue
         encoded = f"{line}\x1f{text}"
         if encoded not in lst:
             lst.append(encoded)

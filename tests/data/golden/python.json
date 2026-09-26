@@ -1487,7 +1487,118 @@
           "literals": [],
           "name": "func_A",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "step_A_0",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_1",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_2",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_3",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_4",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_5",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_6",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_7",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_8",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_9",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_10",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_11",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_12",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_13",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_14",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_15",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_16",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_17",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_18",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_19",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_20",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_21",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []

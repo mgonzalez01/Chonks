@@ -47,6 +47,31 @@ def test_split_big_method_keeps_its_name():
     assert all(z <= CHUNK_MAX for z in _sizes(segs))
 
 
+def test_split_method_pieces_carry_only_their_own_calls():
+    body = "\n".join(f"    total += compute_{i}(x) * {i};" for i in range(400))
+    src = f"int applyStep(int x) {{\n    int total = 0;\n{body}\n    return total;\n}}\n".encode()
+    segs = segment_file(src, "cpp")
+    assert len(segs) > 1
+    seen: set[str] = set()
+    for s in segs:
+        called = {e["name"] for e in s["refs"]["calls"]}
+        own_lines = src.decode().splitlines()[s["start_line"] - 1:s["end_line"]]
+        assert called == {f"compute_{i}" for i in range(400) if any(f"compute_{i}(" in ln for ln in own_lines)}
+        seen |= called
+    assert seen == {f"compute_{i}" for i in range(400)}
+
+
+def test_split_class_header_keeps_its_bases_but_not_member_calls():
+    m = []
+    for i in range(8):
+        b = "\n".join(f"    acc += f{j}(x) * {j};" for j in range(40))
+        m.append(f"  int method_{i}(int x) {{\n    int acc = 0;\n{b}\n    return acc;\n  }}")
+    src = ("class Store : public Base {\npublic:\n" + "\n".join(m) + "\n};\n").encode()
+    header = next(s for s in segment_file(src, "cpp") if s["name"] == "Store")
+    assert header["refs"]["inherits"] == ["Base"]
+    assert header["refs"]["calls"] == []
+
+
 def test_giant_single_line_is_hard_split_no_monster():
     line = "static const float noise[] = {" + ",".join(str(i) for i in range(50_000)) + "};\n"
     src = line.encode()
@@ -810,6 +835,16 @@ def test_leading_guard_absorbed_into_function_below():
     assert "#endif" in segs[0]["content"]
 
 
+def test_leading_comment_keeps_the_function_refs():
+    for lang, comment in (("cpp", "// Adds the steps."), ("python", "# Adds the steps.")):
+        src = (_bigfunc("A", lang) + "\n\n" + comment + "\n" + _bigfunc("B", lang) + "\n").encode()
+        segs = segment_file(src, lang)
+        b = next(s for s in segs if s["name"] == "func_B")
+        assert comment in b["content"]
+        called = {e["name"] for e in b["refs"]["calls"]}
+        assert "step_B_0" in called, lang
+
+
 def test_trailing_namespace_comment_attaches_backward():
     """_attach_or_drop_comments: a trailing small labeled comment must attach
     BACKWARD to the last emitted segment, the blind spot distinct from the
@@ -1137,6 +1172,22 @@ void driver() {
     segs = segment_file(src, "cpp", path="t.cpp")
     refs = _refs(segs, "driver")
     assert _call_entry(refs, "method") == {"name": "method", "receiver": "C", "arity": 2}
+
+
+def test_templated_call_names_the_function_not_its_type_argument():
+    cpp = b'''
+void driver(Node *p) {
+    Object::cast_to<GraphFrame>(p);
+    make_ref<Texture>(1);
+}
+'''
+    refs = _refs(segment_file(cpp, "cpp", path="t.cpp"), "driver")
+    assert _call_names(refs) >= {"cast_to", "make_ref"}
+    assert not _call_names(refs) & {"GraphFrame", "Texture"}
+    cs = b"class A { void Driver() { var r = GetComponent<Rigidbody>(); Foo.Bar<Baz>(1); } }\n"
+    refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
+    assert _call_names(refs) >= {"GetComponent", "Bar"}
+    assert not _call_names(refs) & {"Rigidbody", "Baz"}
 
 
 def test_call_arity_varargs_and_defaults_wildcard_python():

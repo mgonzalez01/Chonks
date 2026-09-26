@@ -62,13 +62,85 @@
           "chunk_type": "function_declaration",
           "content": "-- The leading note this fixture exists to exercise.\nfunction run_pipeline()\n    local step_0 = compute_step(0, \"phase-0\")\n    local step_1 = compute_step(1, \"phase-1\")\n    local step_2 = compute_step(2, \"phase-2\")\n    local step_3 = compute_step(3, \"phase-3\")\n    local step_4 = compute_step(4, \"phase-4\")\n    local step_5 = compute_step(5, \"phase-5\")\n    local step_6 = compute_step(6, \"phase-6\")\n    local step_7 = compute_step(7, \"phase-7\")\n    local step_8 = compute_step(8, \"phase-8\")\n    local step_9 = compute_step(9, \"phase-9\")\n    local step_10 = compute_step(10, \"phase-10\")\n    local step_11 = compute_step(11, \"phase-11\")\n    local step_12 = compute_step(12, \"phase-12\")\n    local step_13 = compute_step(13, \"phase-13\")\nend",
           "end_line": 17,
-          "literals": [],
+          "literals": [
+            [
+              "phase-0",
+              3
+            ],
+            [
+              "phase-1",
+              4
+            ],
+            [
+              "phase-2",
+              5
+            ],
+            [
+              "phase-3",
+              6
+            ],
+            [
+              "phase-4",
+              7
+            ],
+            [
+              "phase-5",
+              8
+            ],
+            [
+              "phase-6",
+              9
+            ],
+            [
+              "phase-7",
+              10
+            ],
+            [
+              "phase-8",
+              11
+            ],
+            [
+              "phase-9",
+              12
+            ],
+            [
+              "phase-10",
+              13
+            ],
+            [
+              "phase-11",
+              14
+            ],
+            [
+              "phase-12",
+              15
+            ],
+            [
+              "phase-13",
+              16
+            ]
+          ],
           "name": "run_pipeline",
           "refs": {
             "calls": [],
             "imports": [],
             "inherits": [],
-            "literals": []
+            "literals": [
+              "3\u001fphase-0",
+              "4\u001fphase-1",
+              "5\u001fphase-2",
+              "6\u001fphase-3",
+              "7\u001fphase-4",
+              "8\u001fphase-5",
+              "9\u001fphase-6",
+              "10\u001fphase-7",
+              "11\u001fphase-8",
+              "12\u001fphase-9",
+              "13\u001fphase-10",
+              "14\u001fphase-11",
+              "15\u001fphase-12",
+              "16\u001fphase-13"
+            ]
           },
           "start_line": 1
         }

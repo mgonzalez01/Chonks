@@ -302,14 +302,14 @@ def f():
 # ---------------------------------------------------------------------------
 
 def test_per_chunk_literal_cap_at_200():
-    """A single chunk with more than 200 qualifying literals is capped at
-    200: the cap is a hard ceiling on the stored record, not merely a
-    display truncation."""
+    """A node with more than 200 qualifying literals keeps 200: the cap is a
+    hard ceiling on the stored record, not merely a display truncation. When
+    the node is split, each piece keeps the kept literals on its own lines."""
     lines = [f'    x{i} = "literal number {i:04d} value"' for i in range(210)]
     src = ("def f():\n" + "\n".join(lines) + "\n").encode()
     segs = segment_file(src, "python", path="t.py")
-    lits = _literals_by_name(segs)
-    assert len(lits["f"]) == 200
+    kept = [lit for s in segs if s["name"] == "f" for lit in s["literals"]]
+    assert len(kept) == len(set(kept)) == 200
 
 
 def test_per_chunk_literal_cap_announces_drop_in_counters():

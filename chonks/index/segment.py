@@ -4,7 +4,7 @@ import logging
 import re
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
@@ -238,15 +238,20 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
         if header.strip().strip("{}").strip():
             node_seg = _Segment(node, src, lang)
             h_start = node.start_point[0] + 1
+
+            def header_refs(first: int, last: int) -> dict[str, list[str]]:
+                return _extract_refs(node, lang, src, (first, last))
+
             if len(header.encode("utf-8")) > CHUNK_MAX:
                 segs.extend(_line_slice_oversized(
-                    header, h_start, node_seg.name, node_seg.refs,
+                    header, h_start, node_seg.name, header_refs,
                     chunk_type=node_seg.chunk_type))
             else:
                 h_end = h_start + header.count("\n")
                 segs.append(_SyntheticSegment(
                     header, h_start, h_end,
-                    chunk_type=node_seg.chunk_type, name=node_seg.name, refs=node_seg.refs))
+                    chunk_type=node_seg.chunk_type, name=node_seg.name,
+                    refs=header_refs(h_start, h_end)))
         for c in children:
             child_seg = _Segment(c, src, lang)
             if child_seg.size(src) > CHUNK_MAX:
@@ -269,7 +274,6 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
     node_seg  = _Segment(node, src, lang)   # source of the name/type to propagate
     node_name = node_seg.name
     node_type = node_seg.chunk_type
-    node_refs = node_seg.refs
     text = _node_text(node, src)
     lines = text.splitlines(keepends=True)
     segments: list = []
@@ -283,9 +287,10 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
         char_count += len(line)
         if char_count >= CHUNK_TARGET:
             content = "".join(prev_tail + buf)
+            end_line = buf_start_line + len(buf) - 1
             segments.append(_SyntheticSegment(
-                content, buf_start_line, buf_start_line + len(buf) - 1,
-                name=node_name, chunk_type=node_type, refs=node_refs,
+                content, buf_start_line, end_line, name=node_name, chunk_type=node_type,
+                refs=_extract_refs(node, lang, src, (buf_start_line, end_line)),
             ))
             prev_tail = buf[-FALLBACK_OVERLAP_LINES:] if FALLBACK_OVERLAP_LINES > 0 else []
             buf_start_line += len(buf)
@@ -294,9 +299,10 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
 
     if buf:
         content = "".join(prev_tail + buf)
+        end_line = buf_start_line + len(buf) - 1
         segments.append(_SyntheticSegment(
-            content, buf_start_line, buf_start_line + len(buf) - 1,
-            name=node_name, chunk_type=node_type, refs=node_refs,
+            content, buf_start_line, end_line, name=node_name, chunk_type=node_type,
+            refs=_extract_refs(node, lang, src, (buf_start_line, end_line)),
         ))
 
     return segments if segments else [_Segment(node, src, lang)]
@@ -587,7 +593,8 @@ def _finalize(segs: list, src: bytes, path: str | None = None,
 
 
 def _line_slice_oversized(content: str, start_line: int, name: str | None,
-                          refs: dict[str, list[str]], chunk_type: str = "module") -> list:
+                          refs_for: Callable[[int, int], dict[str, list[str]]],
+                          chunk_type: str = "module") -> list:
     """Line-slices an oversized residue/header span with REAL per-piece
     line numbers, so no piece starts mid-statement or duplicates another's
     span, unlike the byte-window _hardwrap_text fallback."""
@@ -602,12 +609,14 @@ def _line_slice_oversized(content: str, start_line: int, name: str | None,
         char_count += len(line)
         if char_count >= CHUNK_TARGET:
             out.append(_SyntheticSegment("".join(buf), buf_start, ln,
-                                         chunk_type=chunk_type, name=name, refs=refs))
+                                         chunk_type=chunk_type, name=name,
+                                         refs=refs_for(buf_start, ln)))
             buf, buf_start, char_count = [], ln + 1, 0
         ln += 1
     if buf and "".join(buf).strip():
         out.append(_SyntheticSegment("".join(buf), buf_start, ln - 1,
-                                     chunk_type=chunk_type, name=name, refs=refs))
+                                     chunk_type=chunk_type, name=name,
+                                     refs=refs_for(buf_start, ln - 1)))
     return out
 
 
@@ -625,19 +634,24 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
         if content.strip():
             # Module-level residue is where imports live for most languages;
             # without extracting refs here, 'imports' never populates.
-            refs = _EMPTY_REFS
-            for n in run:
-                refs = _merge_refs(refs, _extract_refs(n, lang, src))
+            nodes = list(run)
+
+            def run_refs(first: int, last: int) -> dict[str, list[str]]:
+                refs = _EMPTY_REFS
+                for n in nodes:
+                    refs = _merge_refs(refs, _extract_refs(n, lang, src, (first, last)))
+                return refs
+
             start_line = run[0].start_point[0] + 1
             end_line = run[-1].end_point[0] + 1
             # Line-sliced here, not deferred to _finalize's byte-window
             # fallback, which would stamp every piece with the same span.
             if len(content.encode("utf-8")) > CHUNK_MAX:
-                segs.extend(_line_slice_oversized(content, start_line, "<module>", refs))
+                segs.extend(_line_slice_oversized(content, start_line, "<module>", run_refs))
             else:
                 segs.append(_SyntheticSegment(
                     content, start_line, end_line,
-                    chunk_type="module", name="<module>", refs=refs))
+                    chunk_type="module", name="<module>", refs=run_refs(start_line, end_line)))
         run.clear()
 
     spec = _lang_spec(lang)
@@ -654,14 +668,15 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
             if content.strip():
                 m_start = child.start_point[0] + 1
                 m_end = child.end_point[0] + 1
-                m_refs = _extract_refs(child, lang, src)
                 # Same line-slicing as the generic residue run above.
                 if len(content.encode("utf-8")) > CHUNK_MAX:
-                    segs.extend(_line_slice_oversized(content, m_start, "<module>:__main__", m_refs))
+                    segs.extend(_line_slice_oversized(
+                        content, m_start, "<module>:__main__",
+                        lambda first, last, c=child: _extract_refs(c, lang, src, (first, last))))
                 else:
                     segs.append(_SyntheticSegment(
-                        content, m_start, m_end,
-                        chunk_type="module", name="<module>:__main__", refs=m_refs))
+                        content, m_start, m_end, chunk_type="module", name="<module>:__main__",
+                        refs=_extract_refs(child, lang, src)))
             continue
         run.append(child)
     flush()
@@ -819,7 +834,7 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
         if pending is not None:  # attach held comment to this real boundary
             seg = _SyntheticSegment(
                 pending.content(src) + "\n" + seg.content(src), pending.start_line, seg.end_line,
-                chunk_type=seg.chunk_type, name=seg.name)
+                chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
             pending = None
         out.append(seg)
     if pending is not None:

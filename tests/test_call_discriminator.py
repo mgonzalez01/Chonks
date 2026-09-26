@@ -275,8 +275,29 @@ def test_build_graph_imports_and_inherits_unaffected_by_discriminator():
         {"id": "a", "name": "Base", "chunk_type": "class_definition",
          "language": "python", "content": "class Base: pass"},
         {"id": "b", "name": "Base", "chunk_type": "class_definition",
-         "language": "cpp", "content": "class Base {};"},
+         "language": "python", "content": "class Base(object): pass"},
     ]
     edges = _build_graph(chunks)
     assert edges.get(("caller", "a")) == "inherits"
     assert edges.get(("caller", "b")) == "inherits"
+
+
+def test_build_graph_typed_edges_only_reach_languages_the_caller_can_name():
+    chunks = [
+        {"id": "cpp_caller", "name": "run", "language": "cpp",
+         "content": "void run() { tick(); }", "metadata": {"calls": [{"name": "tick", "receiver": None, "arity": 0}]}},
+        {"id": "gd_caller", "name": "Player", "language": "gdscript",
+         "content": "extends Node", "metadata": {"inherits": ["Node"]}},
+        {"id": "cpp_tick", "name": "tick", "chunk_type": "function_definition",
+         "language": "cpp", "content": "void tick() {}"},
+        {"id": "c_tick", "name": "tick", "chunk_type": "function_definition",
+         "language": "c", "content": "void tick(void) {}"},
+        {"id": "py_tick", "name": "tick", "chunk_type": "function_definition",
+         "language": "python", "content": "def tick(): pass"},
+        {"id": "md_tick", "name": "tick", "chunk_type": "text", "language": "md", "content": "# tick"},
+        {"id": "cpp_node", "name": "Node", "chunk_type": "class_specifier",
+         "language": "cpp", "content": "class Node {};"},
+    ]
+    edges = _build_graph(chunks)
+    assert {v for (u, v), t in edges.items() if u == "cpp_caller" and t == "calls"} == {"cpp_tick", "c_tick"}
+    assert edges.get(("gd_caller", "cpp_node")) == "inherits"

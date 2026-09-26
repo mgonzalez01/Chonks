@@ -3706,7 +3706,206 @@
           }
         ]
       },
-      "definer_param_arity": [],
+      "definer_param_arity": [
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_0"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_1"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_10"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_11"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_12"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_13"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_14"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_15"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_16"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_17"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_18"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_19"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_2"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_20"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_21"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_3"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_4"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_5"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_6"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_7"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_8"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 0,
+          "name": "step_A_9"
+        }
+      ],
       "segments": [
         {
           "chunk_type": "function_definition",
@@ -3715,7 +3914,118 @@
           "literals": [],
           "name": "func_A",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "step_A_0",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_1",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_2",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_3",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_4",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_5",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_6",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_7",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_8",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_9",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_10",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_11",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_12",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_13",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_14",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_15",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_16",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_17",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_18",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_19",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_20",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_A_21",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -4417,6 +4727,204 @@
           ],
           "chunk_index": 0,
           "name": "step_A_9"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_0"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_1"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_10"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_11"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_12"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_13"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_14"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_15"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_16"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_17"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_18"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_19"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_2"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_20"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_21"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_3"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_4"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_5"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_6"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_7"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_8"
+        },
+        {
+          "arity": [
+            1,
+            1,
+            false
+          ],
+          "chunk_index": 1,
+          "name": "step_B_9"
         }
       ],
       "segments": [
@@ -4552,7 +5060,118 @@
           "literals": [],
           "name": "func_B",
           "refs": {
-            "calls": [],
+            "calls": [
+              {
+                "arity": 1,
+                "name": "step_B_0",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_1",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_2",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_3",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_4",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_5",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_6",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_7",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_8",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_9",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_10",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_11",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_12",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_13",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_14",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_15",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_16",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_17",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_18",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_19",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_20",
+                "receiver": null
+              },
+              {
+                "arity": 1,
+                "name": "step_B_21",
+                "receiver": null
+              }
+            ],
             "imports": [],
             "inherits": [],
             "literals": []
@@ -7378,21 +7997,6 @@
                 "arity": 4,
                 "name": "computeStep",
                 "receiver": null
-              },
-              {
-                "arity": 3,
-                "name": "computeAdjustment",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingElse",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingThird",
-                "receiver": null
               }
             ],
             "imports": [],
@@ -7417,16 +8021,6 @@
               {
                 "arity": 3,
                 "name": "computeAdjustment",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingElse",
-                "receiver": null
-              },
-              {
-                "arity": 1,
-                "name": "doSomethingThird",
                 "receiver": null
               }
             ],
