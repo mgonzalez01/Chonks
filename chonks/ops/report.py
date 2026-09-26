@@ -5,6 +5,7 @@ DB always produces byte-identical Markdown. `subsystems` in config.json
 unlocks named groups; without it, grouping falls back to top-level path.
 """
 import argparse
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -251,9 +252,9 @@ def main(argv=None) -> None:
     args = ap.parse_args(argv)
 
     loaded = load_config(args.config)
-    if loaded.problems:
-        problem = loaded.problems[0]
-        ap.error(f"config not readable: {problem.path}: {problem.reason}")
+    for problem in loaded.problems:
+        prefix = "Failed to load" if args.config else "Failed to parse"
+        print(f"{prefix} {problem.path}: {problem.reason}", file=sys.stderr)
     config = loaded.data
     load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
     # CLI flag overrides config key, same precedence as chunker/serve.
