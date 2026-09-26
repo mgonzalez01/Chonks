@@ -355,6 +355,9 @@ class Store:
                     f"DELETE FROM chunks WHERE id IN ({placeholders})", batch
                 )
             self._conn.execute("DELETE FROM symbols WHERE path=?", (path,))
+            self._conn.execute("DELETE FROM members WHERE path=?", (path,))
+            self._conn.execute("DELETE FROM class_bases WHERE path=?", (path,))
+            self._conn.execute("DELETE FROM using_namespaces WHERE path=?", (path,))
             self._conn.execute("DELETE FROM files WHERE path=?", (path,))
             return chunk_ids
 
@@ -555,6 +558,79 @@ class Store:
                 for r in rows:
                     out[r["name"]].append(r["chunk_id"])
         return dict(out)
+
+    # ------------------------------------------------------------------
+    # Class model (members and bases of each class)
+    # ------------------------------------------------------------------
+
+    def replace_class_model(self, path: str, members: list[dict[str, Any]],
+                            bases: list[dict[str, Any]],
+                            using_namespaces: list[dict[str, Any]]) -> None:
+        """Replaces the `members`, `class_bases` and `using_namespaces` rows of `path`."""
+        with self._lock:
+            self._conn.execute("DELETE FROM members WHERE path=?", (path,))
+            self._conn.execute("DELETE FROM class_bases WHERE path=?", (path,))
+            self._conn.execute("DELETE FROM using_namespaces WHERE path=?", (path,))
+            if members:
+                self._conn.executemany(
+                    "INSERT INTO members(path, language, owner, name, kind, type_text, arity_min, "
+                    "arity_max, variadic, flags, line, chunk_id) VALUES (:path, :language, :owner, "
+                    ":name, :kind, :type_text, :arity_min, :arity_max, :variadic, :flags, :line, "
+                    ":chunk_id)",
+                    members,
+                )
+            if bases:
+                self._conn.executemany(
+                    "INSERT INTO class_bases(path, owner, base, line) "
+                    "VALUES (:path, :owner, :base, :line)",
+                    bases,
+                )
+            if using_namespaces:
+                self._conn.executemany(
+                    "INSERT INTO using_namespaces(path, scope, namespace, line) "
+                    "VALUES (:path, :scope, :namespace, :line)",
+                    using_namespaces,
+                )
+            self._conn.commit()
+
+    _MEMBER_COLUMNS = ("path, language, owner, name, kind, type_text, arity_min, arity_max, "
+                       "variadic, flags, line, chunk_id")
+
+    def get_members(self, owner: str, name: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return [dict(r) for r in self._conn.execute(
+                f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner = ? AND name = ? "
+                "ORDER BY path, line", (owner, name)).fetchall()]
+
+    def get_members_by_owners(self, owners: list[str]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(owners), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(dict(r) for r in self._conn.execute(
+                    f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner IN ({placeholders}) "
+                    "ORDER BY owner, name, path, line", batch).fetchall())
+        return out
+
+    def get_bases(self, owners: list[str]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(owners), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(dict(r) for r in self._conn.execute(
+                    f"SELECT path, owner, base, line FROM class_bases "
+                    f"WHERE owner IN ({placeholders}) ORDER BY owner, path, line", batch).fetchall())
+        return out
+
+    def get_using_namespaces(self, paths: list[str]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(paths), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(dict(r) for r in self._conn.execute(
+                    f"SELECT path, scope, namespace, line FROM using_namespaces "
+                    f"WHERE path IN ({placeholders}) ORDER BY path, line", batch).fetchall())
+        return out
 
     # ------------------------------------------------------------------
     # Chunk writes

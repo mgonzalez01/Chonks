@@ -164,6 +164,49 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "Base",
+            "line": 12,
+            "owner": "ns::Widget"
+          },
+          {
+            "base": "ns::IOther",
+            "line": 12,
+            "owner": "ns::Widget"
+          },
+          {
+            "base": "Base",
+            "line": 23,
+            "owner": "ns::Plain"
+          }
+        ],
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 14,
+            "name": "run",
+            "owner": "ns::Widget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 24,
+            "name": "go",
+            "owner": "ns::Plain",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 25,
@@ -3018,6 +3061,68 @@
     "expected": {
       "counters": {
         "heal_unhealable": 1,
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 3,
+            "name": "Widget",
+            "owner": "Widget",
+            "type_text": null,
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 5,
+            "name": "compute",
+            "owner": "Widget",
+            "type_text": "int",
+            "variadic": 0
+          },
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 10,
+            "name": "reset",
+            "owner": "Widget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": "const",
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 14,
+            "name": "value",
+            "owner": "Widget",
+            "type_text": "int",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 17,
+            "name": "value_",
+            "owner": "Widget",
+            "type_text": "int",
+            "variadic": null
+          }
+        ],
         "parse_error": 1,
         "symbols": [
           {
@@ -3119,12 +3224,33 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "AActor",
+            "line": 2,
+            "owner": "AThing"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "UCLASS"
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 4,
+            "name": "Run",
+            "owner": "AThing",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 5,
@@ -3201,6 +3327,44 @@
   {
     "expected": {
       "counters": {
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": "const",
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 3,
+            "name": "get_x",
+            "owner": "Widget",
+            "type_text": "int",
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 4,
+            "name": "set_x",
+            "owner": "Widget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 6,
+            "name": "x_",
+            "owner": "Widget",
+            "type_text": "int",
+            "variadic": null
+          }
+        ],
         "symbols": [
           {
             "end_line": 7,
@@ -4041,6 +4205,32 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "Base",
+            "line": 5,
+            "owner": "Foo"
+          },
+          {
+            "base": "IOther",
+            "line": 5,
+            "owner": "Foo"
+          }
+        ],
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 7,
+            "name": "run",
+            "owner": "Foo",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 8,
@@ -5624,12 +5814,45 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "AActor",
+            "line": 32,
+            "owner": "AMyActor"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "UCLASS"
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 35,
+            "name": "Tick",
+            "owner": "AMyActor",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 37,
+            "name": "time",
+            "owner": "AMyActor",
+            "type_text": "float",
+            "variadic": null
+          }
+        ],
         "symbols": [
           {
             "end_line": 38,
@@ -6577,6 +6800,13 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "QObject",
+            "line": 1,
+            "owner": "MyWidget"
+          }
+        ],
         "discovered_macros": [
           "Q_OBJECT",
           "Q_SLOTS",
@@ -6585,6 +6815,80 @@
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 4,
+            "name": "MyWidget",
+            "owner": "MyWidget",
+            "type_text": null,
+            "variadic": 0
+          },
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": "const",
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 5,
+            "name": "value",
+            "owner": "MyWidget",
+            "type_text": "int",
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 8,
+            "name": "valueChanged",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 11,
+            "name": "setValue",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 14,
+            "name": "internalSlot",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 17,
+            "name": "m_value",
+            "owner": "MyWidget",
+            "type_text": "int",
+            "variadic": null
+          }
+        ],
         "symbols": [
           {
             "end_line": 18,
@@ -6693,6 +6997,13 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "AActor",
+            "line": 2,
+            "owner": "AMyActor"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "UCLASS"
@@ -6745,6 +7056,13 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "QObject",
+            "line": 1,
+            "owner": "MyWidget"
+          }
+        ],
         "discovered_macros": [
           "Q_OBJECT",
           "signals",
@@ -6752,6 +7070,32 @@
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 4,
+            "name": "valueChanged",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 6,
+            "name": "setValue",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 7,
@@ -6798,12 +7142,81 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "QObject",
+            "line": 1,
+            "owner": "MyWidget"
+          }
+        ],
         "discovered_macros": [
           "signals",
           "slots"
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 3,
+            "name": "MACRO_00",
+            "owner": "MyWidget",
+            "type_text": "Q_OBJECT",
+            "variadic": null
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 64,
+            "name": "MyWidget",
+            "owner": "MyWidget",
+            "type_text": null,
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 67,
+            "name": "valueChanged",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_decl",
+            "language": "cpp",
+            "line": 70,
+            "name": "setValue",
+            "owner": "MyWidget",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 73,
+            "name": "m_value",
+            "owner": "MyWidget",
+            "type_text": "int",
+            "variadic": null
+          }
+        ],
         "symbols": [
           {
             "end_line": 74,
@@ -6850,12 +7263,45 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "AActor",
+            "line": 2,
+            "owner": "AMyActor"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "UCLASS"
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 5,
+            "name": "Tick",
+            "owner": "AMyActor",
+            "type_text": "void",
+            "variadic": 0
+          },
+          {
+            "arity_max": null,
+            "arity_min": null,
+            "flags": null,
+            "kind": "field",
+            "language": "cpp",
+            "line": 7,
+            "name": "time",
+            "owner": "AMyActor",
+            "type_text": "float",
+            "variadic": null
+          }
+        ],
         "symbols": [
           {
             "end_line": 8,
@@ -7009,12 +7455,33 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "AActor",
+            "line": 2,
+            "owner": "AThing"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "UCLASS"
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 4,
+            "name": "f",
+            "owner": "AThing",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 5,
@@ -7091,6 +7558,20 @@
   {
     "expected": {
       "counters": {
+        "members": [
+          {
+            "arity_max": 0,
+            "arity_min": 0,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 2,
+            "name": "f",
+            "owner": "A",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 3,
@@ -7149,6 +7630,13 @@
   {
     "expected": {
       "counters": {
+        "bases": [
+          {
+            "base": "Base",
+            "line": 2,
+            "owner": "AActor"
+          }
+        ],
         "discovered_macros": [
           "GENERATED_BODY",
           "MYGAME_API",
@@ -7156,6 +7644,20 @@
         ],
         "heal_fixed_most": true,
         "macro_healed": 1,
+        "members": [
+          {
+            "arity_max": 1,
+            "arity_min": 1,
+            "flags": null,
+            "kind": "method_def",
+            "language": "cpp",
+            "line": 4,
+            "name": "Tick",
+            "owner": "AActor",
+            "type_text": "void",
+            "variadic": 0
+          }
+        ],
         "symbols": [
           {
             "end_line": 5,

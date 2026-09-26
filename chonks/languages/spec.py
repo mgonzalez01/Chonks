@@ -76,6 +76,39 @@ class NameRule:
 
 
 @dataclass(frozen=True)
+class Member:
+    """One class member a declaration names. `scope` is the class qualifier
+    written on an out-of-class definition (`Foo::bar` -> ("Foo",))."""
+    name: str
+    kind: str
+    line: int
+    type_text: str | None = None
+    arity: "tuple[int, int, bool] | None" = None  # (required, required + defaulted, variadic)
+    flags: tuple[str, ...] = ()
+    scope: tuple[str, ...] = ()
+
+
+MemberFn = Callable[["Node", bytes, str], "list[Member]"]  # (node, src, class name)
+
+
+@dataclass(frozen=True)
+class ClassModelSpec:
+    """Node facts for the class model: the members and bases of each class."""
+    namespaces: Mapping[str, NameFn]  # nodes that open a named scope
+    classes: Mapping[str, NameFn]  # class nodes, named without template arguments
+    members: Mapping[str, MemberFn]  # member declarations in a class body
+    # Function definitions: one outside a class body may define a member
+    # (`scope` set); nothing inside a function is recorded.
+    functions: Mapping[str, MemberFn]
+    bases: Children  # applied to a class node, bucket "bases"
+    # Using-directives: the namespace one names (`using namespace ns;`), else None.
+    using_namespaces: Mapping[str, NameFn] = field(default_factory=dict)
+    transparent: frozenset[str] = frozenset()  # read through in a class body
+    body_field: str = "body"
+    separator: str = "::"
+
+
+@dataclass(frozen=True)
 class LanguageSpec:
     # identity
     name: str  # never rename
@@ -119,6 +152,7 @@ class LanguageSpec:
     # For methods defined outside their class: whether the `name(` at this
     # offset of a class chunk declares a member, so its defaults count.
     member_declaration_at: "Callable[[str, int], bool] | None" = None
+    class_model: "ClassModelSpec | None" = None
     # tier 2: literals
     literals: "LiteralSpec | None" = None
     literal_wrapper: "Callable[[str], tuple[str, str] | object] | None" = None

@@ -11,8 +11,12 @@ from ._naming import (
     cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
     template_inner_name, typedef_name,
 )
+from ._members import (
+    class_name, name_without_template_args, read_definition, read_member, using_namespace_name,
+)
 from .spec import (
-    ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED,
+    ChildSpec, Children, ClassModelSpec, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec,
+    NOT_HANDLED,
 )
 
 if TYPE_CHECKING:
@@ -123,6 +127,23 @@ BASES = Children((
               nested=NestedSpec(("type_identifier", "qualified_identifier"), name_last_or_text)),
 ))
 
+CLASS_MODEL = ClassModelSpec(
+    namespaces={"namespace_definition": namespace_name},
+    classes={t: class_name for t in (*_CLASS_TYPES, "union_specifier")},
+    members={t: read_member for t in ("field_declaration", "declaration", "function_definition")},
+    functions={"function_definition": read_definition},
+    bases=Children((
+        ChildSpec(("base_class_clause",), "bases",
+                  nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"),
+                                    name_without_template_args)),
+    )),
+    using_namespaces={"using_declaration": using_namespace_name},
+    transparent=frozenset({
+        "template_declaration", "preproc_if", "preproc_ifdef", "preproc_elif", "preproc_elifdef",
+        "preproc_else",
+    }),
+)
+
 CPP = LanguageSpec(
     name="cpp",
     typed_ref_languages=frozenset({"c"}),
@@ -187,6 +208,7 @@ CPP = LanguageSpec(
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
     member_declaration_at=member_declaration_at,
+    class_model=CLASS_MODEL,
     literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
                          concat_types=("concatenated_string",)),
     header_exts=frozenset({"h", "hh", "hpp", "hxx"}),

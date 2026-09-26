@@ -126,6 +126,50 @@ SCHEMA_DDL = """
             CREATE INDEX IF NOT EXISTS idx_symbols_path  ON symbols(path);
             CREATE INDEX IF NOT EXISTS idx_symbols_chunk ON symbols(chunk_id);
 
+            -- The class model: members and bases of each class, owner
+            -- qualified by namespace and outer class without template
+            -- arguments. chunk_id is the chunk holding `line`.
+            CREATE TABLE IF NOT EXISTS members (
+                id          INTEGER PRIMARY KEY,
+                path        TEXT NOT NULL,
+                language    TEXT,
+                owner       TEXT NOT NULL,
+                name        TEXT NOT NULL,
+                kind        TEXT NOT NULL,
+                type_text   TEXT,
+                arity_min   INTEGER,
+                arity_max   INTEGER,
+                variadic    INTEGER,
+                flags       TEXT,
+                line        INTEGER NOT NULL,
+                chunk_id    TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_members_owner_name ON members(owner, name);
+            CREATE INDEX IF NOT EXISTS idx_members_name       ON members(name);
+            CREATE INDEX IF NOT EXISTS idx_members_path       ON members(path);
+
+            CREATE TABLE IF NOT EXISTS class_bases (
+                path   TEXT NOT NULL,
+                owner  TEXT NOT NULL,
+                base   TEXT NOT NULL,
+                line   INTEGER
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_class_bases_owner ON class_bases(owner);
+            CREATE INDEX IF NOT EXISTS idx_class_bases_path  ON class_bases(path);
+
+            -- `using namespace X;` per file; scope is the enclosing
+            -- namespace, NULL at file scope.
+            CREATE TABLE IF NOT EXISTS using_namespaces (
+                path       TEXT NOT NULL,
+                scope      TEXT,
+                namespace  TEXT NOT NULL,
+                line       INTEGER
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_using_namespaces_path ON using_namespaces(path);
+
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
                 id UNINDEXED,
                 name,

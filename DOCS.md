@@ -99,6 +99,7 @@ flowchart TD
     CHUNKS --> PR["chunk_pagerank&#10;chunk_id PK + score&#10;written at index time by persist_pagerank"]
     CHUNKS --> INDEG["chunk_indegree&#10;chunk_id + edge_type &middot; n&#10;precomputed fan-in, kept in sync with chunk_refs"]
     CHUNKS --> SYMS["symbols&#10;decoupled named boundaries"]
+    CHUNKS --> MEMB["members &middot; class_bases &middot; using_namespaces&#10;class model: members and bases per class"]
     CHUNKS --> LIT["chunk_literals&#10;chunk_id &middot; text &middot; skeleton &middot; line&#10;source-literal index for find_by_message"]
     LIT -->|mirrors| LFTS["literals_fts&#10;FTS5 virtual &mdash; literal/message search"]
     FOLD["folder_summaries&#10;per-folder summary + embedding"]
@@ -118,10 +119,11 @@ The tables:
 - `chunk_pagerank`, precomputed ranking written at index time and read at every `/repomap` call.
 - `chunk_indegree`, the fan-in of `chunk_refs` per `(chunk_id, edge_type)`, written at graph-build time and read by `/hubs`.
 - `symbols`, the decoupled named-boundary index, since the chunker sometimes folds several named things into one `chunks` row while `find_symbol` and `find_usages` need every name individually addressable.
+- `members`, `class_bases` and `using_namespaces`, the class model: each class's fields, method declarations and method definitions, with type text, arity range and flags (`virtual`, `pure`, `static`, `const`, `override`), and its bases. The owner is qualified by namespace and outer class, without template arguments (`scene::List::Element`); an out-of-class definition belongs to its qualifier resolved against the enclosing namespaces. `using_namespaces` holds each file's `using namespace` directives with the namespace they appear in. A member's `chunk_id` is the chunk holding its line. Written per file with `symbols`; the graph build does not read them. The `class_model_version` meta flag is set once a full or `--force` run has written every file's rows.
 - `chunk_literals`, mirrored into `literals_fts`, holding every decoded string literal a chunk contains plus a hole-collapsed skeleton, populated at parse time and consumed only by `find_by_message`.
 - `folder_summaries`, one row per folder with its summary text and embedding.
 - `macro_definitions`, each C, C++ and HLSL file's `#define` lines and type names under its content hash, read by the indexer before parsing.
-- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`.
+- `meta`, key-value: `schema_version`, `chunker_version`, `language_set`, `pagerank_stale_chunks`, `macro_vocab`, `unhealable_hashes`, `literal_index_version`, `class_model_version`.
 - `graph_nodes` and `graph_edges`, the directory and file containment hierarchy (`dir:` and `file:` nodes plus `contains` edges), kept separate from `chunks` and `chunk_refs`.
 
 ---
@@ -138,7 +140,7 @@ Writes `config.json` for a new install, from `uv run chonks init` or `make init`
 
 ### chonks/index/ — Indexing Pipeline
 
-In: a source tree. Out: rows in `chunks`, `symbols`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
+In: a source tree. Out: rows in `chunks`, `symbols`, `members`, `class_bases`, `using_namespaces`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
 
 **Scan.** The producer walks the tree, applies the exclude and include prefixes, hashes each file inline, and pushes it to `parse_q` when the hash changed. It runs the orphan prune itself after the walk, since pruning needs the complete `scanned_stored` set, and commits its pre-deletes and prunes once at the end. The progress bar starts as an indeterminate `Scanning N file` counter and switches to `Parsed n/M` when the scan finishes.
 
@@ -250,11 +252,12 @@ Every other field has a default, and the defaults give no typed edges, no litera
 
 Then run `uv run pytest -q`. The registry refuses the module at import when a boundary type has no label, when another language owns the extension, or when a label conflicts with another language's label for the same node type. Run `uv run python scripts/gen_language_tables.py` to rewrite the language tables here and in README.md; a test fails while they are stale. Add three tests modelled on `test_lua_*` in `tests/test_chunking.py`: the extension maps to the grammar, a representative file chunks into the expected named units, and a tricky idiom parses without error. Bump `CHUNKER_VERSION` only when an existing corpus would chunk differently. A new extension causes that only when the text fallback indexed it before.
 
-**Tier 2, full fidelity**, three more fields on the same spec, each independent:
+**Tier 2, full fidelity**, four more fields on the same spec, each independent:
 
 - `refs_spec` gives the typed `calls`, `imports`, and `inherits` edges, mapping node type to a rule (`Field`, `FieldChildren`, or `Children` from `chonks/languages/spec.py`) that names the field or child carrying the referenced name. The Python spec is four lines, and those three rules are the whole vocabulary.
 - `literals` is a `LiteralSpec` that gives the string-literal node types and the concatenation operator for `find_by_message`, in one line.
 - `def_signature_keyword` gives the keyword preceding a definition's name (`def`, `func`), used to find the signature ahead of a same-named call earlier in the chunk. Only for languages that have one.
+- `class_model` is a `ClassModelSpec` that names the namespace, class and function node types, the member declarations of a class body with the reader that turns each into members, a `Children` rule for the bases, and the using-directive node types. It fills `members`, `class_bases` and `using_namespaces`. C++ has one.
 
 Nothing outside `chonks/languages/` carries a language list. `chonks/index/`, `chonks/index/graph/`, `chonks/storage/store.py`, and `chonks doctor` read the registry.
 
