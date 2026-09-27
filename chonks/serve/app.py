@@ -230,8 +230,8 @@ def usages(req: UsagesRequest) -> JSONResponse:
     logger.info("usages  project=%r  name=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, len(rows))
     return JSONResponse({
-        "usages": rows, "count": len(rows),
-        "note": result["note"], "content_matches": result["content_matches"],
+        "usages": rows, "count": len(rows), "note": result["note"],
+        "by_class": result["by_class"], "content_matches": result["content_matches"],
     })
 
 
@@ -277,7 +277,7 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
     unscoped so a scoped call can't false-negative on a symbol defined elsewhere."""
     project = _get_project(req.project)
     store = project["store"]
-    definitions = store.find_symbols(req.name)
+    definitions = graph_queries.find_definitions(store, req.name)
     if not definitions:
         note = (
             f"no named boundary matches {req.name!r} — the symbol index holds "
@@ -315,7 +315,7 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
         "definitions": definitions,
         "usages": {
             "usages": usages_result["results"], "count": len(usages_result["results"]),
-            "content_matches": usages_result["content_matches"],
+            "by_class": usages_result["by_class"], "content_matches": usages_result["content_matches"],
         },
         "outgoing": {
             "outgoing": outgoing_result["results"], "count": len(outgoing_result["results"]),

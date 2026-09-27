@@ -401,7 +401,8 @@ def test_iter_refs_typed_streams_every_edge_across_batches(tmp_path):
 
 def _chunk(id, path, name, s=1, e=2):
     return {"id": id, "path": path, "language": "cpp", "chunk_type": "function",
-            "name": name, "start_line": s, "end_line": e, "content": f"{name}()"}
+            "name": name, "start_line": s, "end_line": e, "content": f"{name}() {{ applyStep(); }}",
+            "metadata": {"calls": [{"name": "applyStep", "receiver": None, "arity": 0}]}}
 
 
 def test_find_usages_resolves_via_symbol_index(tmp_path):
@@ -965,7 +966,7 @@ def test_get_impact_by_provenance_sums_match_by_edge_type(tmp_path):
     store = _make_store(tmp_path)
     store.insert_chunks(
         [_chunk("def", "widget.cpp", "Widget"),
-         _chunk("c1", "a.cpp", "one"), _chunk("c2", "b.cpp", "two"),
+         _chunk("c1", "a.cpp", "one"), {**_chunk("c2", "b.cpp", "two"), "metadata": {"imports": ["applyStep"]}},
          _chunk("c3", "c.cpp", "three"), _chunk("c4", "d.cpp", "four")],
         [_fake_embedding()] * 5,
     )
@@ -1232,8 +1233,8 @@ def test_like_metacharacters_in_path_prefix_dont_leak_scope(tmp_path):
     # definition site, so scoping to 'a_b/' must exclude the axb/ sibling
     # caller rather than including it via the '_' wildcard.
     store.insert_chunks(
-        [_chunk("caller_ab", "a_b/caller.cpp", "caller_in_ab"),
-         _chunk("caller_x", "axb/caller.cpp", "caller_in_axb")],
+        [{**_chunk("caller_ab", "a_b/caller.cpp", "caller_in_ab"), "content": "shared_fn();"},
+         {**_chunk("caller_x", "axb/caller.cpp", "caller_in_axb"), "content": "shared_fn();"}],
         [_fake_embedding(), _fake_embedding()],
     )
     store.insert_refs([("caller_ab", "c1"), ("caller_x", "c1")])

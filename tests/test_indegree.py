@@ -325,7 +325,7 @@ def test_hubs_global_guard_still_fires_on_empty_indegree_table(tmp_path, monkeyp
 
 def _impact_chunk(id, path, name, s=1):
     return {"id": id, "path": path, "language": "cpp", "chunk_type": "function",
-            "name": name, "start_line": s, "end_line": s + 1, "content": f"{name}()"}
+            "name": name, "start_line": s, "end_line": s + 1, "content": f"{name}() {{ applyStep(); }}"}
 
 
 def _sym(path, name, chunk_id):

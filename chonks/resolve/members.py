@@ -4,6 +4,8 @@ evidence, then the called method's rows in that class or its bases."""
 from __future__ import annotations
 
 import sys
+import threading
+import weakref
 from collections import defaultdict
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -47,11 +49,23 @@ BARE_NOT_IN_CLASS = "bare_not_in_class"
 # names a class the model does not have: [] links nothing, None takes the name index.
 UNRESOLVED_TARGETS: dict[str, "list[str] | None"] = {NOT_IN_CLASS: [], NO_CLASS: []}
 
+# Outcomes whose evidence places a call outside every class the model has:
+# `X::f()` where X is no class, or a bare call its calling class lacks.
+OUTSIDE_CLASSES = frozenset({NOT_A_CLASS, BARE_NOT_IN_CLASS})
+
 
 class Resolution(NamedTuple):
     targets: list[str] | None
     outcome: str
     guessed: bool = False  # a name matched only the end of a class's qualified name
+
+
+class Lookup(NamedTuple):
+    """A qualified method name read through the class model."""
+    classes: tuple[str, ...]  # the classes its owner names; empty for a namespace
+    found_in: tuple[str, ...]  # the classes whose rows answered: a base when inherited
+    targets: list[str]
+    guessed: bool
 
 
 class Context(NamedTuple):
@@ -102,6 +116,21 @@ def members_index(store: "Store") -> "MemberIndex | None":
     if store.get_meta(_CLASS_MODEL_META_KEY) is None:
         return None
     return MemberIndex(store, _class_kinds())
+
+
+_SHARED: "weakref.WeakKeyDictionary[Store, tuple[tuple[int, int], MemberIndex | None]]" = \
+    weakref.WeakKeyDictionary()
+_SHARED_LOCK = threading.Lock()
+
+
+def shared_members_index(store: "Store") -> "MemberIndex | None":
+    """members_index(store), kept until the store's data changes."""
+    version = store.data_version()
+    with _SHARED_LOCK:
+        got = _SHARED.get(store)
+        if got is None or got[0] != version:
+            got = _SHARED[store] = (version, members_index(store))
+    return got[1]
 
 
 def _parents(name: str, sep: str) -> tuple[str, ...]:
@@ -218,8 +247,9 @@ class MemberIndex:
                 found = self.qualify(b["base"], at, sep)
                 complete = complete and bool(found)
                 got.extend(q for q in found if q != owner and q not in got)
-            self._bases[owner] = got
+            # _complete first: a thread that finds _bases set reads _complete next.
             self._complete[owner] = complete
+            self._bases[owner] = got
         return got
 
     def complete(self, classes: tuple[str, ...] | list[str], sep: str) -> bool:
@@ -450,6 +480,26 @@ class MemberIndex:
                     recv = self._member_types(hits, spec, None)
                     return (recv, CALLING_CLASS) if recv is not None else (None, NO_CLASS)
         return None, UNTYPED
+
+    def lookup(self, name: str) -> Lookup | None:
+        """`Owner::m` as the resolver reads it: the method's chunks in the classes
+        the owner names or their nearest base that has it, else in the namespace
+        it names. None when no class-model language qualifies names that way."""
+        for spec in {s.separator: s for s in _CLASS_MODELS.values()}.values():
+            sep = spec.separator
+            owner, _, member = name.rpartition(sep)
+            if not owner or not member:
+                continue
+            ref = spec.type_ref(owner) if spec.type_ref is not None else None
+            owner = ref.name if ref is not None else owner
+            at = Context(("",), ())
+            classes = self.qualify(owner, at, sep)
+            hits = self.find(classes, member, sep) if classes else \
+                [(owner, r) for r in self.rows(owner, sep).get(member, ())]
+            targets = (_targets(hits, None, TYPED).targets or []) if hits else []
+            found_in = tuple(dict.fromkeys(c for c, r in hits if r.chunk_id in targets))
+            return Lookup(tuple(classes), found_in, targets, self._qualified[(owner, at)][1])
+        return None
 
     def resolve(self, name: str, arity: int | None, entry: dict, caller: dict) -> Resolution | None:
         """The targets a call's evidence finds, or None without evidence."""

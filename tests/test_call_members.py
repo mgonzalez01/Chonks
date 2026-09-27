@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-import chonks.index.graph.members as members
+import chonks.resolve.members as members
 import chonks.index.graph.refs as refs
 from chonks.index.graph.refs import build_refs
 from chonks.index.pipeline import index_paths

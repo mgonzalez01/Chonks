@@ -242,7 +242,8 @@ export async function toolFindUsages(args: any): Promise<string> {
   const mentionRows = rows.filter((r) => r.edge_type === "mentions");
   const lines = typedRows.map(
     (r) => `${r.path}:${r.start_line}${r.name ? `  ${r.name}` : ""}${r.chunk_type ? `  (${r.chunk_type})` : ""}` +
-      `${r.provenance ? `  [${r.provenance}${r.edge_type ? `, ${r.edge_type}` : ""}]` : ""}`,
+      `${r.provenance ? `  [${r.provenance}${r.edge_type ? `, ${r.edge_type}` : ""}${r.unverified ? ", unverified" : ""}]` : ""}` +
+      `${r.classes?.length ? `  → ${r.classes.join(", ")}` : ""}`,
   );
   if (mentionRows.length) {
     lines.push(
@@ -344,7 +345,8 @@ export async function toolInvestigate(args: any): Promise<string> {
     for (const r of typedUsages) {
       lines.push(
         `  ${r.path}:${r.start_line}${r.name ? `  ${r.name}` : ""}` +
-        `${r.provenance ? `  [${r.provenance}${r.edge_type ? `, ${r.edge_type}` : ""}]` : ""}`,
+        `${r.provenance ? `  [${r.provenance}${r.edge_type ? `, ${r.edge_type}` : ""}${r.unverified ? ", unverified" : ""}]` : ""}` +
+        `${r.classes?.length ? `  → ${r.classes.join(", ")}` : ""}`,
       );
     }
     if (mentionUsages.length) {

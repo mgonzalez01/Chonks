@@ -15,9 +15,10 @@ For everything else, `uv run pytest -q` and `cd mcp-server && npm run build` are
 | Layer | Holds | May import |
 |---|---|---|
 | `ops` | the CLI | every layer |
-| `serve` | the HTTP server | retrieval, index, storage, embed, core |
-| `retrieval` | queries, ranking, response shapes | storage, embed, languages, core |
-| `index` | parsing, embedding, graph building | storage, embed, languages, core |
+| `serve` | the HTTP server | retrieval, index, resolve, storage, embed, core |
+| `retrieval` | queries, ranking, response shapes | resolve, storage, embed, languages, core |
+| `index` | parsing, embedding, graph building | resolve, storage, embed, languages, core |
+| `resolve` | which definitions a name or call reaches, read from the stored class model | storage, languages, core |
 | `storage` | SQLite | languages, core |
 | `embed` | the embedding client | core |
 | `languages` | one spec per language | core |

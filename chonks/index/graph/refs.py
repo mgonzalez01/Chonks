@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Iterator
 from chonks.index.progress import PassLog
 from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
-from chonks.index.graph.members import MemberIndex, has_evidence, members_index
+from chonks.resolve.members import MemberIndex, has_evidence, members_index
 
 from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 from chonks.core.refresh import register_refresh

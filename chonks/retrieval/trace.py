@@ -7,6 +7,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from chonks.core.edges import edge_provenance
+from chonks.retrieval.callers import resolve_targets
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
@@ -172,8 +173,8 @@ def trace_path(
     as an include_semantic=True fallback only, chunk_neighbors. Returns
     {"found", "hops": [...], "used_semantic"} or {"found": False, "error"} (and
     "reason": "unknown_symbol" when a symbol does not exist)."""
-    from_ids = store.resolve_symbol_chunk_ids(from_symbol)
-    to_ids = store.resolve_symbol_chunk_ids(to_symbol)
+    from_ids = resolve_targets(store, from_symbol).chunk_ids
+    to_ids = resolve_targets(store, to_symbol).chunk_ids
 
     if not from_ids:
         return {"found": False, "error": f"Unknown symbol: {from_symbol!r}", "reason": "unknown_symbol", "used_semantic": False}

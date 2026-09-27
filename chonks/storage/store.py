@@ -262,6 +262,11 @@ class Store:
             self._conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)", (key, value))
             self._conn.commit()
 
+    def data_version(self) -> tuple[int, int]:
+        """Changes whenever this connection writes or another one commits."""
+        with self._lock:
+            return self._conn.execute("PRAGMA data_version").fetchone()[0], self._conn.total_changes
+
     def _set_dim(self, dim: int, model: str | None = None) -> None:
         """Validate (and on first call, persist) the embedding dim and model.
         `model` is optional for back-compat with older callers; new callers
@@ -475,25 +480,26 @@ class Store:
             return _definitions_first(suffix)
         return rows
 
-    def resolve_symbol_chunk_ids(self, name: str) -> list[str]:
+    def resolve_symbol_chunk_ids(self, name: str, with_qualified: bool = False) -> list[str]:
         """Resolve a name to its defining chunk_id(s), same lookup and
-        suffix fallback as find_symbols. Can return more than one id
-        (overloads); callers needing "the" definition should try each."""
+        suffix fallback as find_symbols; `with_qualified` adds a bare name's
+        qualified definitions even when it matches exactly. Can return more
+        than one id (overloads); callers needing "the" definition should try each."""
         with self._lock:
             def_rows = self._conn.execute(
                 "SELECT DISTINCT chunk_id FROM symbols "
                 "WHERE name = ? AND chunk_id IS NOT NULL AND kind != ?",
                 (name, FORWARD_DECLARATION),
             ).fetchall()
-            if not def_rows and "::" not in name and "." not in name:
+            if (with_qualified or not def_rows) and "::" not in name and "." not in name:
                 esc = _escape_like(name)
-                def_rows = self._conn.execute(
+                def_rows += self._conn.execute(
                     r"SELECT DISTINCT chunk_id FROM symbols WHERE "
                     r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\') "
                     r"AND chunk_id IS NOT NULL AND kind != ?",
                     (f"%::{esc}", f"%.{esc}", FORWARD_DECLARATION),
                 ).fetchall()
-        return [r["chunk_id"] for r in def_rows]
+        return list(dict.fromkeys(r["chunk_id"] for r in def_rows))
 
     def get_symbol_name_chunks(self) -> dict[str, list[str]]:
         """name -> [chunk_id] (NULL chunk_ids skipped), for build_refs name_set
@@ -527,6 +533,18 @@ class Store:
                     [FORWARD_DECLARATION, *batch],
                 ).fetchall()
                 out.update(r[0] for r in rows)
+        return out
+
+    def get_symbols_by_chunk_ids(self, chunk_ids: list[str]) -> list[dict[str, Any]]:
+        """Symbol rows on the given chunks, forward declarations aside."""
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(chunk_ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(dict(r) for r in self._conn.execute(
+                    "SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
+                    f"WHERE kind != ? AND chunk_id IN ({placeholders}) ORDER BY path, start_line",
+                    [FORWARD_DECLARATION, *batch]).fetchall())
         return out
 
     def get_symbol_spans(self, name: str, kinds: list[str]) -> list[tuple[str, str, int, int]]:
@@ -642,6 +660,17 @@ class Store:
                 [FIELD, *class_kinds],
             ).fetchall()
         return {r[0] for r in rows}
+
+    def get_members_by_chunk_ids(self, chunk_ids: list[str], name: str | None = None) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        named = " AND name = ?" if name is not None else ""
+        with self._lock:
+            for batch in batched(list(chunk_ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(dict(r) for r in self._conn.execute(
+                    f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE chunk_id IN ({placeholders}){named} "
+                    "ORDER BY path, line", [*batch, *([name] if name is not None else [])]).fetchall())
+        return out
 
     def get_member_names_by_chunk_ids(self, chunk_ids: list[str]) -> set[str]:
         out: set[str] = set()
@@ -1029,6 +1058,59 @@ class Store:
                 ).fetchall()
                 results.extend(_row_to_dict(r) for r in rows)
         return results
+
+    def get_chunk_spans(self, ids: list[str], path_prefix: str | None = None) -> list[dict[str, Any]]:
+        """Chunks by id without content or metadata, optionally under a path prefix."""
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                sql = ("SELECT id AS chunk_id, path, language, name, chunk_type, start_line, end_line "
+                       f"FROM chunks WHERE id IN ({placeholders})")
+                args: list = list(batch)
+                if path_prefix:
+                    sql += " AND path LIKE ? ESCAPE '\\'"
+                    args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
+                out.extend(dict(r) for r in self._conn.execute(sql, args).fetchall())
+        return out
+
+    def get_contents_containing(self, ids: list[str], text: str) -> list[tuple[str, str]]:
+        """(id, content) of the given chunks whose content contains `text`."""
+        out: list[tuple[str, str]] = []
+        with self._lock:
+            for batch in batched(list(ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend((r[0], r[1]) for r in self._conn.execute(
+                    f"SELECT id, content FROM chunks WHERE id IN ({placeholders}) AND instr(content, ?) > 0",
+                    [*batch, text]).fetchall())
+        return out
+
+    def get_ref_entries(self, ids: list[str], key: str, names: list[str]) -> list[dict[str, Any]]:
+        """Each entry of the chunks' `key` metadata list named one of `names`,
+        with its chunk's id, path, language and start_line."""
+        if not ids or not names:
+            return []
+        wanted = set(names)
+        names_json = json.dumps(sorted(wanted))
+        out: list[dict[str, Any]] = []
+        with self._lock:
+            for batch in batched(list(ids), 900):
+                placeholders = ",".join("?" * len(batch))
+                rows = self._conn.execute(
+                    "SELECT id, path, language, start_line, metadata FROM chunks c "
+                    f"WHERE id IN ({placeholders}) "
+                    "AND EXISTS (SELECT 1 FROM json_each(?) n WHERE instr(c.metadata, json_quote(n.value)) > 0)",
+                    [*batch, names_json]).fetchall()
+                for r in rows:
+                    try:
+                        entries = json.loads(r["metadata"]).get(key) or ()
+                    except (ValueError, AttributeError):
+                        continue
+                    for entry in entries:
+                        if (entry.get("name") if isinstance(entry, dict) else entry) in wanted:
+                            out.append({"id": r["id"], "path": r["path"], "language": r["language"],
+                                        "start_line": r["start_line"], "entry": entry})
+        return out
 
     def get_chunks_by_path_and_names(
         self, path: str, names: list[str], limit: int | None = None,

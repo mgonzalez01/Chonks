@@ -188,7 +188,10 @@ export const TOOLS = [
       "path:line rows, and collapses mentions-type rows (ordinary name co-occurrence, not a " +
       "proven caller) to a single count — use mode:\"aggregate\" for a per-file edge-type " +
       "breakdown that still accounts for the collapsed mentions instead of enumerating every " +
-      "row. A zero-result response is not necessarily \"no callers\": qualified names " +
+      "row. Class::method answers for that class's method, inherited ones included: only callers " +
+      "whose call resolves to it, plus calls the class model cannot place, marked unverified. A bare " +
+      "method name marks each caller with the classes it reaches. " +
+      "A zero-result response is not necessarily \"no callers\": qualified names " +
       "(Foo::Bar) that miss exact " +
       "resolution and names indexed above the edge cap both render as empty with a `note` " +
       "explaining why; the above-cap case and a type that is only forward-declared both " +
@@ -201,7 +204,7 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Symbol name (exact match)." },
+        name: { type: "string", description: "Symbol name (exact match), or Class::method for one class's method." },
         path_prefix: { type: "string", description: "Scope results to referencing chunks under this directory prefix." },
         limit: { type: "number", description: "Cap the number of returned usages (list mode) or files (aggregate mode)." },
         mode: {
@@ -274,7 +277,7 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Symbol name (exact match)." },
+        name: { type: "string", description: "Symbol name (exact match), or Class::method for one class's method." },
         path_prefix: { type: "string", description: "Scope usages/outgoing to this directory prefix." },
         usages_limit: { type: "number", description: "Cap incoming-callers rows (default 30)." },
         outgoing_limit: { type: "number", description: "Cap outgoing-calls rows (default 30)." },
@@ -308,8 +311,8 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        from: { type: "string", description: "Starting symbol name (exact match)." },
-        to: { type: "string", description: "Destination symbol name (exact match)." },
+        from: { type: "string", description: "Starting symbol name (exact match), or Class::method." },
+        to: { type: "string", description: "Destination symbol name (exact match), or Class::method." },
         max_depth: { type: "number", description: "Max hops to search (default 6)." },
         include_semantic: {
           type: "boolean",
