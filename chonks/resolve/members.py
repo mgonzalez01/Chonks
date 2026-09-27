@@ -60,6 +60,14 @@ class Resolution(NamedTuple):
     guessed: bool = False  # a name matched only the end of a class's qualified name
 
 
+def settled_targets(resolution: Resolution | None) -> list[str] | None:
+    """The definitions a call's name is settled to reach ([] for none), or None
+    when the class model leaves it open, as for a class lacking the method."""
+    if resolution is None or resolution.outcome in UNRESOLVED_TARGETS:
+        return None
+    return resolution.targets
+
+
 class Lookup(NamedTuple):
     """A qualified method name read through the class model."""
     classes: tuple[str, ...]  # the classes its owner names; empty for a namespace
