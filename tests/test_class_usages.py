@@ -2,10 +2,14 @@
 model, callers checked against their recorded calls, bare names grouped by class."""
 import hashlib
 import json
+from pathlib import Path
 
+import chonks.serve.app as serve_app
+import chonks.serve.models as serve_models
+import chonks.serve.projects as serve_projects
 from chonks.index.graph.refs import build_refs
 from chonks.index.pipeline import index_paths
-from chonks.retrieval.graph_queries import find_definitions, find_outgoing, find_usages, get_impact
+from chonks.retrieval.graph_queries import find_outgoing, find_symbol, find_usages, get_impact
 from chonks.retrieval.trace import trace_path
 from chonks.storage.store import Store
 
@@ -61,7 +65,7 @@ def test_a_qualified_method_name_answers_for_that_class_alone(tmp_path):
     assert _names(find_usages(store, "Vector::size")) == {"count", "total"}
     assert _names(find_usages(store, "String::size")) == {"length"}
     assert get_impact(store, "Vector::size")["total_references"] == 2
-    assert [(d["name"], d["start_line"]) for d in find_definitions(store, "Vector::size")] == [("size", 9)]
+    assert [(d["name"], d["start_line"]) for d in find_symbol(store, "Vector::size")["symbols"]] == [("size", 9)]
     assert trace_path(store, "count", "Vector::size")["found"]
 
 
@@ -128,3 +132,83 @@ def test_a_caller_whose_class_lacks_the_method_stays_a_mention(tmp_path):
         "poll.cpp": '#include "node.h"\nvoid poll(Node *n) { n->tick(); }\n',
     })
     assert {r["name"]: r["edge_type"] for r in find_usages(store, "Timer::tick")["results"]} == {"poll": "mentions"}
+
+
+_SHAPES = {
+    "shapes.h": "class Shape {\npublic:\n    void fill();\n};\nclass Circle : public Shape {};\n",
+    "shape.cpp": '#include "shapes.h"\n\nvoid Shape::fill() {}\n',
+    "timer.h": "template <class T>\nclass Timer {\npublic:\n    Timer() {}\n    void start() {}\n};\n",
+    "label.h": "namespace ui {\nclass Label {\npublic:\n    int size() const { return 0; }\n};\n}\n",
+    "math.h": "namespace Math {\ndouble ease(double p_x);\n}\n",
+    "math.cpp": '#include "math.h"\n\ndouble Math::ease(double p_x) { return p_x; }\n',
+}
+
+
+def _sites(result: dict) -> list[tuple[str, str, int]]:
+    return [(r["name"], Path(r["path"]).name, r["start_line"]) for r in result["symbols"]]
+
+
+def test_find_symbol_answers_a_method_defined_inside_or_outside_its_class(tmp_path):
+    store = _index(tmp_path, _VECTORS)
+    assert _sites(find_symbol(store, "Vector::size")) == [("size", "vector.h", 9)]
+    assert _sites(find_symbol(store, "String::size")) == [("String::size", "string.cpp", 3)]
+    assert find_symbol(store, "Vector::size")["note"] is None
+
+
+def test_find_symbol_answers_an_inherited_method_and_names_the_base(tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    result = find_symbol(store, "Circle::fill")
+    assert _sites(result) == [("Shape::fill", "shape.cpp", 3)]
+    assert result["note"] == "Circle does not define 'fill'; it inherits Shape::fill, whose definitions these are"
+
+
+def test_find_symbol_answers_a_method_of_a_class_in_a_namespace(tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    assert _sites(find_symbol(store, "ui::Label::size")) == [("size", "label.h", 4)]
+    result = find_symbol(store, "Label::size")
+    assert _sites(result) == [("size", "label.h", 4)]
+    assert result["note"] == "'Label' matched ui::Label"
+
+
+def test_find_symbol_answers_a_namespace_function(tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    assert _sites(find_symbol(store, "Math::ease")) == [("Math::ease", "math.cpp", 3)]
+
+
+def test_find_symbol_leaves_the_class_and_its_template_out_of_a_constructor_lookup(tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    assert {r["kind"] for r in store.find_symbols("Timer")} >= {"class_specifier", "template_declaration"}
+    assert [(r["name"], r["kind"]) for r in find_symbol(store, "Timer::Timer")["symbols"]] == [
+        ("Timer", "function_definition")]
+
+
+def test_find_symbol_miss_names_the_class_that_lacks_the_method(tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    result = find_symbol(store, "Timer::stop")
+    assert result["symbols"] == []
+    assert result["note"].startswith("Timer has no method 'stop' — ")
+    assert "codebase_search mode=fts" in result["note"]
+
+
+def test_find_symbol_scopes_a_class_method_to_path_prefix(tmp_path):
+    store = _index(tmp_path, _VECTORS)
+    assert _sites(find_symbol(store, "Vector::size", path_prefix="vec")) == [("size", "vector.h", 9)]
+    assert find_symbol(store, "Vector::size", path_prefix="string")["symbols"] == []
+
+
+def test_find_symbol_reads_bare_names_and_prefixes_from_the_symbol_index(tmp_path):
+    store = _index(tmp_path, _VECTORS)
+    assert _sites(find_symbol(store, "size")) == [("size", "vector.h", 9)]
+    assert _sites(find_symbol(store, "String::", prefix=True)) == [("String::size", "string.cpp", 3)]
+    assert find_symbol(store, "Vector::", prefix=True)["symbols"] == []
+
+
+def test_symbol_and_investigate_routes_name_the_base_of_an_inherited_method(monkeypatch, tmp_path):
+    store = _index(tmp_path, _SHAPES)
+    monkeypatch.setattr(serve_projects, "_projects", {serve_projects.DEFAULT_PROJECT: {"store": store}})
+    note = "Circle does not define 'fill'; it inherits Shape::fill, whose definitions these are"
+    body = json.loads(serve_app.symbol(serve_models.SymbolRequest(name="Circle::fill")).body)
+    assert (body["count"], body["note"]) == (1, note)
+    body = json.loads(serve_app.investigate(serve_models.InvestigateRequest(name="Circle::fill")).body)
+    assert [d["name"] for d in body["definitions"]] == ["Shape::fill"]
+    assert body["notes"]["definitions"] == note

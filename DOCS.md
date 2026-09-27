@@ -630,7 +630,9 @@ Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\
 
 An exact-name lookup, or a prefix lookup when `prefix: true`, against the decoupled symbol index, which contains every named boundary (functions, methods, classes, structs), including the methods of a folded small class and the members of a merged chunk that are not reachable by name through `/search`. It also holds C, C++ and HLSL forward declarations (`class X;`, `struct X;`, `typedef struct X X;` in C++) with `kind` `forward_declaration`, which are returned only for a name nothing in the index defines, such as a type from an external SDK; a name that is defined returns its definitions alone. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes the lookup to a directory.
 
-Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N, "note" }`, with an empty list rather than an error when the name has no match. `note` explains a miss, or that only forward declarations matched.
+An exact C++ `Class::method` resolves as in `/usages`, through the class model: it returns the symbol rows of the method's definitions in that class, or in the nearest base that has it, including methods defined inside the class body, whose rows carry the bare name. A constructor lookup leaves out the rows of its class and of a template around the class. Bare names and prefix lookups read the symbol index alone.
+
+Response: `{ "symbols": [{"path", "name", "kind", "language", "start_line", "end_line", "chunk_id"}], "count": N, "note" }`, with an empty list rather than an error when the name has no match. `note` explains a miss, naming the class when it has no such method, or says that only forward declarations matched. For `Class::method` it names the base an inherited method comes from, or the classes a partial owner such as `Label` matched.
 
 ### POST /usages
 
@@ -705,7 +707,7 @@ Response: `{ "hubs": [{"path", "name", "chunk_type", "start_line", "in_degree", 
 }
 ```
 
-A composite endpoint returning everything about one symbol. It fans out server-side to the same store methods `/symbol`, `/usages`, `/outgoing`, and `/impact` use, so the definition sites, the incoming callers, the outgoing calls, and the file-level blast radius arrive in one round trip. The definitions of a `Class::method` are the symbol rows of the definitions `/usages` resolves it to. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes usages, outgoing, and impact as those endpoints do, while the definition lookup is always unscoped. `usages_limit` and `outgoing_limit` (1 to 1000, default 30) and `impact_limit` (1 to 100, default 10) cap each leg independently, and `impact` keeps the default `rank_by` of `get_impact`, `pagerank_sum`.
+A composite endpoint returning everything about one symbol. It fans out server-side to the same store methods `/symbol`, `/usages`, `/outgoing`, and `/impact` use, so the definition sites, the incoming callers, the outgoing calls, and the file-level blast radius arrive in one round trip. The definitions and `notes.definitions` are what `/symbol` returns for `name`. `name` is limited to 2000 characters, and `path_prefix` (500 characters) scopes usages, outgoing, and impact as those endpoints do, while the definition lookup is always unscoped. `usages_limit` and `outgoing_limit` (1 to 1000, default 30) and `impact_limit` (1 to 100, default 10) cap each leg independently, and `impact` keeps the default `rank_by` of `get_impact`, `pagerank_sum`.
 
 `definition_source`, true by default, inlines each definition's defining-chunk content as a `source` field. `definition_source_max_chars` (200 to 20000, default 4000) is a total character budget split evenly across the definitions that resolved, with a floor of 500 characters each, and a definition's source past its share is truncated with a trailing `"… [truncated at N chars — Read path:start-end for the rest]"` marker.
 
@@ -936,7 +938,7 @@ find_symbol({
 })
 ```
 
-An exact-name, or prefix, lookup against the decoupled symbol index. It returns `path:line` definition sites, including the methods of a folded small class and the members of a merged chunk that `codebase_search` and `codebase_map` do not surface by name. Use it when the symbol name is known; `codebase_search` is for concept or fuzzy queries.
+An exact-name, or prefix, lookup against the decoupled symbol index. It returns `path:line` definition sites, including the methods of a folded small class and the members of a merged chunk that `codebase_search` and `codebase_map` do not surface by name. `Class::method` resolves as [POST /symbol](#post-symbol) describes, and the server's `note` follows the list. Use it when the symbol name is known; `codebase_search` is for concept or fuzzy queries.
 
 ```
 1 match(es):

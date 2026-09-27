@@ -535,16 +535,21 @@ class Store:
                 out.update(r[0] for r in rows)
         return out
 
-    def get_symbols_by_chunk_ids(self, chunk_ids: list[str]) -> list[dict[str, Any]]:
-        """Symbol rows on the given chunks, forward declarations aside."""
+    def get_symbols_by_chunk_ids(self, chunk_ids: list[str],
+                                 path_prefix: str | None = None) -> list[dict[str, Any]]:
+        """Symbol rows on the given chunks, forward declarations aside,
+        optionally under a path prefix."""
         out: list[dict[str, Any]] = []
         with self._lock:
             for batch in batched(list(chunk_ids), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend(dict(r) for r in self._conn.execute(
-                    "SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
-                    f"WHERE kind != ? AND chunk_id IN ({placeholders}) ORDER BY path, start_line",
-                    [FORWARD_DECLARATION, *batch]).fetchall())
+                sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
+                       f"WHERE kind != ? AND chunk_id IN ({placeholders})")
+                args: list = [FORWARD_DECLARATION, *batch]
+                if path_prefix:
+                    sql += " AND path LIKE ? ESCAPE '\\'"
+                    args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
+                out.extend(dict(r) for r in self._conn.execute(sql + " ORDER BY path, start_line", args).fetchall())
         return out
 
     def get_symbol_spans(self, name: str, kinds: list[str]) -> list[tuple[str, str, int, int]]:
