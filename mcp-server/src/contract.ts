@@ -147,7 +147,9 @@ export const TOOLS = [
       "codebase_search for this because it resolves against a decoupled symbol index, so it " +
       "still finds a method folded into a merged chunk that text search wouldn't surface by " +
       "name. Exact-name (or prefix) lookup covering every named boundary (functions, methods, " +
-      "classes, structs). Returns path:line definition sites; a C/C++/HLSL type the index only " +
+      "classes, structs). Class::method answers for that class's method as find_usages resolves it, " +
+      "inline and inherited methods included; the note names the base an inherited one comes from. " +
+      "Returns path:line definition sites; a C/C++/HLSL type the index only " +
       "forward-declares (e.g. from an external SDK) returns its declarations, marked " +
       "(forward_declaration). Boundary-only scope: " +
       "member fields, local variables, and other non-boundary names are NOT indexed here — " +
@@ -157,7 +159,7 @@ export const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Symbol name (exact unless prefix=true)." },
+        name: { type: "string", description: "Symbol name (exact unless prefix=true), or Class::method for one class's method." },
         path_prefix: { type: "string", description: "Scope to this directory prefix." },
         prefix: { type: "boolean", description: "Prefix match instead of exact." },
       },

@@ -9,7 +9,6 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from chonks.core.refresh import register_refresh
-from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
@@ -207,30 +206,16 @@ def repomap(req: RepomapRequest) -> JSONResponse:
     return JSONResponse({"map": map_text})
 
 
-_FORWARD_ONLY_NOTE = (
-    "only forward declarations match: the definition is outside the indexed code"
-)
-
-
 @app.post("/symbol")
 def symbol(req: SymbolRequest) -> JSONResponse:
-    """Exact-name (or prefix) lookup against the decoupled symbol index; see
-    DOCS.md for the field-level contract. A miss gets a `note` routing the
-    caller to codebase_search mode=fts."""
+    """Exact-name (or prefix) definition lookup; see DOCS.md for the
+    field-level contract and find_symbol in chonks/retrieval/graph_queries.py."""
     project = _get_project(req.project)
-    rows = project["store"].find_symbols(req.name, req.path_prefix, prefix=req.prefix)
+    result = graph_queries.find_symbol(project["store"], req.name, req.path_prefix, prefix=req.prefix)
+    rows = result["symbols"]
     logger.info("symbol  project=%r  name=%r  prefix=%s  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, req.prefix, len(rows))
-    note = None
-    if not rows:
-        note = (
-            f"no named boundary matches {req.name!r} — the symbol index holds "
-            "functions/classes/named AST boundaries; fields and locals live in "
-            "chunk content, try codebase_search mode=fts"
-        )
-    elif all(r["kind"] == FORWARD_DECLARATION for r in rows):
-        note = _FORWARD_ONLY_NOTE
-    return JSONResponse({"symbols": rows, "count": len(rows), "note": note})
+    return JSONResponse({"symbols": rows, "count": len(rows), "note": result["note"]})
 
 
 @app.post("/usages")
@@ -290,13 +275,10 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
     unscoped so a scoped call can't false-negative on a symbol defined elsewhere."""
     project = _get_project(req.project)
     store = project["store"]
-    definitions = graph_queries.find_definitions(store, req.name)
+    found = graph_queries.find_symbol(store, req.name)
+    definitions = found["symbols"]
     if not definitions:
-        note = (
-            f"no named boundary matches {req.name!r} — the symbol index holds "
-            "functions/classes/named AST boundaries; fields and locals live in "
-            "chunk content, try codebase_search mode=fts"
-        )
+        note = found["note"]
         logger.info("investigate  project=%r  name=%r  definitions=0 (short-circuit)",
                     req.project or DEFAULT_PROJECT, req.name)
         return JSONResponse({
@@ -335,9 +317,7 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
         },
         "impact": impact_result,
         "notes": {
-            "definitions": (_FORWARD_ONLY_NOTE
-                            if all(d["kind"] == FORWARD_DECLARATION for d in definitions)
-                            else None),
+            "definitions": found["note"],
             "usages": usages_result["note"],
             "outgoing": outgoing_result["note"],
             "impact": impact_result["note"],

@@ -200,7 +200,11 @@ export async function toolFindSymbol(args: any): Promise<string> {
   const lines = rows.map(
     (r) => `${r.name}  ${r.path}:${r.start_line}${r.kind ? `  (${r.kind})` : ""}`,
   );
-  return `${res.count ?? rows.length} match(es):\n${lines.join("\n")}`;
+  let out = `${res.count ?? rows.length} match(es):\n${lines.join("\n")}`;
+  if (res.note) {
+    out += `\n${res.note}`;
+  }
+  return out;
 }
 
 export async function toolFindUsages(args: any): Promise<string> {

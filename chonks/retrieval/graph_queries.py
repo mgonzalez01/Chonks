@@ -1,19 +1,35 @@
-"""Shaped graph answers: usages, outgoing references and impact, with their note text."""
+"""Shaped graph answers: definitions, usages, outgoing references and impact, with their note text."""
 
 from collections import Counter
 from typing import Any
 
 from chonks.core.batching import batched
 from chonks.core.edges import CALLS, _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
+from chonks.core.refresh import register_refresh
 from chonks.core.symbols import FORWARD_DECLARATION
+from chonks.languages import union as _lang_union
 from chonks.retrieval.callers import (
     Reached, Targets, last_component, owners_by_chunk, reaching_edges, resolve_targets, whole_word,
 )
+
+_CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
+
+
+def _refresh_from_registry() -> None:
+    global _CLASS_LIKE_KINDS
+    _CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
+
+
+register_refresh(_refresh_from_registry)
 
 # Unscoped get_hubs scans all of chunk_refs under the store lock, which can
 # block every other request for minutes on a huge corpus. Above this size
 # the global branch requires a path_prefix instead.
 _HUBS_GLOBAL_MAX_CHUNKS = 100_000
+
+_FORWARD_ONLY_NOTE = "only forward declarations match: the definition is outside the indexed code"
+_NOT_A_BOUNDARY = ("the symbol index holds functions/classes/named AST boundaries; fields and "
+                   "locals live in chunk content, try codebase_search mode=fts")
 
 
 def _provenance_rollup(edge_types: dict[str, int]) -> dict[str, int]:
@@ -54,7 +70,7 @@ def _symbol_miss_note(store, targets: Targets) -> str:
     return note
 
 
-def _lookup_notes(targets: Targets) -> list[str]:
+def _lookup_notes(targets: Targets, rows: str = "usages") -> list[str]:
     """How the class model read a qualified name: the classes a partial owner
     matched, and the base a method is inherited from."""
     found = targets.lookup
@@ -66,7 +82,7 @@ def _lookup_notes(targets: Targets) -> list[str]:
         notes.append(f"{owner!r} matched {', '.join(found.classes)}")
     if found.classes and not set(found.found_in) & set(found.classes):
         via = ", ".join(f"{c}::{targets.member}" for c in found.found_in)
-        notes.append(f"{owner} does not define {targets.member!r}; it inherits {via}, whose usages these are")
+        notes.append(f"{owner} does not define {targets.member!r}; it inherits {via}, whose {rows} these are")
     return notes
 
 
@@ -114,14 +130,37 @@ def _left_out_note(left_out: int, targets: Targets) -> str | None:
             f"name it defines, or their {targets.member!r} calls resolve to another definition")
 
 
-def find_definitions(store, name: str) -> list[dict[str, Any]]:
-    """find_symbols rows; for a method the class model qualifies, the symbol
-    rows of its definitions."""
-    targets = resolve_targets(store, name)
-    if not targets.checked:
-        return store.find_symbols(name)
-    return [r for r in store.get_symbols_by_chunk_ids(targets.chunk_ids)
-            if r["name"] == name or last_component(r["name"]) == targets.member]
+def _method_rows(store, targets: Targets, path_prefix: str | None) -> list[dict[str, Any]]:
+    """Symbol rows of a method on its defining chunks, without the rows of a
+    class named like it (a constructor's class, and a template around that class)."""
+    rows = [r for r in store.get_symbols_by_chunk_ids(targets.chunk_ids, path_prefix)
+            if r["name"] == targets.name or last_component(r["name"]) == targets.member]
+    classes = [r for r in rows if r["kind"] in _CLASS_LIKE_KINDS]
+    return [r for r in rows if not any(
+        c["path"] == r["path"] and c["name"] == r["name"] and r["start_line"] <= c["start_line"]
+        and (c["end_line"] or c["start_line"]) <= (r["end_line"] or r["start_line"]) for c in classes)]
+
+
+def find_symbol(store, name: str, path_prefix: str | None = None,
+                prefix: bool = False) -> dict[str, Any]:
+    """find_symbols rows with a note; `Class::method` resolves as in find_usages,
+    to the symbol rows of its definitions."""
+    targets = resolve_targets(store, name) if not prefix and last_component(name) != name else None
+    if targets is None or not targets.checked:
+        rows = store.find_symbols(name, path_prefix, prefix=prefix)
+    else:
+        rows = _method_rows(store, targets, path_prefix)
+    if not rows:
+        found = targets.lookup if targets is not None else None
+        if found is not None and found.classes and not found.targets:
+            note = f"{' / '.join(found.classes)} has no method {targets.member!r} — {_NOT_A_BOUNDARY}"
+        else:
+            note = f"no named boundary matches {name!r} — {_NOT_A_BOUNDARY}"
+    elif all(r["kind"] == FORWARD_DECLARATION for r in rows):
+        note = _FORWARD_ONLY_NOTE
+    else:
+        note = "\n".join(_lookup_notes(targets, "definitions")) if targets is not None else ""
+    return {"symbols": rows, "note": note or None}
 
 
 def find_usages(store, name: str, path_prefix: str | None = None,
