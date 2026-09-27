@@ -119,3 +119,12 @@ def test_a_bare_method_name_groups_its_callers_by_class(tmp_path):
     assert {r["name"]: r.get("classes") for r in result["results"]} == {
         "count": ["Vector"], "total": ["Vector"], "length": ["String"]}
     assert "Vector::size" in result["note"]
+
+
+def test_a_caller_whose_class_lacks_the_method_stays_a_mention(tmp_path):
+    store = _index(tmp_path, {
+        "node.h": "class Node {\npublic:\n    void ready();\n};\nclass Timer {\npublic:\n    void tick();\n};\n",
+        "timer.cpp": '#include "node.h"\n\nvoid Timer::tick() {}\n',
+        "poll.cpp": '#include "node.h"\nvoid poll(Node *n) { n->tick(); }\n',
+    })
+    assert {r["name"]: r["edge_type"] for r in find_usages(store, "Timer::tick")["results"]} == {"poll": "mentions"}

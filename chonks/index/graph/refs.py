@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING, Iterator
 from chonks.index.progress import PassLog
 from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
-from chonks.resolve.members import MemberIndex, has_evidence, members_index
+from chonks.resolve.members import MemberIndex, members_index, settled_targets
 
-from chonks.core.edges import _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
+from chonks.core.edges import CALLS, TYPED_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 from chonks.core.refresh import register_refresh
 from chonks.languages import table as _lang_table, union as _lang_union
 
@@ -39,6 +39,43 @@ def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> l
     and bases can name."""
     reach = _TYPED_REF_LANGUAGES.get(lang, frozenset()) | {lang}
     return [i for i in ids if (id_to_chunk.get(i) or {}).get("language") in reach]
+
+
+def _typed_refs(
+    c: dict, name_to_ids: dict[str, list[str]], id_to_chunk: dict[str, dict], arity_cache: dict,
+    owner_decls: "Callable[[str], Iterable[dict]] | None", members: MemberIndex | None, cap_mentions: bool,
+) -> tuple[dict[str, str], set[str]]:
+    """The chunk's typed edges as {to_id: edge_type}, and the names every call
+    of which the class model settles."""
+    cid = c["id"]
+    md = c.get("metadata") or {}
+    lang = c.get("language") or ""
+    out: dict[str, str] = {}
+    settled: set[str] = set()
+    unsettled: set[str] = set()
+    for edge_type in TYPED_EDGE_TYPES:
+        for raw in md.get(edge_type) or ():
+            resolution = None
+            if edge_type == CALLS:
+                name, receiver, arity = _call_entry_fields(raw)
+                if members is not None and isinstance(raw, dict):
+                    resolution = members.resolve(name, arity, raw, c)
+                (unsettled if settled_targets(resolution) is None else settled).add(name)
+            else:
+                name, receiver, arity = raw, None, None
+            if resolution is not None and resolution.targets is not None:
+                targets = resolution.targets
+            else:
+                ids = _typed_targets(name_to_ids.get(name) or [], lang, id_to_chunk)
+                # The mentions pass's cap, so a typed fact is never dropped in favor of a noisier one.
+                if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
+                    continue
+                targets = (_discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls)
+                           if edge_type == CALLS else ids)
+            for target_id in targets:
+                if target_id != cid:
+                    out[target_id] = edge_type
+    return out, settled - unsettled
 
 
 register_refresh(_refresh_from_registry)
@@ -117,7 +154,8 @@ def _build_graph(
 ) -> dict[tuple[str, str], str]:
     """Builds {(from_id, to_id): edge_type} from mentions, xlang pairing, and
     typed AST facts; typed edges are added last so they supersede a mentions
-    or xlang edge for the same pair. Bare-alias fold is capped all-or-nothing per key.
+    or xlang edge for the same pair. A name every call of which the class model
+    settles makes no mentions. Bare-alias fold is capped all-or-nothing per key.
     `log` reports each step on a full rebuild."""
     name_to_ids: dict[str, list[str]] = defaultdict(list)
     name_to_langs: dict[str, set[str]] = defaultdict(set)
@@ -193,6 +231,25 @@ def _build_graph(
 
     edges: dict[tuple[str, str], str] = {}
 
+    # Typed facts come first: the names a chunk's calls settle stay out of its mentions.
+    id_to_chunk = {c["id"]: c for c in chunks}
+    for c in extra_definers or ():
+        id_to_chunk.setdefault(c["id"], c)
+    arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
+    typed: list[tuple[str, dict[str, str]]] = []
+    settled: dict[str, set[str]] = {}
+    t0 = time.monotonic()
+    for i, c in enumerate(chunks):
+        if log:
+            log.progress("typed edges", i, len(chunks))
+        got, names = _typed_refs(c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions)
+        if got:
+            typed.append((c["id"], got))
+        if names:
+            settled[c["id"]] = names
+    if log:
+        log.info("typed edges in %.1fs", time.monotonic() - t0)
+
     # Two-sweep mentions pass: cap_mentions applies in sweep 1, so a
     # capped-out name never enters the PMI population _classify_mentions ranks.
     referenced_by_chunk: dict[str, set[str]] = {}
@@ -203,9 +260,10 @@ def _build_graph(
         content = c["content"] or ""
         own_name = c["name"]
         cid = c["id"]
+        skip = settled.get(cid, ())
         refs: set[str] = set()
         for word in _WORD_RE.findall(content):
-            if word in name_set and word != own_name:
+            if word in name_set and word != own_name and word not in skip:
                 if cap_mentions and len(name_to_ids[word]) > _MAX_CROSS_LANG_OCCURRENCES:
                     continue
                 refs.add(word)
@@ -254,41 +312,13 @@ def _build_graph(
                     edges[(id_b, id_a)] = "xlang"
 
     # Typed edges (calls/imports/inherits) are added last, superseding any
-    # mentions/xlang edge for the same pair. The fan-out cap here mirrors the
-    # mentions pass, so a typed fact is never dropped in favor of a noisier one.
-    id_to_chunk = {c["id"]: c for c in chunks}
-    for c in extra_definers or ():
-        id_to_chunk.setdefault(c["id"], c)
-    arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
-    for i, c in enumerate(chunks):
-        if log:
-            log.progress("typed edges", i, len(chunks))
-        md = c.get("metadata") or {}
-        cid = c["id"]
-        for edge_type in ("calls", "imports", "inherits"):
-            for raw in md.get(edge_type) or ():
-                if edge_type == "calls":
-                    name, receiver, arity = _call_entry_fields(raw)
-                else:
-                    name, receiver, arity = raw, None, None
-                ids = _typed_targets(name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
-                if cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES:
-                    ids = []
-                if not ids and not (edge_type == "calls" and members is not None and has_evidence(raw)):
-                    continue
-                targets = (
-                    _discriminate_definers(
-                        ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls,
-                        evidence=raw, caller=c, members=members,
-                    )
-                    if edge_type == "calls" else ids
-                )
-                for target_id in targets:
-                    if target_id != cid:
-                        edges[(cid, target_id)] = edge_type
+    # mentions/xlang edge for the same pair.
+    for cid, got in typed:
+        for target_id, edge_type in got.items():
+            edges[(cid, target_id)] = edge_type
 
     if log:
-        log.info("cross-language and typed edges in %.1fs, %d edges in all",
+        log.info("cross-language edges in %.1fs, %d edges in all",
                  time.monotonic() - t0, len(edges))
     return edges
 
@@ -630,7 +660,7 @@ def _build_refs_incremental(
             if w != own_name and len(w) >= _MIN_NAME_LEN:
                 candidate_words.add(w)
         md = c.get("metadata") or {}
-        for edge_type in ("calls", "imports", "inherits"):
+        for edge_type in TYPED_EDGE_TYPES:
             # 'calls' entries are fingerprint dicts, 'imports'/'inherits'
             # plain strings; _call_entry_name handles both so this loop needn't branch.
             for raw in md.get(edge_type) or ():
@@ -656,13 +686,38 @@ def _build_refs_incremental(
 
     edges: dict[tuple[str, str], str] = {}
 
+    # Typed edges run through the same language filter and _typed_refs as
+    # _build_graph's bulk pass; id_to_chunk here only needs the typed target
+    # chunks, not the whole corpus.
+    typed_target_ids: set[str] = set()
+    for c in ref_chunks:
+        md = c.get("metadata") or {}
+        for edge_type in TYPED_EDGE_TYPES:
+            for raw in md.get(edge_type) or ():
+                typed_target_ids.update(local_name_to_ids.get(_call_entry_name(raw)) or ())
+    id_to_chunk = (
+        {row["id"]: row for row in store.get_chunks_by_ids(list(typed_target_ids))}
+        if typed_target_ids else {}
+    )
+    arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
+    owner_decls = _owner_decls(store)
+    typed: list[tuple[str, dict[str, str]]] = []
+    settled: dict[str, set[str]] = {}
+    for c in ref_chunks:
+        got, names = _typed_refs(c, local_name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions)
+        if got:
+            typed.append((c["id"], got))
+        if names:
+            settled[c["id"]] = names
+
     # mentions (content scan), lowest precedence.
     for c in ref_chunks:
         content = c.get("content") or ""
         own_name = c.get("name")
+        skip = settled.get(c["id"], ())
         referenced = {
             w for w in _WORD_RE.findall(content)
-            if w in local_name_to_ids and w != own_name
+            if w in local_name_to_ids and w != own_name and w not in skip
         }
         for ref_name in referenced:
             ids = local_name_to_ids[ref_name]
@@ -680,45 +735,10 @@ def _build_refs_incremental(
         edges[(id_a, id_b)] = "xlang"
         edges[(id_b, id_a)] = "xlang"
 
-    # Typed edges, highest precedence, run through the same language filter
-    # and _discriminate_definers as _build_graph's bulk pass; id_to_chunk here
-    # only needs the typed target chunks, not the whole corpus.
-    typed_target_ids: set[str] = set()
-    for c in ref_chunks:
-        md = c.get("metadata") or {}
-        for edge_type in ("calls", "imports", "inherits"):
-            for raw in md.get(edge_type) or ():
-                typed_target_ids.update(local_name_to_ids.get(_call_entry_name(raw)) or ())
-    id_to_chunk = (
-        {row["id"]: row for row in store.get_chunks_by_ids(list(typed_target_ids))}
-        if typed_target_ids else {}
-    )
-    arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
-    owner_decls = _owner_decls(store)
-
-    for c in ref_chunks:
-        md = c.get("metadata") or {}
-        for edge_type in ("calls", "imports", "inherits"):
-            for raw in md.get(edge_type) or ():
-                if edge_type == "calls":
-                    name, receiver, arity = _call_entry_fields(raw)
-                else:
-                    name, receiver, arity = raw, None, None
-                ids = _typed_targets(local_name_to_ids.get(name) or [], c.get("language") or "", id_to_chunk)
-                if cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES:
-                    ids = []
-                if not ids and not (edge_type == "calls" and members is not None and has_evidence(raw)):
-                    continue
-                targets = (
-                    _discriminate_definers(
-                        ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls,
-                        evidence=raw, caller=c, members=members,
-                    )
-                    if edge_type == "calls" else ids
-                )
-                for target_id in targets:
-                    if target_id != c["id"]:
-                        edges[(c["id"], target_id)] = edge_type
+    # Typed edges, highest precedence.
+    for cid, got in typed:
+        for target_id, edge_type in got.items():
+            edges[(cid, target_id)] = edge_type
 
     refs = [(u, v, t) for (u, v), t in edges.items()]
     store.insert_refs(refs)

@@ -33,11 +33,11 @@ def _index(tmp_path, files: dict[str, str]) -> Store:
     return store
 
 
-def _files(store: Store, caller: str) -> set[str]:
-    """The files of the chunks the chunk named `caller` calls."""
+def _files(store: Store, caller: str, edge_type: str = "calls") -> set[str]:
+    """The files of the chunks the chunk named `caller` links to by `edge_type`."""
     rows = store._conn.execute(
         "SELECT t.path FROM chunk_refs r JOIN chunks f ON f.id = r.from_id "
-        "JOIN chunks t ON t.id = r.to_id WHERE r.edge_type = 'calls' AND f.name = ?", (caller,))
+        "JOIN chunks t ON t.id = r.to_id WHERE r.edge_type = ? AND f.name = ?", (edge_type, caller))
     return {r[0].rsplit("/", 1)[-1] for r in rows}
 
 
@@ -275,3 +275,61 @@ def test_calls_without_evidence_resolve_by_name_under_a_class_model(tmp_path, mo
     build_refs(store)
     assert stripped == set(store.get_all_refs_typed())
     assert _files(store, "measure") == {"shape.cpp", "circle.cpp", "label.cpp"}
+
+
+def test_a_name_every_call_of_which_resolves_makes_no_mentions(tmp_path):
+    store = _index(tmp_path, {**_SHAPES, "use.cpp": (
+        '#include "shapes.h"\n'
+        "float measure(scene::Circle *c) {\n    return c->area();\n}\n")})
+    assert _files(store, "measure") == {"circle.cpp"}
+    assert _files(store, "measure", "mentions") == {"shapes.h"}
+
+
+def _use(text: str) -> dict[str, str]:
+    return {**_SHAPES, "use.cpp": '#include "shapes.h"\n' + text}
+
+
+@pytest.mark.parametrize("files, caller, mentioned", [
+    (_MISSING, "poll", {"node.h", "timer.cpp"}),
+    (_use("float wait(Server *s) {\n    return s->area();\n}\n"), "wait", {"shape.cpp", "circle.cpp", "label.cpp"}),
+    (_use("void run() {\n    label.area();\n}\n"), "run", {"shape.cpp", "circle.cpp", "label.cpp"}),
+    (_use("float both(scene::Circle *c, Server *s) {\n    return c->area() + s->area();\n}\n"), "both",
+     {"shape.cpp", "label.cpp", "shapes.h"}),
+])
+def test_a_name_with_a_call_the_class_model_leaves_open_keeps_its_mentions(tmp_path, files, caller, mentioned):
+    store = _index(tmp_path, files)
+    assert _files(store, caller, "mentions") == mentioned
+
+
+def test_a_name_mentioned_without_a_call_keeps_its_mentions(tmp_path):
+    store = _index(tmp_path, {**_SHAPES, "use.cpp": (
+        '#include "shapes.h"\n'
+        "float measure(scene::Circle *c) {\n    // fill is left to the caller\n    return c->area();\n}\n")})
+    assert _files(store, "measure", "mentions") == {"shapes.h", "shape_fill.cpp", "label_fill.cpp"}
+
+
+def test_a_language_without_a_class_model_keeps_the_mentions_of_names_it_calls(tmp_path, monkeypatch):
+    store = _index(tmp_path, {
+        **_SHAPES,
+        "canvas.py": "class Canvas:\n    def fill(self):\n        pass\n",
+        "sprite.py": "class Sprite:\n    def fill(self):\n        pass\n",
+        "render.py": "def render(canvas):\n    canvas.fill()\n",
+    })
+    cid, raw = store._conn.execute("SELECT id, metadata FROM chunks WHERE name = 'render'").fetchone()
+    md = json.loads(raw)
+    for call in md["calls"]:
+        call.update(racc=".", rhead={"name": "canvas", "via": "param", "type": "Label"})
+    store._conn.execute("UPDATE chunks SET metadata = ? WHERE id = ?", (json.dumps(md), cid))
+    store.commit()
+
+    def python_edges() -> set[tuple[str, str, str]]:
+        py = {r[0] for r in store._conn.execute("SELECT id FROM chunks WHERE language = 'python'")}
+        return {e for e in store.get_all_refs_typed() if e[0] in py}
+
+    build_refs(store)
+    with_model = python_edges()
+    monkeypatch.setattr(refs, "members_index", lambda _store: None)
+    build_refs(store)
+    assert with_model == python_edges()
+    assert _files(store, "render") == {"canvas.py"}
+    assert _files(store, "render", "mentions") == {"sprite.py", "shape_fill.cpp", "label_fill.cpp"}

@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from chonks.core.edges import ASSOCIATED, CALLS, MENTIONS, TYPED_EDGE_TYPES, XLANG
-from chonks.resolve.members import NO_CLASS, OUTSIDE_CLASSES, Lookup, shared_members_index
+from chonks.resolve.members import OUTSIDE_CLASSES, Lookup, settled_targets, shared_members_index
 
 _QUALIFIER = re.compile(r"::|\.")
 
@@ -100,9 +100,10 @@ def reaching_edges(store, targets: Targets, edges: list[tuple[str, str, str]],
             if key == CALLS and index is not None and isinstance(entry, dict):
                 resolution = index.resolve(ref, entry.get("arity"), entry, row)
                 if resolution is not None:
-                    placed = [] if targets.checked and resolution.outcome in OUTSIDE_CLASSES else resolution.targets
-                    # A class the model lacks links nothing, yet leaves open which class a mention is of.
-                    heard = None if resolution.outcome == NO_CLASS else placed
+                    if targets.checked and resolution.outcome in OUTSIDE_CLASSES:
+                        placed = heard = []
+                    else:
+                        placed, heard = resolution.targets, settled_targets(resolution)
             refs[(row["id"], key)].append((ref, placed, heard))
 
     silent = [f for f in mentioning if not any(ref == member for ref, _p, _h in refs.get((f, CALLS), ()))]

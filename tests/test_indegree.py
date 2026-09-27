@@ -73,10 +73,11 @@ def test_full_rebuild_reports_each_step(caplog):
     assert steps == [
         "chunk_refs: full rebuild, loading named chunks",
         "chunk_refs: loaded 5 named chunks",
+        "chunk_refs: typed edges",
         "chunk_refs: name scan done",
         "chunk_refs: scored mentions",
         "chunk_refs: 4 mention edges",
-        "chunk_refs: cross-language and typed edges",
+        "chunk_refs: cross-language edges",
         "chunk_refs: writing 4 edges",
         "chunk_refs: wrote edges",
     ]

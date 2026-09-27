@@ -1145,3 +1145,58 @@ def test_an_incremental_class_change_retargets_a_call_that_names_only_the_member
     build_refs(ref)
     assert got == _edges(ref)
     assert ("c1", "shape_h2", "calls") in got
+
+
+_OUTLINE_CALLER = _chunk("c1", "use.cpp", name="render", content="void render(Server *s) { s->outline(); }",
+                         metadata={"calls": [{"name": "outline", "receiver": "s", "arity": 0, "racc": "->",
+                                              "rhead": {"name": "s", "via": "param", "type": "Server *"}}]})
+_CANVAS_OUTLINE = _chunk("canvas_outline", "canvas.cpp", name="Canvas::outline", content="void Canvas::outline() {}")
+_SERVER = _chunk("server_h", "server.h", name="Server", chunk_type="class_specifier", start_line=1, end_line=3,
+                 content="class Server {\n  void outline();\n};")
+_SERVER_ROWS = [_member("Server", "outline", "method_decl", 2, "server_h", "server.h")]
+_SERVER_SPAN = _class_span("Server", "server.h", 1, 3, "server_h")
+_OUTLINE_FILLER = [_chunk(f"filler{i}", f"filler{i}.cpp", name=f"filler{i}", content=f"void filler{i}() {{}}")
+                   for i in range(12)]
+
+
+def _with_server(store: Store, chunks: list[dict]) -> None:
+    _with_class_model(store, chunks, {"server.h": _SERVER_ROWS}, [_SERVER_SPAN])
+
+
+def test_an_incremental_class_that_settles_an_unchanged_call_drops_its_mentions(caplog):
+    store = _mk_store()
+    _with_class_model(store, [_OUTLINE_CALLER, _CANVAS_OUTLINE] + _OUTLINE_FILLER, {}, [])
+    build_refs(store)
+    assert ("c1", "canvas_outline", "mentions") in _edges(store)
+
+    _with_server(store, [_SERVER])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"server_h"}, deleted_ids=set(), deleted_names=set())
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _with_server(ref, [_OUTLINE_CALLER, _CANVAS_OUTLINE, _SERVER] + _OUTLINE_FILLER)
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "server_h", "calls") in got
+    assert ("c1", "canvas_outline", "mentions") not in got
+
+
+def test_an_incremental_class_removal_restores_the_mentions_of_an_unchanged_call(caplog):
+    store = _mk_store()
+    _with_server(store, [_OUTLINE_CALLER, _CANVAS_OUTLINE, _SERVER] + _OUTLINE_FILLER)
+    build_refs(store)
+    assert ("c1", "canvas_outline", "mentions") not in _edges(store)
+
+    deleted_ids: set[str] = set()
+    deleted_names: set[str] = set()
+    _delete_tracked(store, "server.h", deleted_ids, deleted_names)
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    ref = _mk_store()
+    _with_class_model(ref, [_OUTLINE_CALLER, _CANVAS_OUTLINE] + _OUTLINE_FILLER, {}, [])
+    build_refs(ref)
+    assert got == _edges(ref)
+    assert ("c1", "canvas_outline", "mentions") in got
