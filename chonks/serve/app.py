@@ -84,6 +84,7 @@ def search(req: SearchRequest) -> JSONResponse:
 
     # fts/regex never embed, so query_truncated stays False for them.
     query_truncated = False
+    mode_note = None
 
     if req.mode == "semantic":
         query_truncated = searcher.query_truncated(req.query)
@@ -107,7 +108,7 @@ def search(req: SearchRequest) -> JSONResponse:
                 "Retry with mode='fts' (keyword search needs no embedding).",
             )
     elif req.mode == "fts":
-        chunks = searcher.fts(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
+        chunks, mode_note = searcher.fts_or_any(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
     elif req.mode == "regex":
         chunks = searcher.regex(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
     elif req.mode == "hybrid":
@@ -135,6 +136,8 @@ def search(req: SearchRequest) -> JSONResponse:
 
     # None means too few vector chunks to evaluate; see retrieval.results.
     near_dup = detect_near_dup_wall(searcher.store, chunks)
+    logger.info("search  project=%r  mode=%s  hits=%d  widened=%s",
+                req.project or DEFAULT_PROJECT, req.mode, len(chunks), mode_note is not None)
 
     return JSONResponse({
         "chunks":           chunks,
@@ -144,7 +147,8 @@ def search(req: SearchRequest) -> JSONResponse:
         "near_dup":         near_dup,
         "files":            rank_files(chunks),
         "query_truncated":  query_truncated,
-        "note":             excluded_scope_note(req.path_prefix, project["exclude"], project["include"]),
+        "note":             "\n".join(n for n in (
+            excluded_scope_note(req.path_prefix, project["exclude"], project["include"]), mode_note) if n) or None,
     })
 
 

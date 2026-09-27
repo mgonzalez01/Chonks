@@ -385,3 +385,41 @@ def test_search_endpoint_query_truncated_false_for_fts_and_regex_regardless_of_l
         req = serve_models.SearchRequest(query=query, mode=mode, top_k=5)
         body = json.loads(serve_app.search(req).body)
         assert body["query_truncated"] is False, f"mode={mode}"
+
+
+def _insert_texts(store, texts: dict[str, str]) -> None:
+    store.insert_chunks(
+        [{"id": cid, "path": f"{cid}.py", "language": "python", "content": text,
+          "start_line": 1, "end_line": 1} for cid, text in texts.items()],
+        [_fake_embedding() for _ in texts],
+    )
+
+
+def test_fts_query_whose_words_share_no_chunk_returns_chunks_with_any_word(monkeypatch, tmp_path):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    _insert_texts(project["store"], {"a": "drop indicator", "b": "theme color", "c": "unrelated"})
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="drop indicator theme", mode="fts")).body)
+
+    assert sorted(c["id"] for c in body["chunks"]) == ["a", "b"]
+    assert "any of them" in body["note"]
+
+
+def test_fts_query_whose_words_share_a_chunk_returns_only_that_chunk(monkeypatch, tmp_path):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    _insert_texts(project["store"], {"a": "drop indicator theme", "b": "theme color"})
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="drop indicator theme", mode="fts")).body)
+
+    assert [c["id"] for c in body["chunks"]] == ["a"]
+    assert body["note"] is None
+
+
+def test_fts_query_written_with_fts5_syntax_is_not_widened(monkeypatch, tmp_path):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    _insert_texts(project["store"], {"a": "drop indicator", "b": "theme color"})
+
+    for query in ('"drop theme"', "drop AND theme", "drop NOT indicator"):
+        body = json.loads(serve_app.search(serve_models.SearchRequest(query=query, mode="fts")).body)
+        assert body["chunks"] == [], query
+        assert body["note"] is None, query

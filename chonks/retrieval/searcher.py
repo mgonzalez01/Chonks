@@ -64,6 +64,13 @@ def _or_fts_query(query: str) -> str:
     return " OR ".join(f'"{t}"' for t in toks)
 
 
+# A query written with FTS5 operators or a quoted phrase keeps its exact
+# meaning in fts mode even when it matches nothing.
+_FTS_SYNTAX_RE = re.compile(r'"|\b(?:AND|OR|NOT|NEAR)\b')
+
+ANY_WORD_NOTE = ("no chunk contains every word of the query, so these contain any of them; "
+                 "fewer, more specific words narrow it")
+
 # FTS starvation fallback: if implicit-AND finds <top_k hits, retry
 # OR-joined but admit a hit only if it's in the semantic pool AND ranks
 # <= OR_FALLBACK_MAX_RANK. Unrestricted OR admission measurably hurt ranking.
@@ -264,6 +271,24 @@ class Searcher:
             if not safe:
                 return []
             return self._store.search_fts(safe, top_k, path_prefix, chunk_kind=chunk_kind)
+
+    def fts_or_any(
+        self,
+        query: str,
+        top_k: int = 50,
+        path_prefix: str | None = None,
+        chunk_kind: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """fts(), and when no chunk has every word of a plain multi-word query,
+        the chunks with any of them plus ANY_WORD_NOTE."""
+        hits = self.fts(query, top_k, path_prefix, chunk_kind=chunk_kind)
+        if hits or _FTS_SYNTAX_RE.search(query):
+            return hits, None
+        any_word = _or_fts_query(query)
+        if " OR " not in any_word:
+            return hits, None
+        hits = self.fts(any_word, top_k, path_prefix, chunk_kind=chunk_kind)
+        return hits, ANY_WORD_NOTE if hits else None
 
     def keyword(
         self,
