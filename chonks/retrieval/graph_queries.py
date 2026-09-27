@@ -1,11 +1,14 @@
 """Shaped graph answers: usages, outgoing references and impact, with their note text."""
 
-import re
+from collections import Counter
 from typing import Any
 
 from chonks.core.batching import batched
-from chonks.core.edges import _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
+from chonks.core.edges import CALLS, _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
 from chonks.core.symbols import FORWARD_DECLARATION
+from chonks.retrieval.callers import (
+    Reached, Targets, last_component, owners_by_chunk, reaching_edges, resolve_targets, whole_word,
+)
 
 # Unscoped get_hubs scans all of chunk_refs under the store lock, which can
 # block every other request for minutes on a huge corpus. Above this size
@@ -33,17 +36,38 @@ def _forward_declared_note(name: str) -> str:
             "is outside it), so no reference edges point at it")
 
 
-def _symbol_miss_note(store, name: str) -> str:
-    """Diagnostic for a resolve_symbol_chunk_ids miss. A qualified query
+def _symbol_miss_note(store, targets: Targets) -> str:
+    """Diagnostic for a name that resolves to no chunk. A qualified query
     gets no suffix fallback, so this suggests the bare last component
     only when that bare name actually resolves to something."""
+    name = targets.name
     if _only_forward_declared(store, name):
         return _forward_declared_note(name) + "; find_usages lists its content matches"
+    if targets.lookup is not None and targets.lookup.classes:
+        note = f"{' / '.join(targets.lookup.classes)} has no method {targets.member!r}"
+    else:
+        note = "symbol not found"
     if "::" in name or "." in name:
-        bare = re.split(r"::|\.", name)[-1]
+        bare = targets.member
         if bare and bare != name and store.resolve_symbol_chunk_ids(bare):
-            return f"symbol not found — try the bare name {bare!r}"
-    return "symbol not found"
+            return f"{note} — try the bare name {bare!r}"
+    return note
+
+
+def _lookup_notes(targets: Targets) -> list[str]:
+    """How the class model read a qualified name: the classes a partial owner
+    matched, and the base a method is inherited from."""
+    found = targets.lookup
+    if not targets.checked:
+        return []
+    owner = targets.name[:-len(targets.member)].rstrip(":.")
+    notes = []
+    if found.guessed or len(found.classes) > 1:
+        notes.append(f"{owner!r} matched {', '.join(found.classes)}")
+    if found.classes and not set(found.found_in) & set(found.classes):
+        via = ", ".join(f"{c}::{targets.member}" for c in found.found_in)
+        notes.append(f"{owner} does not define {targets.member!r}; it inherits {via}, whose usages these are")
+    return notes
 
 
 def _fts_scan_for_name(store, name: str, path_prefix: str | None,
@@ -54,7 +78,7 @@ def _fts_scan_for_name(store, name: str, path_prefix: str | None,
     phrase = '"' + name.replace('"', '""') + '"'
     # FTS splits on `_`, so the phrase for wl_surface also matches
     # wl_surface_commit; keep whole-word hits only, over a wider fetch.
-    word = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])")
+    word = whole_word(name)
     rows = store.search_fts(phrase, top_k=max((limit or 50) * 20, 1000), path_prefix=path_prefix)
     rows = [r for r in rows if word.search(r.get("content") or "")][: limit or 50]
     return [
@@ -67,72 +91,138 @@ def _fts_scan_for_name(store, name: str, path_prefix: str | None,
     ]
 
 
+def _above_cap_note(name: str, definers: int, fallback: str) -> str:
+    return (f"{name!r} has {definers} definers, above the edge-indexing cap "
+            f"({_MAX_CROSS_LANG_OCCURRENCES}) — reference edges are not indexed for this name; {fallback}")
+
+
+def _reaching(store, targets: Targets, edges: list[tuple[str, str, str]],
+              path_prefix: str | None) -> tuple[list[Reached], dict[str, dict], int]:
+    """The `edges` into `targets` its callers' references explain, from callers
+    under `path_prefix`; with those callers' chunk rows and how many linked
+    callers were left out."""
+    spans = {r["chunk_id"]: r for r in store.get_chunk_spans(sorted({f for f, _t, _et in edges}), path_prefix)}
+    kept = reaching_edges(store, targets, [e for e in edges if e[0] in spans], spans)
+    reached = {r.from_id for r in kept}
+    return kept, spans, len(set(spans) - reached)
+
+
+def _left_out_note(left_out: int, targets: Targets) -> str | None:
+    if not left_out:
+        return None
+    return (f"{left_out} linked chunk(s) left out: they reach the defining chunk through another "
+            f"name it defines, or their {targets.member!r} calls resolve to another definition")
+
+
+def find_definitions(store, name: str) -> list[dict[str, Any]]:
+    """find_symbols rows; for a method the class model qualifies, the symbol
+    rows of its definitions."""
+    targets = resolve_targets(store, name)
+    if not targets.checked:
+        return store.find_symbols(name)
+    return [r for r in store.get_symbols_by_chunk_ids(targets.chunk_ids)
+            if r["name"] == name or last_component(r["name"]) == targets.member]
+
+
 def find_usages(store, name: str, path_prefix: str | None = None,
                 limit: int | None = None) -> dict[str, Any]:
     """Who references `name`. Empty `results` doesn't mean "no callers":
     see `note` for the unresolved-name and above-cap cases. `limit`
     truncates AFTER sorting by edge quality, not alphabetically."""
-    chunk_ids = store.resolve_symbol_chunk_ids(name)
+    targets = resolve_targets(store, name)
+    chunk_ids = targets.chunk_ids
     if not chunk_ids:
         if _only_forward_declared(store, name):
             note = _forward_declared_note(name) + "; falling back to an FTS content scan"
-            return {"results": [], "note": note,
+            return {"results": [], "note": note, "by_class": [],
                     "content_matches": _fts_scan_for_name(store, name, path_prefix, limit)}
-        return {"results": [], "note": _symbol_miss_note(store, name), "content_matches": []}
+        return {"results": [], "note": _symbol_miss_note(store, targets), "by_class": [], "content_matches": []}
 
     edges = store.get_refs_to_chunks_typed(chunk_ids)
-    from_ids = sorted({from_id for from_id, _to_id, _et in edges})
-    if not from_ids:
+    if not edges:
         if len(chunk_ids) > _MAX_CROSS_LANG_OCCURRENCES:
-            note = (
-                f"{name!r} has {len(chunk_ids)} definers, above the "
-                f"edge-indexing cap ({_MAX_CROSS_LANG_OCCURRENCES}) — reference "
-                "edges are not indexed for this name; falling back to an FTS content scan"
-            )
+            note = _above_cap_note(name, len(chunk_ids), "falling back to an FTS content scan")
             content_matches = _fts_scan_for_name(store, name, path_prefix, limit)
-            return {"results": [], "note": note, "content_matches": content_matches}
-        return {"results": [], "note": None, "content_matches": []}
+            return {"results": [], "note": note, "by_class": [], "content_matches": content_matches}
+        return {"results": [], "note": None, "by_class": [], "content_matches": []}
 
+    kept, spans, left_out = _reaching(store, targets, edges, path_prefix)
     # Collapse to the least-uncertain edge type when a chunk has more
     # than one into the resolution set (see _COLLAPSE_RANK).
     edge_type_by_from: dict[str, str] = {}
-    for from_id, _to_id, et in edges:
-        cur = edge_type_by_from.get(from_id)
+    verified: set[str] = set()
+    for r in kept:
+        cur = edge_type_by_from.get(r.from_id)
         if cur is None or (
-            (_COLLAPSE_RANK.get(et, 3), et) < (_COLLAPSE_RANK.get(cur, 3), cur)
+            (_COLLAPSE_RANK.get(r.edge_type, 3), r.edge_type) < (_COLLAPSE_RANK.get(cur, 3), cur)
         ):
-            edge_type_by_from[from_id] = et
+            edge_type_by_from[r.from_id] = r.edge_type
+        if r.verified:
+            verified.add(r.from_id)
+
+    owners = {} if targets.checked else owners_by_chunk(store, chunk_ids, targets.member)
+    classes: dict[str, set[str]] = {}
+    for r in kept:
+        if r.verified and owners.get(r.to_id):
+            classes.setdefault(r.from_id, set()).update(owners[r.to_id])
 
     results: list[dict[str, Any]] = []
-    with store._lock:
-        for batch in batched(from_ids, 900):
-            placeholders = ",".join("?" * len(batch))
-            sql = (f"SELECT id AS chunk_id, path, name, chunk_type, start_line, end_line "
-                   f"FROM chunks WHERE id IN ({placeholders})")
-            args: list = list(batch)
-            if path_prefix:
-                sql += " AND path LIKE ? ESCAPE '\\'"
-                args.append(store._like_escape(path_prefix.rstrip("/\\")) + "%")
-            results.extend(dict(r) for r in store._conn.execute(sql, args).fetchall())
-    for r in results:
-        et = edge_type_by_from.get(r["chunk_id"], "mentions")
-        r["edge_type"] = et
-        r["provenance"] = edge_provenance(et)
-    results.sort(key=lambda r: (_COLLAPSE_RANK.get(r["edge_type"], 3), r["path"], r["start_line"]))
-    note = None
+    for from_id, et in edge_type_by_from.items():
+        row = dict(spans[from_id])
+        row["edge_type"] = et
+        row["provenance"] = edge_provenance(et)
+        if targets.checked and et == CALLS and from_id not in verified:
+            row["unverified"] = True
+        if from_id in classes:
+            row["classes"] = sorted(classes[from_id])
+        row.pop("language", None)
+        results.append(row)
+    results.sort(key=lambda r: (_COLLAPSE_RANK.get(r["edge_type"], 3), bool(r.get("unverified")),
+                                r["path"], r["start_line"]))
+
+    by_class = Counter(c for cs in classes.values() for c in cs)
+    notes = _lookup_notes(targets)
+    unverified = sum(1 for r in results if r.get("unverified"))
+    if unverified:
+        notes.append(f"{unverified} caller(s) unverified: the class model cannot tell which class "
+                     f"their {targets.member!r} call reaches")
+    if len(by_class) > 1:
+        top = ", ".join(f"{c} {n}" for c, n in by_class.most_common(5))
+        more = f", +{len(by_class) - 5} more" if len(by_class) > 5 else ""
+        example = by_class.most_common(1)[0][0]
+        notes.append(f"{name!r} is a method of {len(by_class)} classes (callers: {top}{more}); "
+                     f"name one, as in {example}::{targets.member}, for its callers alone")
+    if (left := _left_out_note(left_out, targets)) is not None:
+        notes.append(left)
     if limit and len(results) > limit:
         omitted = results[limit:]
         omitted_xlang = sum(1 for r in omitted if r["edge_type"] == "xlang")
         omitted_associated = sum(1 for r in omitted if r["edge_type"] == "associated")
         omitted_mentions = sum(1 for r in omitted if r["edge_type"] == "mentions")
         omitted_typed = len(omitted) - omitted_xlang - omitted_associated - omitted_mentions
-        note = (
+        notes.append(
             f"limit={limit} truncated {len(omitted)} result(s): "
             f"{omitted_typed} typed, {omitted_xlang} xlang, "
             f"{omitted_associated} associated, {omitted_mentions} mentions"
         )
         results = results[:limit]
-    return {"results": results, "note": note, "content_matches": []}
+    return {
+        "results": results, "note": "\n".join(notes) or None,
+        "by_class": [{"class": c, "callers": n} for c, n in by_class.most_common()],
+        "content_matches": [],
+    }
+
+
+def _shared_chunk_note(store, targets: Targets) -> str | None:
+    """Outgoing edges belong to whole chunks; names the other definitions
+    sharing a chunk with this one."""
+    others = sorted({r["name"] for r in store.get_symbols_by_chunk_ids(targets.chunk_ids)
+                     if last_component(r["name"]) != targets.member})
+    if not others:
+        return None
+    shown = ", ".join(others[:5]) + (f", +{len(others) - 5} more" if len(others) > 5 else "")
+    return (f"{targets.name!r} shares its chunk with {shown}; outgoing references are the whole "
+            "chunk's, since recorded calls carry no line")
 
 
 def find_outgoing(store, name: str, path_prefix: str | None = None,
@@ -140,9 +230,10 @@ def find_outgoing(store, name: str, path_prefix: str | None = None,
     """Forward twin of find_usages (self-refs among definers excluded).
     Zero outgoing edges is a valid empty result. `limit` truncates
     AFTER sorting by edge quality, not alphabetically."""
-    chunk_ids = store.resolve_symbol_chunk_ids(name)
+    targets = resolve_targets(store, name)
+    chunk_ids = targets.chunk_ids
     if not chunk_ids:
-        return {"results": [], "note": _symbol_miss_note(store, name)}
+        return {"results": [], "note": _symbol_miss_note(store, targets)}
 
     definer_set = set(chunk_ids)
     edges = store.get_refs_from_chunks_typed(chunk_ids)
@@ -161,24 +252,17 @@ def find_outgoing(store, name: str, path_prefix: str | None = None,
             edge_type_by_to[to_id] = et
 
     results: list[dict[str, Any]] = []
-    with store._lock:
-        for batch in batched(to_ids, 900):
-            placeholders = ",".join("?" * len(batch))
-            sql = (f"SELECT id AS chunk_id, path, name, chunk_type, start_line, end_line "
-                   f"FROM chunks WHERE id IN ({placeholders})")
-            args: list = list(batch)
-            if path_prefix:
-                sql += " AND path LIKE ? ESCAPE '\\'"
-                args.append(store._like_escape(path_prefix.rstrip("/\\")) + "%")
-            results.extend(dict(r) for r in store._conn.execute(sql, args).fetchall())
-    for r in results:
+    for r in store.get_chunk_spans(to_ids, path_prefix):
+        r.pop("language", None)
         et = edge_type_by_to.get(r["chunk_id"], "mentions")
         r["edge_type"] = et
         r["provenance"] = edge_provenance(et)
+        results.append(r)
     results.sort(key=lambda r: (_COLLAPSE_RANK.get(r["edge_type"], 3), r["path"], r["start_line"]))
     if limit:
         results = results[:limit]
-    return {"results": results, "note": None}
+    notes = [*_lookup_notes(targets), _shared_chunk_note(store, targets)]
+    return {"results": results, "note": "\n".join(n for n in notes if n) or None}
 
 
 def get_impact(store, name: str, path_prefix: str | None = None,
@@ -190,42 +274,26 @@ def get_impact(store, name: str, path_prefix: str | None = None,
         raise ValueError(
             f"invalid rank_by {rank_by!r} — must be 'pagerank_sum' or 'count'"
         )
-    def_chunk_ids = store.resolve_symbol_chunk_ids(name)
+    targets = resolve_targets(store, name)
+    def_chunk_ids = targets.chunk_ids
     if not def_chunk_ids:
         return {
             "symbol": name, "definitions": [], "total_references": 0,
             "by_edge_type": {}, "by_provenance": {}, "rank_by": rank_by,
             "files": [], "files_total": 0,
-            "note": _symbol_miss_note(store, name),
+            "note": _symbol_miss_note(store, targets),
         }
 
-    definitions: list[dict[str, Any]] = []
-    edges: list[dict[str, Any]] = []
-    with store._lock:
-        for batch in batched(def_chunk_ids, 900):
-            placeholders = ",".join("?" * len(batch))
-            rows = store._conn.execute(
-                f"SELECT path, name, chunk_type FROM chunks WHERE id IN ({placeholders})",
-                batch,
-            ).fetchall()
-            definitions.extend(dict(r) for r in rows)
-
-            sql = (
-                "SELECT cr.from_id AS chunk_id, cr.edge_type AS edge_type, "
-                "c.path AS path, c.name AS name, c.chunk_type AS chunk_type, "
-                "c.start_line AS start_line, COALESCE(pr.score, 0.0) AS pagerank "
-                "FROM chunk_refs cr "
-                "JOIN chunks c ON c.id = cr.from_id "
-                "LEFT JOIN chunk_pagerank pr ON pr.chunk_id = cr.from_id "
-                f"WHERE cr.to_id IN ({placeholders})"
-            )
-            args: list = list(batch)
-            if path_prefix:
-                sql += " AND c.path LIKE ? ESCAPE '\\'"
-                args.append(store._like_escape(path_prefix.rstrip("/\\")) + "%")
-            edges.extend(dict(r) for r in store._conn.execute(sql, args).fetchall())
-
+    definitions = [{"path": r["path"], "name": r["name"], "chunk_type": r["chunk_type"]}
+                   for r in store.get_chunk_spans(def_chunk_ids)]
     definitions.sort(key=lambda d: (d["path"], d["name"] or ""))
+
+    kept, spans, left_out = _reaching(store, targets, store.get_refs_to_chunks_typed(def_chunk_ids), path_prefix)
+    pagerank = store.get_pagerank_for_chunks(sorted({r.from_id for r in kept}))
+    edges = [{"chunk_id": r.from_id, "edge_type": r.edge_type, "path": spans[r.from_id]["path"],
+              "name": spans[r.from_id]["name"], "chunk_type": spans[r.from_id]["chunk_type"],
+              "start_line": spans[r.from_id]["start_line"], "pagerank": pagerank.get(r.from_id, 0.0)}
+             for r in kept]
 
     by_edge_type: dict[str, int] = {}
     for e in edges:
@@ -262,14 +330,12 @@ def get_impact(store, name: str, path_prefix: str | None = None,
         file_list.sort(key=lambda f: (-f["pagerank_sum"], -f["count"], f["path"]))
     files_total = len(file_list)
 
-    note = None
-    if not edges and len(def_chunk_ids) > _MAX_CROSS_LANG_OCCURRENCES:
-        note = (
-            f"{name!r} has {len(def_chunk_ids)} definers, above the "
-            f"edge-indexing cap ({_MAX_CROSS_LANG_OCCURRENCES}) — reference "
-            "edges are not indexed for this name; try find_usages, which falls "
-            "back to an FTS content scan for this case"
-        )
+    notes = _lookup_notes(targets)
+    if not edges and not left_out and len(def_chunk_ids) > _MAX_CROSS_LANG_OCCURRENCES:
+        notes.append(_above_cap_note(name, len(def_chunk_ids), "try find_usages, which falls "
+                                     "back to an FTS content scan for this case"))
+    if (left := _left_out_note(left_out, targets)) is not None:
+        notes.append(left)
 
     return {
         "symbol": name,
@@ -280,7 +346,7 @@ def get_impact(store, name: str, path_prefix: str | None = None,
         "rank_by": rank_by,
         "files": file_list[:limit],
         "files_total": files_total,
-        "note": note,
+        "note": "\n".join(notes) or None,
     }
 
 

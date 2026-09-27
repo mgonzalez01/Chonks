@@ -15,6 +15,13 @@ _MAX_CROSS_LANG_OCCURRENCES = 8
 # that fraction, forcing a refresh.
 _PAGERANK_STALE_META_KEY = "pagerank_stale_chunks"
 
+CALLS, IMPORTS, INHERITS = "calls", "imports", "inherits"
+XLANG, ASSOCIATED, MENTIONS = "xlang", "associated", "mentions"
+
+# Edges whose source chunk lists the names it reaches under the same key in
+# its metadata.
+TYPED_EDGE_TYPES = (CALLS, IMPORTS, INHERITS)
+
 # All-1.0 defaults reproduce pre-weighting PageRank exactly; the
 # associated/mentions split stays a ranking-inert display label until a
 # caller sets these two weights apart.
