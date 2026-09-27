@@ -33,5 +33,6 @@ The rules that keep those seams clean. `tests/test_layering.py` checks the first
 - Environment variables are read only in `ops/`, `serve/main.py` and `index/graph/knn.py`.
 - New response fields and note text are built in `retrieval/`; `storage/` returns rows.
 - New logic goes in Python. The MCP server in `mcp-server/` renders what the HTTP API returns.
+- Code goes in the layer whose job it is, not the one whose imports happen to allow it. When a change fits no layer, the pull request proposes a new one: a row in the table above and in `tests/test_layering.py`.
 
 The exception lists in `tests/test_layering.py` only shrink: fix an entry and delete it, and never add one without saying why in the pull request.
