@@ -423,3 +423,72 @@ def test_fts_query_written_with_fts5_syntax_is_not_widened(monkeypatch, tmp_path
         body = json.loads(serve_app.search(serve_models.SearchRequest(query=query, mode="fts")).body)
         assert body["chunks"] == [], query
         assert body["note"] is None, query
+
+
+# --- hybrid reranking ---------------------------------------------------------
+
+class _ReversingReranker:
+    def __init__(self):
+        self.calls = 0
+
+    def rerank(self, query, documents, client, *, timeout=30.0):
+        self.calls += 1
+        return [float(i) for i in range(len(documents))]
+
+
+class _DownReranker:
+    def rerank(self, query, documents, client, *, timeout=30.0):
+        raise httpx.ConnectError("Connection refused")
+
+
+def _hybrid_project(monkeypatch, tmp_path) -> dict:
+    project = _setup_default_project(monkeypatch, tmp_path)
+    project["searcher"] = Searcher(project["store"], _FixedEmbedder([1.0, 0.0, 0.0, 0.0]))
+    chunks, vecs = _wall_chunks_and_vecs()
+    project["store"].insert_chunks(chunks, vecs)
+    return project
+
+
+def test_hybrid_without_rerank_url_returns_plain_hybrid(monkeypatch, tmp_path):
+    project = _hybrid_project(monkeypatch, tmp_path)
+    assert project["reranker"] is None
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="needle", mode="hybrid", top_k=3)).body)
+
+    expected = json.loads(json.dumps(project["searcher"].hybrid("needle", 3)))
+    assert body["chunks"] == expected
+    assert body["note"] is None
+    assert all("_rank_rerank" not in c for c in body["chunks"])
+
+
+def test_hybrid_with_reranker_returns_fused_order(monkeypatch, tmp_path):
+    project = _hybrid_project(monkeypatch, tmp_path)
+    project["reranker"] = _ReversingReranker()
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="needle", mode="hybrid", top_k=3)).body)
+
+    assert project["reranker"].calls == 1
+    assert [c["id"] for c in body["chunks"]] == ["b0", "hot2", "hot1"]
+    assert [c["_rank_rerank"] for c in body["chunks"]] == [1, 2, 3]
+    assert body["files"][0]["path"] == "b.py"
+    assert "rerank#1" in body["formatted"]
+    assert body["note"] is None
+
+
+def test_hybrid_with_unreachable_reranker_returns_hybrid_with_a_note(monkeypatch, tmp_path):
+    project = _hybrid_project(monkeypatch, tmp_path)
+    project["reranker"] = _DownReranker()
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="needle", mode="hybrid", top_k=3)).body)
+
+    assert [c["id"] for c in body["chunks"]] == [c["id"] for c in project["searcher"].hybrid("needle", 3)]
+    assert "reranking was skipped" in body["note"]
+
+
+def test_reranker_is_not_used_outside_hybrid(monkeypatch, tmp_path):
+    project = _hybrid_project(monkeypatch, tmp_path)
+    project["reranker"] = _ReversingReranker()
+
+    for mode in ("semantic", "fts", "regex"):
+        serve_app.search(serve_models.SearchRequest(query="hot", mode=mode, top_k=3))
+    assert project["reranker"].calls == 0

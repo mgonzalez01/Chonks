@@ -32,7 +32,7 @@ The MCP server returns ranked chunks with `path:line` citations and the calling 
 | `chonks init` | Interactive first-run setup wizard |
 | `chonks index` | Parse and embed source files into a chunks DB |
 | `chonks serve` | Run the HTTP search, research, and index server |
-| `chonks doctor` | Read-only index health report. Its flags are `--db`, `--config` (default: the first of `config.json`, `chonks/config.json`, `.chonks.json` present), and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
+| `chonks doctor` | Read-only index health report; with `rerank_url` set it also checks that each configured reranker answers and scores a relevant document clearly above an unrelated one. Its flags are `--db`, `--config` (default: the first of `config.json`, `chonks/config.json`, `.chonks.json` present), and one repair flag, `--set-model`, which rewrites the recorded embedding-model label and exits without printing a report. |
 | `chonks report` | Generate `INDEX_REPORT.md` |
 
 Each subcommand's module is internal and the CLI is the only supported entry point. `chonks init` writes `config.json` and offers to run the first index; the Docker compose stack does neither, it runs the backend and the MCP adapter against a `chonks.db` and a `config.json` that already exist (see [DEPLOY.md](DEPLOY.md)).
@@ -43,6 +43,7 @@ Each subcommand's module is internal and the CLI is the only supported entry poi
 |---|---|---|
 | Embedding server | 11437 (default) | Indexing (`chonks index`) and semantic query embedding. Endpoint and model name are config-driven (`embed_url`, `embed_model`); the server can run on `localhost` or any reachable host. |
 | Python HTTP backend | 11438 | All queries (search, research, map) |
+| Reranking server (optional) | set by `rerank_url` | Reordering `hybrid` search results; see [searcher.py](#searcherpy--query-processing) |
 
 **Supported languages:**
 
@@ -329,6 +330,8 @@ Embeds the query, dispatches to the search mode, and formats results as markdown
 
 `Searcher.hybrid()` runs the semantic and FTS branches in parallel, each oversampled at `2 × top_k`, and fuses them by Reciprocal Rank Fusion, `score(d) = Σᵢ 1/(K + rankᵢ(d))` with `K = 60`. Fused chunks carry `_score`, `_rank_semantic`, and `_rank_fts`; the per-branch `distance` and `fts_rank` are stripped.
 
+**Reranking (`chonks/retrieval/rerank.py`, `rerank_url`).** With `rerank_url` set, `/search` in `hybrid` mode runs hybrid at `max(top_k, 50)`, sends the first 50 candidates to a llama.cpp `/v1/rerank` server, each as `path :: name`, a newline, and the content, and orders them by `1/(60 + hybrid rank) + 2/(60 + rerank rank)`, ties in hybrid order. The hybrid term limits how far the reranker can demote an exact identifier match that hybrid ranked first. Candidates past 50 keep only their hybrid term and stay below every reranked one. The query is cut at 2000 characters and each document at 6000, which at two characters per token fits a 4096-token reranker slot with the prompt template. Denser text can overflow the slot: the server then rejects the request, the client retries once with both cuts halved, and if that fails too, or the reranker does not answer, the results come back in hybrid order with a `note`. Each rerank logs its candidate count, latency, and outcome. Semantic, fts, regex, and research never rerank, and without `rerank_url` hybrid is unchanged.
+
 **Hybrid sanitises FTS input; raw `fts` mode does not.** Before the FTS branch, `hybrid` reduces the query to word-character tokens, each double-quoted so FTS5 reads them as literals rather than as the booleans `AND`, `OR`, and `NOT`, multiple quoted literals still being an implicit AND. This drops every operator character (`?`, `:`, `-`, `*`, `"`, `'`, `(`, `)`, `.`) that would raise `fts5: syntax error near "..."`. The semantic branch sees the raw query, raw `fts` keeps its FTS5-syntax contract, and if sanitisation empties the query the FTS branch is skipped and RRF degrades to semantic-only ranks. When a plain multi-word `fts` query, one with no operator or quoted phrase, matches no chunk, `fts` returns the chunks with any of its words and says so in `note`.
 
 **`min_score`** is applied after sorting and re-ranking. **`folder_blend`** oversamples `4 × top_k` candidates, looks up each candidate's folder summary embedding in one bulk call, and blends:
@@ -562,6 +565,8 @@ Response: `{ chunks: [...], formatted: "...", count: N, docs_in_results: N, near
 
 For `hybrid` results each chunk carries `_score`, the fused RRF score, with `_rank_semantic` and `_rank_fts`, the 1-indexed ranks within each branch or `null` when absent; `distance` and `fts_rank` are stripped, and the `formatted` string carries the per-branch ranks inline, for example `rrf=0.0312  [sem#3,fts#1]`. For `semantic` results with `folder_blend=true`, each chunk carries `_blended_score`, `_chunk_sim`, and `_folder_sim`, all three shown in `formatted`.
 
+With `rerank_url` set, `hybrid` chunks also carry `_rank_hybrid`, `_rank_rerank`, and `_rerank_score`, the last two `null` past the 50 reranked candidates; `_score` is then the fused score and `formatted` adds the rerank rank, for example `rrf=0.0492  [sem#2,fts#1,rerank#1]`. When the reranker fails, `note` says reranking was skipped and the chunks are in hybrid order.
+
 **Mode selection:**
 
 | Mode | Latency | Use when |
@@ -569,7 +574,7 @@ For `hybrid` results each chunk carries `_score`, the fused RRF score, with `_ra
 | `semantic` | 0.5–1s | Concept-level queries |
 | `fts` | 10–100ms | Exact keywords, known symbols, boolean searches |
 | `regex` | 100ms–1s | Patterns, naming conventions |
-| `hybrid` | ~1s | Mixed queries (concept + symbol), or when you are unsure between `semantic` and `fts` |
+| `hybrid` | ~1s, plus one reranker request with `rerank_url` set | Mixed queries (concept + symbol), or when you are unsure between `semantic` and `fts` |
 
 Worked examples of `semantic` and `hybrid` are under [`codebase_search`](#tool-codebase_search).
 
@@ -1104,6 +1109,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 | `embed_batch` | `128` | Chunks per embedding request (`--embed-batch`) |
 | `embed_inflight` | `2` | Embedding requests in flight at once (`--embed-inflight`) |
 | `embed_query_token_budget` | `3800` | Per-slot token budget used to truncate an over-long query before embedding; settable globally or per project |
+| `rerank_url` | — | llama.cpp `/v1/rerank` endpoint that reorders `hybrid` search results; unset or `null` leaves hybrid unchanged. Settable globally or per project; not set in `config.example.json`. See [searcher.py](#searcherpy--query-processing). |
 
 **Search keys** (read by `serve`, used by `searcher.py`):
 

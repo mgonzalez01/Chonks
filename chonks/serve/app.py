@@ -13,6 +13,7 @@ from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
 from chonks.retrieval.repomap import build_repomap
+from chonks.retrieval.rerank import reranked_hybrid
 from chonks.retrieval.trace import trace_path
 from chonks.retrieval.research import deep_research
 from chonks.retrieval import graph_queries, message_match
@@ -85,6 +86,7 @@ def search(req: SearchRequest) -> JSONResponse:
     # fts/regex never embed, so query_truncated stays False for them.
     query_truncated = False
     mode_note = None
+    rerank_note = None
 
     if req.mode == "semantic":
         query_truncated = searcher.query_truncated(req.query)
@@ -121,7 +123,13 @@ def search(req: SearchRequest) -> JSONResponse:
                 len(req.query),
             )
         try:
-            chunks = searcher.hybrid(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
+            if project["reranker"] is not None:
+                chunks, rerank_note = reranked_hybrid(
+                    searcher, project["reranker"], req.query, req.top_k, req.path_prefix,
+                    chunk_kind=req.chunk_kind,
+                )
+            else:
+                chunks = searcher.hybrid(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
         except httpx.HTTPError as e:
             raise HTTPException(
                 503,
@@ -148,7 +156,8 @@ def search(req: SearchRequest) -> JSONResponse:
         "files":            rank_files(chunks),
         "query_truncated":  query_truncated,
         "note":             "\n".join(n for n in (
-            excluded_scope_note(req.path_prefix, project["exclude"], project["include"]), mode_note) if n) or None,
+            excluded_scope_note(req.path_prefix, project["exclude"], project["include"]), mode_note, rerank_note)
+            if n) or None,
     })
 
 

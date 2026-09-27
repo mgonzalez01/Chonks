@@ -625,3 +625,31 @@ def test_diagnostics_note_names_no_deleted_module(tmp_path):
     report = _report_for(tmp_path / "test.db")
     assert "chunker.py" not in report
     assert "chonks/index/pipeline.py" in report
+
+
+def test_reranker_section_absent_without_rerank_url(tmp_path, monkeypatch):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+    monkeypatch.setattr("chonks.ops.doctor.probe_reranker", lambda reranker, timeout=10.0: 1 / 0)
+
+    assert "== Reranker ==" not in _report_for(tmp_path / "test.db", {})
+
+
+def test_reranker_section_probes_each_configured_rerank_url(tmp_path, monkeypatch):
+    store = _build_synthetic_store(tmp_path)
+    store.close()
+    probed = []
+
+    def probe(reranker, timeout=10.0):
+        probed.append(reranker.url)
+        return None if "good" in reranker.url else "does not answer (ConnectError: refused)"
+
+    monkeypatch.setattr("chonks.ops.doctor.probe_reranker", probe)
+    report = _report_for(tmp_path / "test.db", {
+        "rerank_url": "http://good:11440/v1/rerank",
+        "projects": {"other": {"db": "o.db", "rerank_url": "http://down:11440/v1/rerank"}},
+    })
+
+    assert probed == ["http://good:11440/v1/rerank", "http://down:11440/v1/rerank"]
+    assert "rerank_url: http://good:11440/v1/rerank ranks a relevant document above an unrelated one" in report
+    assert "!! projects.other.rerank_url: http://down:11440/v1/rerank does not answer (ConnectError: refused)" in report
