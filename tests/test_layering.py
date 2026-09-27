@@ -11,7 +11,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CHONKS_ROOT = _REPO_ROOT / "chonks"
 
 _LAYER_PACKAGE_NAMES = (
-    "core", "languages", "storage", "embed", "index", "retrieval", "serve", "ops",
+    "core", "languages", "storage", "resolve", "embed", "index", "retrieval", "serve", "ops",
 )
 
 _LAYER_MAP: dict[str, str] = {
@@ -21,10 +21,11 @@ _LAYER_MAP: dict[str, str] = {
 
 # What each layer may import, not what it imports today.
 _ALLOWED_DIRECTIONS: dict[str, set[str]] = {
-    "ops":       {"serve", "retrieval", "index", "storage", "embed", "languages", "core"},
-    "serve":     {"retrieval", "index", "storage", "embed", "core"},
-    "retrieval": {"storage", "embed", "languages", "core"},
-    "index":     {"storage", "embed", "languages", "core"},
+    "ops":       {"serve", "retrieval", "index", "resolve", "storage", "embed", "languages", "core"},
+    "serve":     {"retrieval", "index", "resolve", "storage", "embed", "core"},
+    "retrieval": {"resolve", "storage", "embed", "languages", "core"},
+    "index":     {"resolve", "storage", "embed", "languages", "core"},
+    "resolve":   {"storage", "languages", "core"},
     "storage":   {"languages", "core"},
     "embed":     {"core"},
     "languages": {"core"},

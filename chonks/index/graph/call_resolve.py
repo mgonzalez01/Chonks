@@ -9,7 +9,7 @@ from chonks.languages import get_or_none as _lang_spec, table as _lang_table, un
 from chonks.languages.spec import NOT_HANDLED as _NOT_HANDLED
 
 if TYPE_CHECKING:
-    from chonks.index.graph.members import MemberIndex
+    from chonks.resolve.members import MemberIndex
 
 
 # ---------------------------------------------------------------------------
