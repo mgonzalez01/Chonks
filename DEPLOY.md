@@ -182,6 +182,20 @@ llama-server --hf-repo <model> --host 0.0.0.0 --port 11437 --embedding
 
 llama-server has no authentication, so bind it on a trusted LAN only, pinned to the specific LAN interface if the host is multi-homed. Wired Gigabit handles a 128-chunk batch comfortably, at about 2 MB per round trip; Wi-Fi works and adds variable latency. Per-project `embed_url` and `embed_model` overrides are honoured under the `projects` map.
 
+### A reranker
+
+A reranker is optional. With `rerank_url` set, hybrid search sends its top 50 candidates to it and fuses its order with hybrid's, as described in DOCS.md under searcher.py. Other search modes and research are unaffected. The tested model is ggml-org's GGUF conversion of Qwen3-Reranker-0.6B, served by llama-server:
+
+```
+llama-server -hf ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF --reranking --port 11439 -ngl 99 --ctx-size 16384 --parallel 4 -b 4096 -ub 4096 --cache-ram 0
+```
+
+```jsonc
+"rerank_url": "http://localhost:11439/v1/rerank"
+```
+
+`--ctx-size / --parallel` is the per-slot budget, 4096 tokens here. One query with one document must fit in it and in `-ub`, since each pair is scored in a single batch; the client cuts the query at 2000 characters and each document at 6000, sized for 4096. Other GGUF conversions of Qwen3-Reranker can lack the classification head and score every document near zero, which turns reranking into a random reorder without any error. `chonks doctor` scores one relevant and one unrelated document against each configured reranker and flags one that does not answer or does not tell them apart. When the reranker fails or takes longer than 30 seconds, hybrid returns its own order with a `note`. `rerank_url` can be overridden per project under the `projects` map, and `null` there turns reranking off for that project.
+
 ## 4. Indexing: first, incremental, forced
 
 The first index (`chonks index <roots…> --db … --config …`) walks the tree, honouring the config excludes, parses each file into AST-aware chunks with tree-sitter, embeds every chunk through llama-server, writes everything, and then builds the derived layers: the reference graph, the k-NN neighbours, PageRank, and the folder summaries. It is GPU-bound, and roughly 50 to 100 chunks per second on a decent GPU can be expected, so a 400k-chunk corpus is an hours-scale first build that lands at roughly 300 to 400 MB of DB.

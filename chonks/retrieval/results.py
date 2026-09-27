@@ -110,6 +110,8 @@ def format_results(chunks: list[dict[str, Any]]) -> str:
                 rank_bits.append(f"sem#{c['_rank_semantic']}")
             if c.get("_rank_fts") is not None:
                 rank_bits.append(f"fts#{c['_rank_fts']}")
+            if c.get("_rank_rerank") is not None:
+                rank_bits.append(f"rerank#{c['_rank_rerank']}")
             ranks = f"  [{','.join(rank_bits)}]" if rank_bits else ""
             header += f"  rrf={c['_score']:.4f}{ranks}"
         elif "_blended_score" in c:

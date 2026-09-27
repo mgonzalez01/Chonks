@@ -20,7 +20,7 @@ For everything else, `uv run pytest -q` and `cd mcp-server && npm run build` are
 | `index` | parsing, embedding, graph building | resolve, storage, embed, languages, core |
 | `resolve` | which definitions a name or call reaches, read from the stored class model | storage, languages, core |
 | `storage` | SQLite | languages, core |
-| `embed` | the embedding client | core |
+| `embed` | clients for the local model servers (embedding, reranking) | core |
 | `languages` | one spec per language | core |
 | `core` | shared constants and helpers | nothing in `chonks` |
 

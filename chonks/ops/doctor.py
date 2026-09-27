@@ -15,6 +15,7 @@ from pathlib import Path
 
 from chonks.core.config import load_config
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
+from chonks.embed.reranker import Reranker, probe_reranker
 from chonks.index.plugins import load_plugins
 from chonks.index.segment import CHUNKER_VERSION
 from chonks.languages import describe as _describe_languages
@@ -414,6 +415,26 @@ def _languages_section() -> str:
     return "\n".join(lines)
 
 
+def _reranker_section(config: dict) -> str | None:
+    """Checks that each configured `rerank_url` answers and tells a relevant document
+    from an unrelated one; None when none is configured."""
+    urls = {"rerank_url": config.get("rerank_url")}
+    for name, pcfg in (config.get("projects") or {}).items():
+        if isinstance(pcfg, dict):
+            urls[f"projects.{name}.rerank_url"] = pcfg.get("rerank_url")
+    urls = {key: url for key, url in urls.items() if url}
+    if not urls:
+        return None
+    lines = ["== Reranker =="]
+    for key, url in urls.items():
+        err = probe_reranker(Reranker(url))
+        if err is None:
+            lines.append(f"{key}: {url} ranks a relevant document above an unrelated one")
+        else:
+            lines.append(f"!! {key}: {url} {err}")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
@@ -432,6 +453,9 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
         _table_sizes_section(conn),
         _languages_section(),
     ]
+    reranker = _reranker_section(config)
+    if reranker is not None:
+        sections.append(reranker)
     return "\n\n".join(sections) + "\n"
 
 

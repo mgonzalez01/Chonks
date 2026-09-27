@@ -90,6 +90,14 @@ llama-server --hf-repo jinaai/jina-code-embeddings-0.5b-GGUF --hf-file jina-code
 
 jina-code-embeddings is licensed CC-BY-NC-4.0, which excludes commercial use. `Qwen/Qwen3-Embedding-0.6B-GGUF` is the Apache-2.0 alternative, launched with the same line and `embed_model` set to a name containing `qwen3`. On the 15-instance panel at the F1 code it trailed jina by three questions on flat search, 7 against 10 at Acc@5, and was ahead on research, 9 against 7; the per-instance rows are in `eval/results/F1/`. The model name is recorded in the DB, so changing models means a `--force` re-index into a new DB. See [DESIGN.md, the embedding model](DESIGN.md#the-embedding-model-and-its-prefixes).
 
+Optionally, a reranker reorders hybrid search results. It runs as a second llama-server, set in `config.json` as `"rerank_url": "http://localhost:11439/v1/rerank"`:
+
+```
+llama-server -hf ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF --reranking --port 11439 -ngl 99 --ctx-size 16384 --parallel 4 -b 4096 -ub 4096 --cache-ram 0
+```
+
+This ggml-org conversion is the tested one; other conversions may return flat scores near zero, which `chonks doctor` flags. [DEPLOY.md, A reranker](DEPLOY.md#a-reranker) has the details.
+
 ### 4. Index
 
 ```

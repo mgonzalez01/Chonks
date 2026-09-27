@@ -238,3 +238,29 @@ def test_unparseable_explicit_config_is_not_also_reported_missing(monkeypatch, t
     err = capsys.readouterr().err
     assert "Failed to parse" in err
     assert "Config file not found" not in err
+
+
+def test_rerank_url_is_off_by_default(monkeypatch, tmp_path):
+    _run_main_with_config(monkeypatch, tmp_path, {"projects": {"proj": {"db": str(tmp_path / "p.db")}}})
+    assert serve_projects._projects[serve_projects.DEFAULT_PROJECT]["reranker"] is None
+    assert serve_projects._projects["proj"]["reranker"] is None
+
+
+def test_top_level_rerank_url_reaches_every_project(monkeypatch, tmp_path):
+    url = "http://localhost:11440/v1/rerank"
+    _run_main_with_config(monkeypatch, tmp_path, {
+        "rerank_url": url, "projects": {"proj": {"db": str(tmp_path / "p.db")}}})
+    assert serve_projects._projects[serve_projects.DEFAULT_PROJECT]["reranker"].url == url
+    assert serve_projects._projects["proj"]["reranker"].url == url
+
+
+def test_project_rerank_url_overrides_or_turns_off_the_top_level_one(monkeypatch, tmp_path):
+    _run_main_with_config(monkeypatch, tmp_path, {
+        "rerank_url": "http://localhost:11440/v1/rerank",
+        "projects": {
+            "own": {"db": str(tmp_path / "a.db"), "rerank_url": "http://gpu:11440/v1/rerank"},
+            "off": {"db": str(tmp_path / "b.db"), "rerank_url": None},
+        },
+    })
+    assert serve_projects._projects["own"]["reranker"].url == "http://gpu:11440/v1/rerank"
+    assert serve_projects._projects["off"]["reranker"] is None
