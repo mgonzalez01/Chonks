@@ -1320,6 +1320,71 @@ def test_dropped_chunk_still_completes_file(tmp_path):
     store.close()
 
 
+def _server_failure(kind: str) -> Exception:
+    import httpx
+    req = httpx.Request("POST", "http://x/v1/embeddings")
+    if kind == "500":
+        return httpx.HTTPStatusError(
+            "Context size has been exceeded.", request=req,
+            response=httpx.Response(500, request=req),
+        )
+    if kind == "connect":
+        return httpx.ConnectError("connection refused", request=req)
+    return httpx.ReadTimeout("timed out", request=req)
+
+
+@pytest.mark.parametrize("kind", ["500", "connect", "timeout"])
+def test_chunk_dropped_by_server_error_is_retried_next_run(tmp_path, kind):
+    """A chunk lost to a server error must not be lost for good: its file is
+    stored with INCOMPLETE_FILE_HASH, so the next incremental run indexes it
+    again, embeds the missing chunk, and reuses the vector it already has."""
+    from chonks.index.admission import _file_hash
+    from chonks.index.pipeline import INCOMPLETE_FILE_HASH, index_paths
+
+    class _ServerFailsOnMarker:
+        model = "fake"
+        url   = "http://localhost:9999"
+        def embed_documents(self, texts, client=None, **kw):
+            if any("RETRYME" in t for t in texts):
+                raise _server_failure(kind)
+            return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
+        def embed_queries(self, texts, client=None, **kw):
+            return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
+
+    src_file = tmp_path / "partial.py"
+    src_file.write_text(_padded_func("good_fn", "GOODMARK") + "\n" + _padded_func("lost_fn", "RETRYME"))
+    store = Store(tmp_path / "test.db")
+
+    first = index_paths([str(tmp_path)], store, _ServerFailsOnMarker(), root=tmp_path)
+    assert (first["retry_chunks"], first["retry_files"]) == (1, 1)
+    assert store.get_file_hash("partial.py") == INCOMPLETE_FILE_HASH
+
+    second = index_paths([str(tmp_path)], store, _AlwaysOkEmbedder(), root=tmp_path)
+    assert second["indexed"] == 1 and second["retry_chunks"] == 0
+    assert second["chunks_reused"] >= 1, "the chunk embedded in the first run should reuse its vector"
+    names = {r["name"] for r in store._conn.execute(
+        "SELECT name FROM chunks WHERE path=?", ("partial.py",)).fetchall()}
+    assert {"good_fn", "lost_fn"} <= names
+    assert store.get_file_hash("partial.py") == _file_hash(src_file)
+
+    third = index_paths([str(tmp_path)], store, _AlwaysOkEmbedder(), root=tmp_path)
+    assert third["skipped"] == 1 and third["indexed"] == 0
+    store.close()
+
+
+def test_may_succeed_later_classifies_embed_errors():
+    import httpx
+    from chonks.index.embed_retry import _may_succeed_later
+    req = httpx.Request("POST", "http://x/v1/embeddings")
+    status = lambda code: httpx.HTTPStatusError("x", request=req, response=httpx.Response(code, request=req))
+    assert _may_succeed_later(status(500)) and _may_succeed_later(status(503))
+    assert _may_succeed_later(httpx.ConnectError("x", request=req))
+    assert _may_succeed_later(httpx.ReadTimeout("x", request=req))
+    assert not _may_succeed_later(status(400))
+    assert not _may_succeed_later(RuntimeError("malformed response"))
+    assert not _may_succeed_later(None)
+
+
 def test_file_symbols_set_before_any_chunk_is_enqueued(tmp_path, monkeypatch):
     """Regression: parser_worker used to set file_symbols[path] AFTER
     enqueuing the file's chunks, letting the embedder complete and drop the

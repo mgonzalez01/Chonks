@@ -28,6 +28,7 @@ from chonks.index.embed_retry import (
     EMBED_BATCH,
     EMBED_INFLIGHT,
     EMBED_WATCHDOG_SECS,
+    _may_succeed_later,
     _should_truncate_and_retry,
     compute_embed_timeout,
 )
@@ -155,6 +156,10 @@ class EmbedderDownError(RuntimeError):
 # the outer failure, not _embed_isolating's nested per-chunk ones (those are
 # normal). 5 balances tolerating a network blip against a fast abort.
 EMBEDDER_DOWN_THRESHOLD = 5
+
+# Stored as the content hash of a file that lost a chunk to a server error. No
+# file hashes to it, so the next run indexes the file again.
+INCOMPLETE_FILE_HASH = "incomplete"
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +332,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
     # insertion order matching submission order.
     file_embedded: dict[str, int]          = {}  # fpath → chunks embedded
     file_dropped: dict[str, int]           = {}  # fpath → chunks dropped (embed error)
+    file_retry: set[str]                   = set()  # fpaths that dropped a chunk to a server error
     file_meta: dict[str, tuple]            = {}  # fpath → (hash, total, stat)
     batch: list[dict]                      = []
 
@@ -380,12 +386,15 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
     def _maybe_complete_file(fp: str) -> None:
         """A file completes once every chunk is embedded or dropped. Dropped
         chunks still count, or the files row for content with any
-        unembeddable chunk would never get written."""
+        unembeddable chunk would never get written. A file that dropped a
+        chunk to a server error stores INCOMPLETE_FILE_HASH instead of its
+        hash, so the next run indexes it again, reusing the vectors it has."""
         total = file_meta[fp][1]
         if file_embedded.get(fp, 0) + file_dropped.get(fp, 0) != total:
             return
         ch, _, stat = file_meta[fp]
-        store.upsert_file(fp, stat.st_size, stat.st_mtime, ch)
+        store.upsert_file(fp, stat.st_size, stat.st_mtime,
+                          INCOMPLETE_FILE_HASH if fp in file_retry else ch)
         # Refresh the file's decoupled symbols and class model.
         # delete-then-insert is idempotent on re-index; written here on the
         # single-writer thread so they stay consistent with the file's chunks.
@@ -437,12 +446,17 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         if errors:
             with lock:
                 state["errors"] += len(errors)
-            for c, _exc in errors:
+            for c, exc in errors:
                 fp = c["_fpath"]
                 if fp not in file_meta:
                     file_meta[fp] = (c["_content_hash"], c["_file_total"], c["_stat"])
                 file_dropped[fp] = file_dropped.get(fp, 0) + 1
                 touched.add(fp)
+                if _may_succeed_later(exc):
+                    with lock:
+                        state["retry_chunks"] += 1
+                        state["retry_files"] += fp not in file_retry
+                    file_retry.add(fp)
 
         if not chunks_to_insert:
             if truncated:
@@ -931,6 +945,8 @@ def index_paths(
         "chunks_reused":   0,       # of chunks_embedded, those given their stored vector instead
         "indexed":         0,
         "errors":          0,
+        "retry_chunks":    0,       # of errors, chunks a server error dropped; the next run retries their files
+        "retry_files":     0,
         "truncated":       0,
         "batch_failures":  0,       # batches that failed the whole-batch embed and fell to bisection
         "consecutive_batch_failures": 0,  # top-level whole-batch failures in a row under a
@@ -1100,6 +1116,13 @@ def index_paths(
         "Embedded %d chunks (%d reused a stored vector) in %.1fs (%.1f chunks/s).",
         chunks_embedded_total, chunks_reused, embed_elapsed, chunks_per_s,
     )
+    with lock:
+        retry_chunks, retry_files = state["retry_chunks"], state["retry_files"]
+    if retry_chunks:
+        logger.warning(
+            "%d chunk(s) in %d file(s) were not stored after an embedder server error; "
+            "the next index run indexes those files again.", retry_chunks, retry_files,
+        )
 
     # Only claim a clean chunker-version match when skipped==0 (every tracked
     # file reprocessed this run); otherwise record "mixed" rather than
@@ -1154,6 +1177,8 @@ def index_paths(
             "indexed":         indexed,
             "skipped":         skipped,
             "errors":          state["errors"],
+            "retry_chunks":    retry_chunks,
+            "retry_files":     retry_files,
             "pruned":          pruned,
             "dirs_pruned":     state["dirs_pruned"],
             "truncated":       state["truncated"],

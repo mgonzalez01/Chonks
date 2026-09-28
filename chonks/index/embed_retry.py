@@ -54,6 +54,14 @@ def _should_truncate_and_retry(exc: BaseException) -> bool:
     return False
 
 
+def _may_succeed_later(exc: BaseException | None) -> bool:
+    """True for a 5xx or a failed or timed-out connection: the server, not the
+    text, stopped the chunk, so the same text can embed on a later run."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code >= 500
+    return isinstance(exc, httpx.TransportError)
+
+
 def _chunk_path(chunk) -> str:
     """Path for logging. Works for both chunk dicts and sqlite3.Row."""
     try:
