@@ -29,7 +29,7 @@ C_SHARP = LanguageSpec(
     name="c_sharp",
     # tree-sitter-language-pack uses 'csharp' but we use 'c_sharp' internally
     grammar="csharp",
-    version="3",
+    version="4",
     extensions=frozenset({".cs"}),
     boundary_nodes=frozenset({
         "method_declaration", "constructor_declaration", "destructor_declaration",
@@ -71,6 +71,7 @@ C_SHARP = LanguageSpec(
     identifier_leaf_types=frozenset({"identifier"}),
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
     scope_chunk_types=frozenset({"namespace_declaration"}),
+    doc_comment_prefixes=("///", "/**"),
     classify_param=classify_param,
     kind_labels={
         "class_declaration": "class",

@@ -60,13 +60,14 @@ JAVASCRIPT = LanguageSpec(
     name="javascript",
     typed_ref_languages=frozenset({"typescript", "tsx"}),
     grammar="javascript",
-    version="1",
+    version="2",
     extensions=frozenset({".js", ".jsx", ".mjs", ".cjs"}),
     boundary_nodes=JS_CORE_BOUNDARIES,
     salvage_nodes=frozenset({
         "function_declaration", "generator_function_declaration", "method_definition",
     }),
     extra_boundary=is_arrow_var_decl,
+    doc_comment_prefixes=("/**",),
     name_rules=JS_NAME_RULES,
     kind_labels={
         "function_declaration": "function",
@@ -84,7 +85,7 @@ TYPESCRIPT = LanguageSpec(
     name="typescript",
     typed_ref_languages=frozenset({"javascript", "tsx"}),
     grammar="typescript",
-    version="1",
+    version="2",
     extensions=frozenset({".ts"}),
     boundary_nodes=JS_CORE_BOUNDARIES | TS_EXTRA_BOUNDARIES,
     # internal_module/module aren't boundary types; listed here only so an
@@ -94,6 +95,7 @@ TYPESCRIPT = LanguageSpec(
         "function_declaration", "generator_function_declaration", "method_definition",
     }),
     extra_boundary=is_arrow_var_decl,
+    doc_comment_prefixes=("/**",),
     name_rules=TS_NAME_RULES,
     kind_labels={
         "function_declaration": "function",
@@ -115,7 +117,7 @@ TSX = LanguageSpec(
     name="tsx",
     typed_ref_languages=frozenset({"javascript", "typescript"}),
     grammar="tsx",
-    version="1",
+    version="2",
     extensions=frozenset({".tsx"}),
     boundary_nodes=JS_CORE_BOUNDARIES | TS_EXTRA_BOUNDARIES,
     container_nodes=frozenset({"internal_module", "module"}),
@@ -123,6 +125,7 @@ TSX = LanguageSpec(
         "function_declaration", "generator_function_declaration", "method_definition",
     }),
     extra_boundary=is_arrow_var_decl,
+    doc_comment_prefixes=("/**",),
     name_rules=TS_NAME_RULES,
     kind_labels={
         "function_declaration": "function",

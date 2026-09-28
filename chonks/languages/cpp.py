@@ -207,7 +207,7 @@ CPP = LanguageSpec(
     name="cpp",
     typed_ref_languages=frozenset({"c"}),
     grammar="cpp",
-    version="4",
+    version="5",
     display_name="C++",
     # .h stays on "cpp" not "c": remapping would churn boundaries across
     # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
@@ -249,6 +249,7 @@ CPP = LanguageSpec(
         "namespace_definition": "namespace",
         "template_declaration": "template",
     },
+    doc_comment_prefixes=("///", "//!", "/**", "/*!"),
     c_macro_self_heal=True,
     refs_spec={
         "preproc_include": INCLUDE,

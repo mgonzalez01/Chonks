@@ -51,7 +51,7 @@ logger = logging.getLogger("chunking")
 # Bump when a change here would alter chunk boundaries for already-indexed
 # content. Provenance only (meta table, doctor.py); nothing reads it back
 # to gate behavior.
-CHUNKER_VERSION = 5
+CHUNKER_VERSION = 6
 
 # Chunk-size constants: CHUNK_TARGET is UTF-8 characters; CHUNK_MIN/MAX are
 # UTF-8 bytes. Don't mix the two when comparing.
@@ -781,13 +781,14 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
 # Line-comment prefixes per language (block comments /* */ handled separately).
 _COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
 _COMMENT_PREFIXES_DEFAULT = ("//", "/*", "*/", "*")  # every language without its own prefixes
+_DOC_PREFIXES = _lang_table("doc_comment_prefixes")
 # Divider/comment punctuation: a span of only these (+ whitespace) has no text.
 _DIVIDER_RE = re.compile(r"[/*#=\-_~<>|+.\s]")
 
 
 def _refresh_from_registry() -> None:
     global _EXT_TO_LANG, _BOUNDARY_NODES, _CONTAINER_NODES, CODE_LANGUAGES
-    global _SALVAGE_ELIGIBLE_BOUNDARY_TYPES, _COMMENT_PREFIXES, _MACRO_LANGS
+    global _SALVAGE_ELIGIBLE_BOUNDARY_TYPES, _COMMENT_PREFIXES, _DOC_PREFIXES, _MACRO_LANGS
     import chonks.languages as _languages
     import chonks.index.macro_heal as _macro_heal
     _EXT_TO_LANG = _languages.EXT_TO_LANG
@@ -796,6 +797,7 @@ def _refresh_from_registry() -> None:
     CODE_LANGUAGES = frozenset(_EXT_TO_LANG.values())
     _SALVAGE_ELIGIBLE_BOUNDARY_TYPES = _lang_table("salvage_nodes")
     _COMMENT_PREFIXES = _lang_table("line_comment_prefixes")
+    _DOC_PREFIXES = _lang_table("doc_comment_prefixes")
     _MACRO_LANGS = _macro_heal._MACRO_LANGS
 
 
@@ -823,21 +825,109 @@ def _comment_has_text(text: str) -> bool:
     return bool(_DIVIDER_RE.sub("", text))
 
 
+def _opens_doc(line: str, prefixes: tuple[str, ...]) -> bool:
+    return any(line.startswith(p) and line[len(p):len(p) + 1] != p[-1] for p in prefixes)
+
+
+def _doc_start(lines: list[str], lang: str) -> int | None:
+    """Index of the line where the doc comment that ends `lines` opens, or None
+    when the last comment is not a doc comment."""
+    prefixes = _DOC_PREFIXES.get(lang)
+    if not prefixes:
+        return None
+    i = len(lines) - 1
+    while i >= 0 and not lines[i].strip():
+        i -= 1
+    if i < 0:
+        return None
+    last = lines[i].strip()
+    spec = _lang_spec(lang)
+    if last.endswith("*/") and spec is not None and spec.block_comments:
+        while i >= 0 and "/*" not in lines[i]:
+            i -= 1
+        if i < 0:
+            return None
+        opener = lines[i][lines[i].index("/*"):]
+        return i if _opens_doc(opener, prefixes) else None
+    if not _opens_doc(last, prefixes):
+        return None
+    while i > 0 and _opens_doc(lines[i - 1].strip(), prefixes):
+        i -= 1
+    return i
+
+
+def _split_trailing_doc(seg, src: bytes, lang: str) -> tuple | None:
+    """(lead, doc) around the doc comment `seg` ends with; lead is None when
+    the doc is all of `seg`. None when `seg` does not end in a doc comment."""
+    lines = seg.content(src).split("\n")
+    start = _doc_start(lines, lang)
+    if start is None:
+        return None
+    lead_lines = lines[:start]
+    while lead_lines and not lead_lines[-1].strip():
+        lead_lines.pop()
+    if not lead_lines:
+        return None, seg
+    lead = _SyntheticSegment("\n".join(lead_lines) + "\n", seg.start_line,
+                             seg.start_line + len(lead_lines) - 1,
+                             chunk_type=seg.chunk_type, name=seg.name)
+    doc = _SyntheticSegment("\n".join(lines[start:]), seg.start_line + start, seg.end_line)
+    return lead, doc
+
+
+def _join(first, second, src: bytes) -> _SyntheticSegment:
+    """`first` then `second` as one segment with `second`'s identity."""
+    fc = first.content(src)
+    combined = fc + ("" if fc.endswith("\n") else "\n") + second.content(src)
+    return _SyntheticSegment(combined, first.start_line, second.end_line,
+                             chunk_type=second.chunk_type, name=second.name, refs=second.refs)
+
+
+def _attach_doc(seg, lead, doc, nxt, src: bytes) -> list | None:
+    """What replaces `seg` and `nxt` with the doc joined to `nxt`, or None unless
+    `nxt` starts on the doc's next line and the join fits CHUNK_MAX."""
+    if nxt.start_line != doc.end_line + 1:
+        return None
+    out: list = []
+    head = seg
+    if lead is not None and not _comment_has_text(lead.content(src)):
+        head = doc
+    elif lead is not None and lead.size(src) >= CHUNK_MIN:
+        out.append(lead)
+        head = doc
+    joined = _join(head, nxt, src)
+    if joined.size(src) > CHUNK_MAX:
+        return None
+    return out + [joined]
+
+
 def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
     """A small labeled comment attaches FORWARD to the boundary it labels; a
-    pure divider is dropped; a large block (>= CHUNK_MIN) stays standalone
-    so it doesn't pollute a function's chunk."""
+    pure divider is dropped; a large block (>= CHUNK_MIN) stays standalone so
+    it doesn't pollute a function's chunk, unless it ends in a doc comment."""
     out: list = []
     pending = None
+    held = None  # (large comment ending in a doc comment, its lead, the doc)
     for seg in segs:
         text = seg.content(src)
-        if _is_comment_only(text, lang):
+        comment_only = _is_comment_only(text, lang)
+        if held is not None:
+            attached = None if comment_only else _attach_doc(*held, seg, src)
+            out.extend(attached or [held[0]])
+            held = None
+            if attached is not None:
+                continue
+        if comment_only:
             if not _comment_has_text(text):
                 continue  # pure divider → drop
             if seg.size(src) >= CHUNK_MIN:
                 if pending is not None:
                     out.append(pending)
                     pending = None
+                split = _split_trailing_doc(seg, src, lang)
+                if split is not None:
+                    held = (seg, *split)
+                    continue
                 out.append(seg)  # big comment block → standalone
                 continue
             if pending is None:
@@ -853,6 +943,8 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
                 chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
             pending = None
         out.append(seg)
+    if held is not None:
+        out.append(held[0])
     if pending is not None:
         # A trailing comment has no forward boundary to attach to; attach
         # it BACKWARD to the last segment instead, unless that breaks CHUNK_MAX.

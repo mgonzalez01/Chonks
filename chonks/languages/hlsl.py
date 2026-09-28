@@ -43,7 +43,7 @@ def cbuffer_chunk_type(node: Node, src: bytes) -> str | None:
 HLSL = LanguageSpec(
     name="hlsl",
     grammar="hlsl",
-    version="6",
+    version="7",
     # .hlsli is the DirectX include convention; .compute, .raytrace and
     # .cginc are Unity's plain-HLSL compute, ray tracing and include files.
     extensions=frozenset({".hlsl", ".hlsli", ".fx", ".fxh", ".compute", ".raytrace", ".cginc"}),
@@ -70,6 +70,7 @@ HLSL = LanguageSpec(
     },
     # Shader code is macro-dense (Unity's UNITY_VERTEX_INPUT_INSTANCE_ID,
     # CBUFFER_START): same preprocessor, same handling as C and C++.
+    doc_comment_prefixes=("///", "//!", "/**", "/*!"),
     c_macro_self_heal=True,
     chain_base_fields={"field_expression": "argument"},
     identifier_leaf_types=frozenset({"identifier", "field_identifier", "type_identifier"}),

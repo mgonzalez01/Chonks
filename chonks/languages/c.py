@@ -24,7 +24,7 @@ C = LanguageSpec(
     name="c",
     typed_ref_languages=frozenset({"cpp"}),
     grammar="c",
-    version="4",
+    version="5",
     extensions=frozenset({".c"}),
     # struct/union/enum_specifier also match bare tag refs and forward decls;
     # the boundary_filters entry requires a body to treat one as a real boundary.
@@ -43,6 +43,7 @@ C = LanguageSpec(
         NameRule(("struct_specifier", "union_specifier", "enum_specifier"), tag_specifier_name),
         NameRule(("type_definition",), typedef_name),
     ),
+    doc_comment_prefixes=("///", "//!", "/**", "/*!"),
     c_macro_self_heal=True,
     # c is the grammar cpp is a superset of, so preproc_include/call_expression
     # reuse cpp's rules as-is. No inherits rule: C has no base classes.
