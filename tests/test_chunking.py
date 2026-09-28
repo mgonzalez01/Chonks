@@ -889,6 +889,132 @@ def test_trailing_namespace_comment_attaches_backward():
     assert "// namespace foo" in segs[0]["content"]
 
 
+_DOC_LINES = [
+    "Accumulates the weighted steps of one frame into a single value.",
+    "Each step is scaled by its position before it is added to the total.",
+    "The caller owns the input and it is never modified here.",
+    "Returns the accumulated total; zero when there are no steps at all.",
+    "Thread-safe as long as each caller passes its own input buffer.",
+]
+
+
+def _doc(style, indent=""):
+    if style == "block":
+        return "\n".join([indent + "/**"] + [f"{indent} * {ln}" for ln in _DOC_LINES] + [indent + " */"])
+    return "\n".join(f"{indent}{style} {ln}" for ln in _DOC_LINES)
+
+
+_SMALL_FUNCS = {
+    "javascript": "function func_{0}(x) {{\n  return x + 1;\n}}",
+    "gdscript": "func func_{0}(x):\n\treturn x + 1",
+    "lua": "local function func_{0}(x)\n  return x + 1\nend",
+}
+
+
+def _func(lang, tag):
+    return _SMALL_FUNCS[lang].format(tag) if lang in _SMALL_FUNCS else _bigfunc(tag)
+
+
+@pytest.mark.parametrize("lang, style", [
+    ("cpp", "///"), ("cpp", "block"), ("c", "///"), ("javascript", "block"), ("gdscript", "##"), ("lua", "---"),
+])
+def test_large_doc_comment_attaches_to_the_next_function(lang, style):
+    doc = _doc(style)
+    assert len(doc.encode()) >= 300
+    src = _func(lang, "A") + "\n\n" + doc + "\n" + _func(lang, "B") + "\n"
+    segs = segment_file(src.encode(), lang)
+    b = next(s for s in segs if s["name"] == "func_B")
+    assert b["content"].startswith(doc.split("\n")[0])
+    assert b["start_line"] == src.split("\n").index(doc.split("\n")[0]) + 1
+    assert not any(_DOC_LINES[0] in s["content"] for s in segs if s is not b)
+
+
+def test_large_csharp_doc_comments_attach_to_their_methods():
+    methods = "\n".join(
+        f"        /// <summary>\n"
+        f"        ///   <para>Computes step {i} of the pipeline for the given input value.</para>\n"
+        f"        ///   <para>The result is scaled by the step index and offset by one.</para>\n"
+        f"        ///   <para>No allocation happens here and the input is not modified.</para>\n"
+        f"        /// </summary>\n"
+        f"        public static int Step{i}(int x) => x * {i} + 1;"
+        for i in range(20))
+    src = f"namespace Demo\n{{\n    public class Big\n    {{\n{methods}\n    }}\n}}\n".encode()
+    assert len(src) > CHUNK_MAX
+    segs = segment_file(src, "c_sharp")
+    for i in range(1, 20):
+        s = next(s for s in segs if s["name"] == f"Step{i}")
+        assert f"Computes step {i} of" in s["content"]
+        assert s["content"].lstrip().startswith("/// <summary>")
+    assert not any("Computes step" in s["content"] for s in segs if s["name"].startswith("<"))
+
+
+def test_doc_comment_chunk_keeps_its_source_lines():
+    doc = _doc("///")
+    src = _bigfunc("A") + "\n\n" + doc + "\n" + _bigfunc("B") + "\n"
+    b = next(s for s in segment_file(src.encode(), "cpp") if s["name"] == "func_B")
+    assert b["content"].startswith("///")
+    lines = src.split("\n")[b["start_line"] - 1:b["end_line"]]
+    assert b["content"].rstrip("\n").split("\n") == lines
+
+
+@pytest.mark.parametrize("header", [
+    "\n".join(f"// Copyright line {i}: licensed under the terms of the project license." for i in range(6)),
+    "//===----------------------------------------------------------------------===//\n"
+    "// Pipeline accumulation: the functions below fold one frame's weighted steps\n"
+    "// into a single value, in the order the scheduler hands them over, and never\n"
+    "// allocate.\n"
+    "//===----------------------------------------------------------------------===//",
+    "\n".join(["/" + "*" * 74 + "/"] + [f"/*  Licensed under the project license, clause {i}.{' ' * 24}*/"
+                                          for i in range(4)] + ["/" + "*" * 74 + "/"]),
+], ids=["license", "banner", "star-banner"])
+def test_license_header_and_banner_stay_standalone(header):
+    assert len(header.encode()) >= 300
+    src = _bigfunc("A") + "\n\n" + header + "\n" + _bigfunc("B") + "\n"
+    segs = segment_file(src.encode(), "cpp")
+    b = next(s for s in segs if s["name"] == "func_B")
+    assert b["content"].startswith("void func_B")
+    assert any(header.split("\n")[1] in s["content"] for s in segs if s is not b)
+
+
+def test_license_before_a_doc_comment_stays_standalone():
+    header = "\n".join(f"// Copyright line {i}: licensed under the terms of the project license." for i in range(6))
+    doc = _doc("///")
+    src = header + "\n\n" + doc + "\n" + _bigfunc("B") + "\n"
+    segs = segment_file(src.encode(), "cpp")
+    b = next(s for s in segs if s["name"] == "func_B")
+    assert b["content"].startswith(doc.split("\n")[0])
+    assert "Copyright" not in b["content"]
+    assert any("Copyright line 0" in s["content"] for s in segs if s is not b)
+
+
+def test_doc_comment_separated_by_a_blank_line_stays_standalone():
+    doc = _doc("///")
+    src = _bigfunc("A") + "\n\n" + doc + "\n\n" + _bigfunc("B") + "\n"
+    b = next(s for s in segment_file(src.encode(), "cpp") if s["name"] == "func_B")
+    assert b["content"].startswith("void func_B")
+
+
+def test_doc_comment_stays_standalone_when_the_joined_chunk_exceeds_chunk_max():
+    body = "\n".join(f"    acc += step_{j}(x);" for j in range(240))
+    func = f"void func_B(int x) {{\n    int acc = 0;\n{body}\n}}"
+    doc = _doc("///")
+    assert len(func.encode()) <= CHUNK_MAX < len((doc + "\n" + func).encode())
+    src = _bigfunc("A") + "\n\n" + doc + "\n" + func + "\n"
+    segs = segment_file(src.encode(), "cpp")
+    b = next(s for s in segs if s["name"] == "func_B")
+    assert b["content"] == func
+    assert any(s["content"].startswith(doc.split("\n")[0]) for s in segs)
+    assert all(z <= CHUNK_MAX for z in _sizes(segs))
+
+
+def test_python_comment_block_before_a_function_stays_standalone():
+    block = "\n".join(f"## {ln}" for ln in _DOC_LINES)
+    src = "x = 1\n\n" + block + "\n" + _bigfunc("B", "python") + "\n"
+    segs = segment_file(src.encode(), "python")
+    b = next(s for s in segs if s["name"] == "func_B")
+    assert b["content"].startswith("def func_B")
+
+
 def test_is_identity_free_does_not_misclassify_pointer_dereference():
     """Code-review follow-up: a pointer-dereference statement like '*ptr = val;'
     starts with the same '*' used to detect C-doc-comment continuation lines

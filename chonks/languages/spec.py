@@ -193,6 +193,9 @@ class LanguageSpec:
     kind_labels: Mapping[str, str] = field(default_factory=dict)  # must cover boundary_nodes
     line_comment_prefixes: tuple[str, ...] | None = None  # None = C-style default
     block_comments: bool = True
+    # Openers of a doc comment (`///`, `/**`); one followed by its own last
+    # character (`////`, `/***`) is a divider.
+    doc_comment_prefixes: tuple[str, ...] = ()
     module_residue_split: NodePred | None = None
     c_macro_self_heal: bool = False
     # tier 2: typed refs, receivers, arity

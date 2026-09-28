@@ -24,7 +24,7 @@ def literal_wrapper(raw: str) -> "tuple[str, str] | object":
 LUA = LanguageSpec(
     name="lua",
     grammar="lua",
-    version="2",
+    version="3",
     # Best-effort tier; unmapped, cross-language C++/Lua binding surfaces
     # (e.g. cocos2d-x) go invisible to co-change pairing.
     extensions=frozenset({".lua"}),
@@ -40,6 +40,7 @@ LUA = LanguageSpec(
     ),
     line_comment_prefixes=("--",),
     block_comments=False,
+    doc_comment_prefixes=("---",),
     kind_labels={"function_declaration": "function"},
     literal_wrapper=literal_wrapper,
     literals=LiteralSpec(leaf_types=("string",), plus_type="binary_expression", plus_op=".."),
