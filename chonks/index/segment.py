@@ -51,7 +51,7 @@ logger = logging.getLogger("chunking")
 # Bump when a change here would alter chunk boundaries for already-indexed
 # content. Provenance only (meta table, doctor.py); nothing reads it back
 # to gate behavior.
-CHUNKER_VERSION = 6
+CHUNKER_VERSION = 7
 
 # Chunk-size constants: CHUNK_TARGET is UTF-8 characters; CHUNK_MIN/MAX are
 # UTF-8 bytes. Don't mix the two when comparing.
@@ -859,7 +859,8 @@ def _doc_start(lines: list[str], lang: str) -> int | None:
 def _split_trailing_doc(seg, src: bytes, lang: str) -> tuple | None:
     """(lead, doc) around the doc comment `seg` ends with; lead is None when
     the doc is all of `seg`. None when `seg` does not end in a doc comment."""
-    lines = seg.content(src).split("\n")
+    text = seg.content(src)
+    lines = text.split("\n")
     start = _doc_start(lines, lang)
     if start is None:
         return None
@@ -868,10 +869,12 @@ def _split_trailing_doc(seg, src: bytes, lang: str) -> tuple | None:
         lead_lines.pop()
     if not lead_lines:
         return None, seg
+    # Counted from the end: a merged segment's text can hold fewer lines than its span.
+    doc_line = seg.end_line - (len(lines) - 1 - start) + text.endswith("\n")
     lead = _SyntheticSegment("\n".join(lead_lines) + "\n", seg.start_line,
-                             seg.start_line + len(lead_lines) - 1,
-                             chunk_type=seg.chunk_type, name=seg.name)
-    doc = _SyntheticSegment("\n".join(lines[start:]), seg.start_line + start, seg.end_line)
+                             doc_line - 1 - (start - len(lead_lines)),
+                             chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
+    doc = _SyntheticSegment("\n".join(lines[start:]), doc_line, seg.end_line)
     return lead, doc
 
 
@@ -960,6 +963,31 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
                 chunk_type=last.chunk_type, name=last.name, refs=last.refs)
         else:
             out.append(pending)
+    return out
+
+
+def _move_doc_tails(segs: list, src: bytes, lang: str) -> list:
+    """A segment holding code that ends in a doc comment, such as a split
+    class's header, hands the doc to the next segment when that starts on the
+    doc's next line, holds code, and the two fit CHUNK_MAX."""
+    if not _DOC_PREFIXES.get(lang):
+        return segs
+    out = list(segs)
+    for i in range(len(out) - 1):
+        seg, nxt = out[i], out[i + 1]
+        if nxt.start_line != seg.end_line + 1:
+            continue
+        split = _split_trailing_doc(seg, src, lang)
+        if split is None or split[0] is None or _is_comment_only(seg.content(src), lang):
+            continue
+        nc = nxt.content(src)
+        # More lines than its span: a line-fallback slice, which already repeats the doc.
+        if _is_comment_only(nc, lang) or nc.count("\n") - nc.endswith("\n") > nxt.end_line - nxt.start_line:
+            continue
+        lead, doc = split
+        joined = _join(doc, nxt, src)
+        if joined.size(src) <= CHUNK_MAX:
+            out[i], out[i + 1] = lead, joined
     return out
 
 
@@ -1140,6 +1168,7 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
         # Comment-only spans come only from residue/gaps; attach forward.
         raw_segs = _attach_or_drop_comments(raw_segs, src, lang)
 
+    raw_segs = _move_doc_tails(raw_segs, src, lang)
     # Absorb identity-free trivia BEFORE _merge_small, a separate pass since
     # the two rules' guards are opposite (see _absorb_identity_free_fragments).
     raw_segs = _absorb_identity_free_fragments(raw_segs, src, lang)
