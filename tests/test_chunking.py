@@ -1007,6 +1007,69 @@ def test_doc_comment_stays_standalone_when_the_joined_chunk_exceeds_chunk_max():
     assert all(z <= CHUNK_MAX for z in _sizes(segs))
 
 
+def test_doc_comment_ending_a_split_class_header_moves_to_the_first_member():
+    methods = "\n".join(
+        f"  int method_{i}(int x) {{\n" + "".join(f"    x += f{j}(x);\n" for j in range(60)) + "    return x;\n  }"
+        for i in range(6))
+    src = "class Store : public Base {\npublic:\n  /// Folds the steps of one frame.\n" + methods + "\n};\n"
+    assert len(src.encode()) > CHUNK_MAX
+    segs = segment_file(src.encode(), "cpp")
+    header = next(s for s in segs if s["name"] == "Store")
+    first = next(s for s in segs if s["name"] == "method_0")
+    assert header["content"] == "class Store : public Base {\npublic:\n"
+    assert first["content"].startswith("  /// Folds the steps of one frame.\nint method_0")
+    assert (header["end_line"], first["start_line"]) == (2, 3)
+
+
+_DOC_TAIL_CASES = {
+    "cpp-namespace": ("cpp", "namespace engine {\n\nclass Fwd;\nextern int frame_index;\n\n",
+                      _doc("///") + "\n" + _bigfunc("B") + "\n\n}\n", "func_B"),
+    "csharp-namespace": ("c_sharp", "namespace Demo\n{\n",
+                         _doc("///", "    ") + "\n    public static class Steps\n    {\n"
+                         + "".join(f"        public static int Step{i}(int x) => x * {i} + 1;\n" for i in range(12))
+                         + "    }\n}\n", "Steps"),
+    "javascript-module": ("javascript", "window.frameLimit = 4;\nwindow.frameScale = 2;\n\n",
+                          _doc("block") + "\n" + _func("javascript", "B") + "\n", "func_B"),
+}
+
+
+@pytest.mark.parametrize("case", _DOC_TAIL_CASES, ids=list(_DOC_TAIL_CASES))
+def test_doc_comment_ending_a_code_chunk_moves_to_the_next_chunk(case):
+    lang, lead, rest, name = _DOC_TAIL_CASES[case]
+    src = lead + rest
+    segs = segment_file(src.encode(), lang)
+    member = next(s for s in segs if s["name"] == name)
+    doc_line = lead.count("\n") + 1
+    assert member["start_line"] == doc_line
+    assert member["content"].split("\n")[:2] == src.split("\n")[doc_line - 1:doc_line + 1]
+    assert not any(_DOC_LINES[0] in s["content"] for s in segs if s is not member)
+    assert any(lead.split("\n")[0] in s["content"] for s in segs if s is not member)
+
+
+def test_doc_comment_ending_a_code_chunk_stays_when_the_joined_chunk_exceeds_chunk_max():
+    body = "\n".join(f"    acc += step_{j}(x);" for j in range(240))
+    func = f"void func_B(int x) {{\n    int acc = 0;\n{body}\n}}"
+    doc = _doc("///")
+    assert len(func.encode()) <= CHUNK_MAX < len((doc + "\n" + func).encode())
+    src = "namespace engine {\n\nextern int frame_index;\n\n" + doc + "\n" + func + "\n\n}\n"
+    segs = segment_file(src.encode(), "cpp")
+    assert next(s for s in segs if s["name"] == "func_B")["content"] == func
+    assert any("frame_index" in s["content"] and _DOC_LINES[0] in s["content"] for s in segs)
+    assert all(z <= CHUNK_MAX for z in _sizes(segs))
+
+
+def test_doc_comment_at_a_line_slice_boundary_is_not_repeated():
+    from chonks.index.segment import CHUNK_TARGET
+    doc = "    /// Clamp before the second pass."
+    lines = ["void applyStep(int x) {"]
+    while sum(len(ln) + 1 for ln in lines) + len(doc) + 1 < CHUNK_TARGET:
+        lines.append(f"    x += step_{len(lines)}(x);")
+    lines += [doc] + [f"    x -= undo_{i}(x);" for i in range(200)] + ["}"]
+    segs = segment_file(("\n".join(lines) + "\n").encode(), "cpp")
+    assert all(s["content"].count(doc) <= 1 for s in segs)
+    assert any(s["content"].rstrip("\n").endswith(doc) for s in segs)
+
+
 def test_python_comment_block_before_a_function_stays_standalone():
     block = "\n".join(f"## {ln}" for ln in _DOC_LINES)
     src = "x = 1\n\n" + block + "\n" + _bigfunc("B", "python") + "\n"
