@@ -257,7 +257,7 @@
       "segments": [
         {
           "chunk_type": "class_declaration",
-          "content": "using System;\nusing System.Collections.Generic;\nusing Godot;\nnamespace Foo {\nclass Base {}\ninterface IThing {}\nclass Bar : Base, IThing {\n    void Run() {\n        Helper();\n        Helper();\n        this.other.Call(x);\n        new Widget();\n        new List<int>();\n        var q = new Some.Qualified.Type();\n    }\n}",
+          "content": "using System;\nusing System.Collections.Generic;\nusing Godot;\n\nnamespace Foo {\n\nclass Base {}\ninterface IThing {}\n\nclass Bar : Base, IThing {\n    void Run() {\n        Helper();\n        Helper();\n        this.other.Call(x);\n        new Widget();\n        new List<int>();\n        var q = new Some.Qualified.Type();\n    }\n}",
           "end_line": 20,
           "literals": [],
           "name": "Base",
@@ -304,7 +304,7 @@
         },
         {
           "chunk_type": "struct_declaration",
-          "content": "struct SBase {}\nstruct SDerived : SBase {}\ninterface IExtra : IThing {}",
+          "content": "struct SBase {}\nstruct SDerived : SBase {}\n\ninterface IExtra : IThing {}",
           "end_line": 25,
           "literals": [],
           "name": "SBase",
@@ -762,7 +762,7 @@
       "segments": [
         {
           "chunk_type": "class_declaration",
-          "content": "using System;\nusing Godot;\nnamespace Foo {\nclass Bar : Node, IThing {\n    void Run() {\n        Helper();\n        this.other.Call(x);\n        new Widget();\n    }\n}",
+          "content": "using System;\nusing Godot;\n\nnamespace Foo {\nclass Bar : Node, IThing {\n    void Run() {\n        Helper();\n        this.other.Call(x);\n        new Widget();\n    }\n}",
           "end_line": 12,
           "literals": [],
           "name": "Bar",

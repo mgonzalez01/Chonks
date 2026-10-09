@@ -1017,7 +1017,7 @@ def test_doc_comment_ending_a_split_class_header_moves_to_the_first_member():
     header = next(s for s in segs if s["name"] == "Store")
     first = next(s for s in segs if s["name"] == "method_0")
     assert header["content"] == "class Store : public Base {\npublic:\n"
-    assert first["content"].startswith("  /// Folds the steps of one frame.\nint method_0")
+    assert first["content"].startswith("  /// Folds the steps of one frame.\n  int method_0")
     assert (header["end_line"], first["start_line"]) == (2, 3)
 
 
@@ -1068,6 +1068,153 @@ def test_doc_comment_at_a_line_slice_boundary_is_not_repeated():
     segs = segment_file(("\n".join(lines) + "\n").encode(), "cpp")
     assert all(s["content"].count(doc) <= 1 for s in segs)
     assert any(s["content"].rstrip("\n").endswith(doc) for s in segs)
+
+
+def _source_lines(seg, src):
+    return src.split("\n")[seg["start_line"] - 1:seg["end_line"]]
+
+
+@pytest.mark.parametrize("scope", ["top-level", "namespace"])
+@pytest.mark.parametrize("gap", ["\n", "\n\n"], ids=["adjacent", "blank-line"])
+def test_small_comment_attached_forward_keeps_its_source_lines(scope, gap):
+    body = _bigfunc("A") + "\n\n// Adds the steps." + gap + _bigfunc("B")
+    src = body + "\n" if scope == "top-level" else "namespace engine {\n\n" + body + "\n\n}\n"
+    b = next(s for s in segment_file(src.encode(), "cpp") if s["name"] == "func_B")
+    assert b["content"].startswith("// Adds the steps.")
+    assert b["content"].rstrip("\n").split("\n") == _source_lines(b, src)
+
+
+@pytest.mark.parametrize("gap", ["\n", "\n\n", " "], ids=["adjacent", "blank-line", "same-line"])
+def test_trailing_comment_attached_backward_keeps_its_source_lines(gap):
+    src = _bigfunc("A") + gap + "// Trailing note.\n"
+    (a,) = segment_file(src.encode(), "cpp")
+    assert a["content"].endswith("// Trailing note.")
+    assert a["content"].split("\n") == _source_lines(a, src)
+
+
+def test_small_comments_coalesced_keep_the_blank_line_between_them():
+    from chonks.index.segment import _SyntheticSegment, _attach_or_drop_comments
+    src = b"// First note.\n\n// Second note.\nint f;"
+    segs = [_SyntheticSegment("// First note.\n", 1, 1), _SyntheticSegment("// Second note.\n", 3, 3),
+            _SyntheticSegment("int f;", 4, 4, name="f")]
+    (joined,) = _attach_or_drop_comments(segs, src, "cpp")
+    assert joined.content(src) == src.decode()
+    assert (joined.start_line, joined.end_line) == (1, 4)
+
+
+def test_small_functions_merged_keep_the_blank_lines_between_them():
+    src = "int a() { return 1; }\n\nint b() { return 2; }\n\n\nint c() { return 3; }\n"
+    (chunk,) = segment_file(src.encode(), "cpp")
+    assert chunk["content"].split("\n") == _source_lines(chunk, src)
+
+
+def test_directives_merged_keep_the_blank_line_between_them():
+    src = "#define STEP_A 1\n\n#define STEP_B 2\n\nint f() { return STEP_A + STEP_B; }\n"
+    (chunk,) = segment_file(src.encode(), "cpp")
+    assert chunk["content"].split("\n") == _source_lines(chunk, src)
+
+
+@pytest.mark.parametrize("src", [
+    _bigfunc("A") + "\n\n\n#endif\n" + _bigfunc("B") + "\n",
+    "#ifdef FAST\n\n" + _bigfunc("B") + "\n#endif\n",
+], ids=["backward", "forward"])
+def test_absorbed_fragment_keeps_the_blank_lines_before_it(src):
+    for seg in segment_file(src.encode(), "cpp"):
+        assert seg["content"].rstrip("\n").split("\n") == _source_lines(seg, src)
+
+
+def test_fragment_absorbed_into_a_line_slice_leaves_the_overlap_out_of_the_span():
+    body = "\n".join(f"    acc += step_{j}(x);" for j in range(400))
+    src = f"void big(int x) {{\n    int acc = 0;\n{body}\n}}\n\n#endif\n"
+    last = segment_file(src.encode(), "cpp")[-1]
+    span = last["end_line"] - last["start_line"] + 1
+    assert last["content"].rstrip("\n").split("\n")[-span:] == _source_lines(last, src)
+
+
+def _lines_up(seg, src):
+    """The chunk's text, overlap lines dropped, against the source lines of its span; a
+    first or last line may be part of its source line where a byte window cuts it."""
+    from chonks.retrieval.source import _canonical_chunk_content
+    lines = _canonical_chunk_content(seg).rstrip("\n").split("\n")
+    real = _source_lines(seg, src)
+    return len(lines) == len(real) and all(c in r for c, r in zip(lines, real))
+
+
+def test_a_chunk_ending_in_a_directive_ends_on_its_line():
+    includes = "".join(f'#include "core/module_{i}.h"\n' for i in range(16))
+    src = includes + _bigfunc("A") + "\n"
+    head, func = segment_file(src.encode(), "cpp")
+    assert (head["end_line"], func["start_line"]) == (16, 17)
+    assert head["content"].rstrip("\n").split("\n") == _source_lines(head, src)
+
+
+@pytest.mark.parametrize("width", [1400, 4000], ids=["fits-without-overlap", "byte-windows"])
+def test_an_oversized_line_slice_keeps_its_lines(width):
+    def line(i):
+        calls = " + ".join(f"step_{i}_{j}(x)" for j in range(width // 14))
+        return f"    acc_{i} += {calls};"
+    src = "void big(int x) {\n" + "\n".join(line(i) for i in range(12)) + "\n}\n"
+    segs = segment_file(src.encode(), "cpp")
+    assert len(segs) > 2
+    assert all(_lines_up(seg, src) for seg in segs)
+    assert all(z <= CHUNK_MAX for z in _sizes(segs))
+
+
+def test_a_last_byte_window_without_a_newline_ends_on_its_line():
+    from chonks.index.segment import _SyntheticSegment, _enforce_ceiling
+    text = "a" * 2999 + "\n" + "b" * 2999 + "\n}"
+    head, tail = _enforce_ceiling([_SyntheticSegment(text, 10, 12, name="f")], text.encode())
+    assert (head.start_line, head.end_line, tail.start_line, tail.end_line) == (10, 11, 12, 12)
+    assert tail.content(b"") == "}"
+
+
+_PREFIX_CASES = {
+    "blanked-macro": ("cpp", {"_FORCE_INLINE_"}, "_FORCE_INLINE_ void set_hint(bool p_hint) {\n"
+                      "    hint = p_hint;\n}\n", "set_hint", "_FORCE_INLINE_ void set_hint("),
+    "extern-c": ("cpp", None, 'extern "C" int frame_count(void) {\n    return frames;\n}\n',
+                 "frame_count", 'extern "C" int frame_count('),
+    "typedef": ("cpp", None, "typedef struct Point {\n    int x;\n    int y;\n} Point;\n",
+                "Point", "typedef struct Point {"),
+    "namespace": ("cpp", None, "namespace detail {\nclass IEEEFloat;\nclass DoubleAPFloat;\n}\n",
+                  "detail", "namespace detail {"),
+    "export": ("javascript", None, "export function add(a, b) {\n  return a + b;\n}\n",
+               "add", "export function add("),
+    "split-template": ("cpp", None, "template <class T> class Builder {\n" + "".join(
+        f"  int step_{i}(int x) {{\n" + "".join(f"    x += f{j}(x);\n" for j in range(60)) + "    return x;\n  }\n"
+        for i in range(8)) + "};\n", "Builder", "template <class T> class Builder {"),
+}
+
+
+@pytest.mark.parametrize("case", _PREFIX_CASES.values(), ids=_PREFIX_CASES.keys())
+def test_a_chunk_starts_at_its_line_start_when_no_other_chunk_holds_it(case):
+    lang, macros, src, name, first = case
+    segs = segment_file(src.encode(), lang, macros=macros)
+    seg = next(s for s in segs if s["name"] == name)
+    assert seg["content"].startswith(first)
+    assert all(_lines_up(s, src) for s in segs)
+
+
+def test_a_split_class_member_keeps_its_indentation_and_macro():
+    members = "".join(
+        f"\t_FORCE_INLINE_ int step_{i}(int x) {{\n" + "".join(f"\t\tx += f{j}(x);\n" for j in range(60))
+        + "\t\treturn x;\n\t}\n" for i in range(8))
+    src = "class Engine {\npublic:\n" + members + "};\n"
+    assert len(src.encode()) > CHUNK_MAX
+    segs = segment_file(src.encode(), "cpp", macros={"_FORCE_INLINE_"})
+    header = next(s for s in segs if s["name"] == "Engine")
+    step = next(s for s in segs if s["name"] == "step_0")
+    assert header["content"] == "class Engine {\npublic:"
+    assert step["content"].startswith("\t_FORCE_INLINE_ int step_0(")
+    assert all(_lines_up(s, src) for s in segs)
+
+
+@pytest.mark.parametrize("closer", ["}", "#endif"])
+def test_a_closer_before_a_comment_on_its_line_stays_in_a_chunk(closer):
+    opener = "namespace engine {\n\n" if closer == "}" else "#ifdef ENGINE\n\n"
+    src = opener + _bigfunc("A") + f"\n{closer} // engine\n\n" + _bigfunc("B") + "\n"
+    segs = segment_file(src.encode(), "cpp")
+    assert any(f"{closer} // engine" in s["content"] for s in segs)
+    assert all(_lines_up(s, src) for s in segs)
 
 
 def test_python_comment_block_before_a_function_stays_standalone():

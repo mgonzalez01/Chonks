@@ -37,7 +37,7 @@
       "segments": [
         {
           "chunk_type": "struct_specifier",
-          "content": "struct node;\nenum color\nstruct point {\n    int x;\n    int y;\n}\nint use_point(struct point p) {\n    return p.x + p.y;\n}",
+          "content": "struct node;\nenum color\n\nstruct point {\n    int x;\n    int y;\n}\n\nint use_point(struct point p) {\n    return p.x + p.y;\n}",
           "end_line": 11,
           "literals": [],
           "name": "point",
@@ -340,7 +340,7 @@
       "segments": [
         {
           "chunk_type": "type_definition",
-          "content": "#include <stdio.h>\ntypedef struct st_MyType MyType;\nDECLARE_ASN1_FUNCTIONS(MyType)\nstruct st_MyType {\n    int id;\n    char *name;\n}\nIMPLEMENT_ASN1_FUNCTIONS(MyType)\nstatic int MyType_new(MyType **out) {\n    *out = calloc(1, sizeof(MyType));\n    return *out != NULL;\n}",
+          "content": "#include <stdio.h>\n\ntypedef struct st_MyType MyType;\n\nDECLARE_ASN1_FUNCTIONS(MyType)\n\nstruct st_MyType {\n    int id;\n    char *name;\n}\n\nIMPLEMENT_ASN1_FUNCTIONS(MyType)\n\nstatic int MyType_new(MyType **out) {\n    *out = calloc(1, sizeof(MyType));\n    return *out != NULL;\n}",
           "end_line": 18,
           "literals": [],
           "name": "MyType",
@@ -418,7 +418,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "#include <foo.h>\n#include \"bar.h\"\n\nint helper(int x);\nint driver(int x) {\n    int r = helper(x);\n    return process(r);\n}",
+          "content": "#include <foo.h>\n#include \"bar.h\"\n\nint helper(int x);\n\nint driver(int x) {\n    int r = helper(x);\n    return process(r);\n}",
           "end_line": 10,
           "literals": [],
           "name": "driver",

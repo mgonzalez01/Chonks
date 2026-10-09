@@ -508,7 +508,7 @@
       "segments": [
         {
           "chunk_type": "function_declaration",
-          "content": "local Methods = {}\nfunction Methods.greet(self, name)\n  print(\"hi \" .. name)\nend\nMethods.legacy = {\n  ping = function(self)\n    print(\"pong\")\n  end,\n}\n\nreturn Methods",
+          "content": "local Methods = {}\n\nfunction Methods.greet(self, name)\n  print(\"hi \" .. name)\nend\n\nMethods.legacy = {\n  ping = function(self)\n    print(\"pong\")\n  end,\n}\n\nreturn Methods",
           "end_line": 14,
           "literals": [],
           "name": "Methods.greet",

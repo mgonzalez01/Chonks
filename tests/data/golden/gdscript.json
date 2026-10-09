@@ -189,7 +189,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "extends Node2D\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()\n    x.do_thing()\n    other.nested.chained_call()\nfunc _process(delta):\n    helper_fn()",
+          "content": "extends Node2D\n\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()\n    x.do_thing()\n    other.nested.chained_call()\n\nfunc _process(delta):\n    helper_fn()",
           "end_line": 11,
           "literals": [],
           "name": "_ready",
@@ -363,7 +363,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "extends Node2D\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()",
+          "content": "extends Node2D\n\nfunc _ready():\n    var x = get_node(\"Bar\")\n    x.do_thing()",
           "end_line": 6,
           "literals": [],
           "name": "_ready",

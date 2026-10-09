@@ -100,7 +100,7 @@
       "segments": [
         {
           "chunk_type": "cbuffer",
-          "content": "cbuffer PerFrame : register(b0)\n{\n    float4x4 View;\n}\nfloat4 MainPS() : SV_Target\n{\n    return float4(1,1,1,1);\n\ntechnique10 RenderTech\n{\n    pass P0\n    {\n        SetVertexShader(CompileShader(vs_4_0, MainVS()));\n    }\n}",
+          "content": "cbuffer PerFrame : register(b0)\n{\n    float4x4 View;\n}\n\nfloat4 MainPS() : SV_Target\n{\n    return float4(1,1,1,1);\n\ntechnique10 RenderTech\n{\n    pass P0\n    {\n        SetVertexShader(CompileShader(vs_4_0, MainVS()));\n    }\n}",
           "end_line": 16,
           "literals": [],
           "name": "PerFrame",
