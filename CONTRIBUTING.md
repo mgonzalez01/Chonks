@@ -36,3 +36,7 @@ The rules that keep those seams clean. `tests/test_layering.py` checks the first
 - Code goes in the layer whose job it is, not the one whose imports happen to allow it. When a change fits no layer, the pull request proposes a new one: a row in the table above and in `tests/test_layering.py`.
 
 The exception lists in `tests/test_layering.py` only shrink: fix an entry and delete it, and never add one without saying why in the pull request.
+
+## Comments
+
+A comment explains code that is hard to follow, or a contract the code can't show: what a caller has to do, or what must stay in step with code elsewhere. How the code got this way, what was tried and the numbers behind a choice go in the pull request. Match the density of the code around it; most docstrings here are a line or two, often just an example. When a rule is narrower than it looks, a test case that fails if someone widens it says why better than a comment; extend an existing test where one fits. Known bugs go in an issue, not a TODO.
