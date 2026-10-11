@@ -94,8 +94,7 @@ def _missing_prefixes(root: Path, prefixes: list[str]) -> list[str]:
 
 def _dotdir_prefix(stored_dir_path: str) -> str | None:
     """First two segments of a dot-directory path; ".git" doesn't count (VCS,
-    not pollution). Grouping must match chonks.ops.diagnostics.dotdir_breakdown so this and
-    doctor's report describe the same bucket."""
+    not pollution)."""
     parts = [p for p in stored_dir_path.split("/") if p]
     if not parts or not parts[0].startswith(".") or parts[0] == ".git":
         return None
