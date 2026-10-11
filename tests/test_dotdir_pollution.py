@@ -14,8 +14,8 @@ from chonks.storage.store import Store
 # chonks.ops.diagnostics.dotdir_breakdown / dotdir_total_share
 # --------------------------------------------------------------------------
 
-def test_dotdir_breakdown_ignores_non_dot_paths():
-    rows = [("src/a.py", "python"), ("docs/x.md", "md")]
+def test_dotdir_breakdown_ignores_paths_outside_dot_directories():
+    rows = [("src/a.py", "python"), ("docs/x.md", "md"), (".pre-commit-config.yaml", "yaml")]
     assert dotdir_breakdown(rows) == []
 
 

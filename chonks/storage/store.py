@@ -1791,7 +1791,7 @@ class Store:
             ).fetchall()
 
     def hub_edge_type_rows(self) -> list[sqlite3.Row]:
-        """(to_id, edge_type, n) over all of chunk_refs. Holds the lock for the whole scan."""
+        """(to_id, edge_type, n) over all of chunk_refs."""
         with self._lock:
             return self._conn.execute(
                 "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs"

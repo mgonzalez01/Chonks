@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from chonks.core.paths import _dotdir_prefix, _stored_dirname
 from chonks.core.refresh import register_refresh
 from chonks.languages import CODE_LANGUAGES
 
@@ -121,13 +122,9 @@ def dotdir_breakdown(rows: Iterable[tuple[str, str | None]]) -> list[DotDirStats
     ingesting stale nested repo copies. ".git" is excluded as VCS metadata."""
     by_prefix: dict[str, dict[str, Any]] = {}
     for path, _language in rows:
-        parts = path.split("/")
-        if not parts[0].startswith(".") or parts[0] == ".git":
+        prefix = _dotdir_prefix(_stored_dirname(path))
+        if prefix is None:
             continue
-        # Drop the filename first: a file inside a dot-dir must group
-        # under the dir, not under "<dir>/<file>".
-        dir_parts = parts[:-1] or parts[:1]
-        prefix = "/".join(dir_parts[:2])
         entry = by_prefix.setdefault(prefix, {"chunks": 0, "files": set()})
         entry["chunks"] += 1
         entry["files"].add(path)
