@@ -34,6 +34,10 @@ eval_data/
 .env
 /data/
 
+# Editor settings
+.idea/
+.vscode/
+
 .DS_Store
 **/.DS_Store
 node_modules/
