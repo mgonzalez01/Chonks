@@ -76,8 +76,7 @@ def test_full_rebuild_reports_each_step(caplog):
         "chunk_refs: typed edges",
         "chunk_refs: name scan done",
         "chunk_refs: scored mentions",
-        "chunk_refs: 4 mention edges",
-        "chunk_refs: cross-language edges",
+        "chunk_refs: 4 edges",
         "chunk_refs: writing 4 edges",
         "chunk_refs: wrote edges",
     ]
@@ -142,7 +141,7 @@ def test_build_refs_never_populated_indegree_forces_full_rebuild_not_partial_del
 
     new_chunk = _chunk("new1", "src/new1.cpp", name="newfn", content="void newfn() { Base(); }")
     _insert(store, [new_chunk])
-    build_refs(store, changed_ids={"new1"}, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids={"new1"}, deleted_ids=set(), deleted_defs={})
 
     edges = store.get_all_refs_typed()
     want = dict(Counter((to_id, edge_type) for (_f, to_id, edge_type) in edges))

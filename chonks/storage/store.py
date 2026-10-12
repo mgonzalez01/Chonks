@@ -21,18 +21,13 @@ from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FIELD, FORWARD_DECLARATION
 from chonks.languages import CODE_LANGUAGES
 from chonks.languages import language_set as _language_set
-from chonks.languages import union as _lang_union
 from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
 
 
-_SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
-
-
 def _refresh_from_registry() -> None:
-    global CODE_LANGUAGES, _SCOPE_CHUNK_TYPES
+    global CODE_LANGUAGES
     import chonks.languages as _languages
     CODE_LANGUAGES = _languages.CODE_LANGUAGES
-    _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
 
 
 register_refresh(_refresh_from_registry)
@@ -386,22 +381,33 @@ class Store:
             self._conn.executemany("DELETE FROM macro_definitions WHERE path=?", [(p,) for p in drop])
             self._conn.commit()
 
-    def get_names_for_path(self, path: str) -> set[str]:
-        """Names defined at `path`. Must be called BEFORE delete_file(path):
-        build_refs needs these names to know what a deletion affects, and
-        they're gone once the rows are deleted."""
+    _DEFINITION_QUERIES = (
+        ("chunk", "SELECT path, id, name, chunk_type, language FROM chunks WHERE name IS NOT NULL AND path IN ({})"),
+        ("symbol", "SELECT path, chunk_id, name, kind, start_line, end_line FROM symbols WHERE path IN ({})"),
+        ("member", "SELECT path, chunk_id, name, owner, kind, type_text, arity_min, arity_max, variadic, flags, line "
+                   "FROM members WHERE path IN ({})"),
+        ("using", "SELECT path, NULL, NULL, scope, namespace FROM using_namespaces WHERE path IN ({})"),
+        ("base", "SELECT path, NULL, NULL, owner, base FROM class_bases WHERE path IN ({})"),
+    )
+
+    def get_definitions(self, paths: list[str]) -> dict[tuple[str, str | None], frozenset[tuple]]:
+        """What the files at `paths` define, keyed by (path, chunk_id): the
+        chunk's name, symbol and member rows, each a tuple (table, name, ...).
+        Rows tied to no chunk go under chunk_id None, using-directives and
+        class bases among them, those two without their line. Call it before
+        delete_file(path)."""
+        rows: dict[tuple[str, str | None], set[tuple]] = defaultdict(set)
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT name FROM chunks WHERE path=? AND name IS NOT NULL "
-                "UNION SELECT name FROM symbols WHERE path=? "
-                "UNION SELECT name FROM members WHERE path=?",
-                (path, path, path),
-            ).fetchall()
-        return {r[0] for r in rows}
+            for batch in batched(paths, 900):
+                placeholders = ",".join("?" * len(batch))
+                for table, sql in self._DEFINITION_QUERIES:
+                    for path, chunk_id, *rest in self._conn.execute(sql.format(placeholders), batch):
+                        rows[(path, chunk_id)].add((table, *rest))
+        return {key: frozenset(r) for key, r in rows.items()}
 
     def get_chunk_vectors_for_path(self, path: str) -> list[tuple[str | None, str, bytes]]:
         """(name, content, int8 vector) of each chunk at `path` that has a
-        vector. Like get_names_for_path, call it before delete_file(path)."""
+        vector. Like get_definitions, call it before delete_file(path)."""
         with self._lock:
             rows = self._conn.execute(
                 "SELECT id, name, content FROM chunks WHERE path=?", (path,)
@@ -517,24 +523,6 @@ class Store:
         with self._lock:
             return self._conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0]
 
-    def get_symbol_names_by_chunk_ids(self, chunk_ids: list[str]) -> set[str]:
-        """Distinct symbol names on the given chunk ids, so build_refs
-        doesn't drop a sibling name's edges when its chunk becomes an
-        affected target for an unrelated touched name."""
-        if not chunk_ids:
-            return set()
-        out: set[str] = set()
-        with self._lock:
-            for batch in batched(chunk_ids, 900):
-                placeholders = ",".join("?" * len(batch))
-                rows = self._conn.execute(
-                    f"SELECT DISTINCT name FROM symbols "
-                    f"WHERE kind != ? AND chunk_id IN ({placeholders})",
-                    [FORWARD_DECLARATION, *batch],
-                ).fetchall()
-                out.update(r[0] for r in rows)
-        return out
-
     def get_symbols_by_chunk_ids(self, chunk_ids: list[str],
                                  path_prefix: str | None = None) -> list[dict[str, Any]]:
         """Symbol rows on the given chunks, forward declarations aside,
@@ -564,24 +552,6 @@ class Store:
                 [name, *kinds],
             ).fetchall()
         return [(r["path"], r["language"], r["start_line"], r["end_line"] or r["start_line"]) for r in rows]
-
-    def get_symbol_chunk_ids_by_names(self, names: list[str]) -> dict[str, list[str]]:
-        """name -> [chunk_id], scoped variant of get_symbol_name_chunks for
-        the incremental build_refs update, so it avoids a full table scan."""
-        if not names:
-            return {}
-        out: dict[str, list[str]] = defaultdict(list)
-        with self._lock:
-            for batch in batched(names, 900):
-                placeholders = ",".join("?" * len(batch))
-                rows = self._conn.execute(
-                    f"SELECT name, chunk_id FROM symbols "
-                    f"WHERE chunk_id IS NOT NULL AND kind != ? AND name IN ({placeholders})",
-                    [FORWARD_DECLARATION, *batch],
-                ).fetchall()
-                for r in rows:
-                    out[r["name"]].append(r["chunk_id"])
-        return dict(out)
 
     # ------------------------------------------------------------------
     # Class model (members and bases of each class)
@@ -675,16 +645,6 @@ class Store:
                 out.extend(dict(r) for r in self._conn.execute(
                     f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE chunk_id IN ({placeholders}){named} "
                     "ORDER BY path, line", [*batch, *([name] if name is not None else [])]).fetchall())
-        return out
-
-    def get_member_names_by_chunk_ids(self, chunk_ids: list[str]) -> set[str]:
-        out: set[str] = set()
-        with self._lock:
-            for batch in batched(list(chunk_ids), 900):
-                placeholders = ",".join("?" * len(batch))
-                out.update(r[0] for r in self._conn.execute(
-                    f"SELECT DISTINCT name FROM members WHERE chunk_id IN ({placeholders})",
-                    batch).fetchall())
         return out
 
     def get_using_namespaces(self, paths: list[str]) -> list[dict[str, Any]]:
@@ -1026,26 +986,6 @@ class Store:
                 params,
             ).fetchall()
         return [dict(r) for r in rows]
-
-    def get_chunk_defs_by_names(self, names: list[str]) -> dict[str, list[tuple[str, str]]]:
-        """name -> [(chunk_id, language)] for build_refs' incremental name
-        resolution, scoped to a candidate set via idx_chunks_name instead
-        of a full-corpus scan. Namespace chunks are not definers."""
-        if not names:
-            return {}
-        out: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        with self._lock:
-            for batch in batched(names, 900):
-                placeholders = ",".join("?" * len(batch))
-                scopes = ",".join("?" * len(_SCOPE_CHUNK_TYPES))
-                rows = self._conn.execute(
-                    f"SELECT name, id, language FROM chunks WHERE name IN ({placeholders}) "
-                    f"AND (chunk_type IS NULL OR chunk_type NOT IN ({scopes}))",
-                    [*batch, *sorted(_SCOPE_CHUNK_TYPES)],
-                ).fetchall()
-                for r in rows:
-                    out[r["name"]].append((r["id"], r["language"]))
-        return dict(out)
 
     def get_chunks_by_ids(self, ids: list[str]) -> list[dict[str, Any]]:
         """Bulk-fetch chunks by id. Order of returned chunks is not guaranteed
@@ -1535,11 +1475,12 @@ class Store:
     # ------------------------------------------------------------------
 
     def clear_refs(self) -> None:
-        """Delete all cross-reference edges and their precomputed
-        in-degree, which is always cleared alongside chunk_refs."""
+        """Delete all cross-reference edges and what is derived with them:
+        their in-degree and the mentioned names."""
         with self._lock:
             self._conn.execute("DELETE FROM chunk_refs")
             self._conn.execute("DELETE FROM chunk_indegree")
+            self._conn.execute("DELETE FROM chunk_mention_names")
 
     def insert_refs(self, refs: list[tuple[str, str]] | list[tuple[str, str, str]]) -> None:
         """Bulk-insert (from_id, to_id[, edge_type]) edges. Ignores duplicates.
@@ -1557,6 +1498,44 @@ class Store:
     def count_refs(self) -> int:
         with self._lock:
             return self._conn.execute("SELECT COUNT(*) FROM chunk_refs").fetchone()[0]
+
+    def get_refs_from(self, ids: list[str]) -> dict[str, dict[str, str]]:
+        """from_id -> {to_id: edge_type} for the given sources."""
+        out: dict[str, dict[str, str]] = defaultdict(dict)
+        with self._lock:
+            for batch in batched(ids, 900):
+                placeholders = ",".join("?" * len(batch))
+                for r in self._conn.execute(
+                    f"SELECT from_id, to_id, edge_type FROM chunk_refs WHERE from_id IN ({placeholders})",
+                    batch,
+                ):
+                    out[r[0]][r[1]] = r[2]
+        return dict(out)
+
+    def delete_refs(self, pairs: list[tuple[str, str]]) -> None:
+        """Delete the given (from_id, to_id) rows. Doesn't commit."""
+        with self._lock:
+            self._conn.executemany("DELETE FROM chunk_refs WHERE from_id=? AND to_id=?", pairs)
+
+    def get_mention_names(self) -> dict[str, set[str]]:
+        """chunk_id -> the names behind its mentions edges."""
+        out: dict[str, set[str]] = defaultdict(set)
+        with self._lock:
+            for cid, name in self._conn.execute("SELECT chunk_id, name FROM chunk_mention_names"):
+                out[cid].add(name)
+        return dict(out)
+
+    def insert_mention_names(self, rows: list[tuple[str, str]]) -> None:
+        """Add (chunk_id, name) rows. Doesn't commit."""
+        with self._lock:
+            self._conn.executemany("INSERT INTO chunk_mention_names(chunk_id, name) VALUES(?,?)", rows)
+
+    def delete_mention_names(self, chunk_ids: list[str]) -> None:
+        """Drop the mentioned names of `chunk_ids`. Doesn't commit."""
+        with self._lock:
+            for batch in batched(chunk_ids, 900):
+                placeholders = ",".join("?" * len(batch))
+                self._conn.execute(f"DELETE FROM chunk_mention_names WHERE chunk_id IN ({placeholders})", batch)
 
     # ------------------------------------------------------------------
     # Graph v2 hierarchy (Stage 1)
@@ -1851,57 +1830,6 @@ class Store:
                 removed += cur.rowcount
         return removed, affected_to_ids
 
-    def delete_refs_from(self, ids: list[str]) -> tuple[int, set[str]]:
-        """Delete chunk_refs rows whose from_id is in `ids`. Returns
-        (rows_deleted, affected_to_ids), same contract as delete_refs_touching."""
-        if not ids:
-            return 0, set()
-        removed = 0
-        affected_to_ids: set[str] = set()
-        with self._lock:
-            for batch in batched(ids, 900):
-                placeholders = ",".join("?" * len(batch))
-                where = f"from_id IN ({placeholders})"
-                affected_to_ids.update(
-                    r[0] for r in self._conn.execute(
-                        f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}", batch,
-                    ).fetchall()
-                )
-                cur = self._conn.execute(
-                    f"DELETE FROM chunk_refs WHERE {where}", batch,
-                )
-                removed += cur.rowcount
-        return removed, affected_to_ids
-
-    def delete_xlang_refs_touching(self, ids: list[str]) -> tuple[int, set[str]]:
-        """Delete 'xlang' chunk_refs rows touching `ids`. Scoped to that
-        edge_type so it never touches a mentions/calls/imports/inherits
-        edge sharing the same endpoint. Same return contract as delete_refs_touching."""
-        if not ids:
-            return 0, set()
-        removed = 0
-        affected_to_ids: set[str] = set()
-        with self._lock:
-            # Sliced at 450, not 900 (see get_neighbor_edges_touching: this
-            # statement binds batch+batch).
-            for batch in batched(ids, 450):
-                placeholders = ",".join("?" * len(batch))
-                where = (
-                    f"edge_type='xlang' AND "
-                    f"(from_id IN ({placeholders}) OR to_id IN ({placeholders}))"
-                )
-                params = batch + batch
-                affected_to_ids.update(
-                    r[0] for r in self._conn.execute(
-                        f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}", params,
-                    ).fetchall()
-                )
-                cur = self._conn.execute(
-                    f"DELETE FROM chunk_refs WHERE {where}", params,
-                )
-                removed += cur.rowcount
-        return removed, affected_to_ids
-
     def purge_orphan_refs(self) -> int:
         """Delete chunk_refs rows whose endpoint no longer exists in
         `chunks`; self-heals dangling edges. Also refreshes chunk_indegree
@@ -1921,22 +1849,6 @@ class Store:
         if affected_to_ids and self.has_indegree():
             self.refresh_indegree(list(affected_to_ids))
         return removed
-
-    def get_chunk_ids_referencing(self, target_ids: list[str]) -> set[str]:
-        """from_id values in chunk_refs whose to_id is in `target_ids`.
-        Reverse lookup for the incremental build_refs update."""
-        if not target_ids:
-            return set()
-        out: set[str] = set()
-        with self._lock:
-            for batch in batched(target_ids, 900):
-                placeholders = ",".join("?" * len(batch))
-                rows = self._conn.execute(
-                    f"SELECT DISTINCT from_id FROM chunk_refs WHERE to_id IN ({placeholders})",
-                    batch,
-                ).fetchall()
-                out.update(r[0] for r in rows)
-        return out
 
     def find_named_chunks_referencing(self, names: list[str]) -> list[dict[str, Any]]:
         """Named chunks whose content likely contains any of `names`, via

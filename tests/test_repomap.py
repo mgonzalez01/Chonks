@@ -359,32 +359,23 @@ def test_classify_mentions_promotes_top_pmi_pairs_deterministically():
         "refX": {"xxx"},
         "refW": {"www"},
     }
-    name_to_ids = {"zzz": ["defZ"], "yyy": ["defY"], "xxx": ["defX"], "www": ["defW"]}
-    promoted = _classify_mentions(referenced_by_chunk, name_to_ids, associated_top_frac=0.5)
+    promoted = _classify_mentions(referenced_by_chunk, associated_top_frac=0.5)
     assert promoted == {("refW", "www"), ("refX", "xxx")}
 
 
 def test_classify_mentions_zero_frac_promotes_nothing():
     from chonks.index.graph.refs import _classify_mentions
 
-    referenced_by_chunk = {"a": {"only_name"}}
-    name_to_ids = {"only_name": ["def"]}
-    assert _classify_mentions(referenced_by_chunk, name_to_ids, associated_top_frac=0.0) == set()
+    assert _classify_mentions({"a": {"only_name"}}, associated_top_frac=0.0) == set()
 
 
-def test_classify_mentions_excludes_self_only_pairs_from_population():
-    """A (chunk, name) pair whose only definer is the referencing chunk
-    itself can never emit an edge, so it must not enter the PMI population
-    at all (checked here at frac=1.0, which promotes everything live)."""
-    from chonks.index.graph.refs import _classify_mentions
+def test_a_name_only_the_chunk_itself_defines_is_not_mentioned():
+    """Such a pair emits no edge, so it stays out of the PMI population."""
+    from chonks.index.graph.refs import _mentioned_names
 
-    referenced_by_chunk = {
-        "solo": {"selfName"},
-        "caller": {"liveName"},
-    }
     name_to_ids = {"selfName": ["solo"], "liveName": ["def"]}
-    promoted = _classify_mentions(referenced_by_chunk, name_to_ids, associated_top_frac=1.0)
-    assert promoted == {("caller", "liveName")}
+    solo = {"id": "solo", "name": "other", "content": "selfName(); liveName();"}
+    assert _mentioned_names(solo, name_to_ids, (), cap_mentions=False) == {"liveName"}
 
 
 def test_classify_mentions_is_deterministic_across_repeated_calls():
@@ -395,9 +386,8 @@ def test_classify_mentions_is_deterministic_across_repeated_calls():
     def _pairs():
         return {"refW": {"www"}, "refX": {"xxx"}, "refY": {"yyy"}, "refZ": {"zzz"}}
 
-    name_to_ids = {"zzz": ["defZ"], "yyy": ["defY"], "xxx": ["defX"], "www": ["defW"]}
-    first = _classify_mentions(_pairs(), name_to_ids, associated_top_frac=0.5)
-    second = _classify_mentions(_pairs(), name_to_ids, associated_top_frac=0.5)
+    first = _classify_mentions(_pairs(), associated_top_frac=0.5)
+    second = _classify_mentions(_pairs(), associated_top_frac=0.5)
     assert first == second == {("refW", "www"), ("refX", "xxx")}
 
 
