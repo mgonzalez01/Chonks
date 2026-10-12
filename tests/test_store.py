@@ -448,8 +448,6 @@ def test_forward_declarations_answer_only_names_nothing_defines(tmp_path):
     assert store.resolve_symbol_chunk_ids("Node") == ["c1"]
     assert store.resolve_symbol_chunk_ids("wl_surface") == []
     assert "wl_surface" not in store.get_symbol_name_chunks()
-    assert store.get_symbol_chunk_ids_by_names(["Node", "wl_surface"]) == {"Node": ["c1"]}
-    assert "wl_surface" not in store.get_symbol_names_by_chunk_ids(["c2"])
     assert fwd not in {r["kind"] for r in store.get_all_symbols()}
 
 
@@ -1288,9 +1286,8 @@ def test_purge_orphan_neighbors_and_refs(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_touching_methods_batch_over_500_ids_avoid_variable_overflow(tmp_path):
-    """get_neighbor_edges_touching / delete_refs_touching /
-    delete_xlang_refs_touching each build a WHERE x IN(batch) OR y IN(batch)
-    clause, binding batch+batch params. At the old 900-id slice, 600 ids alone
+    """get_neighbor_edges_touching / delete_refs_touching each build a
+    WHERE x IN(batch) OR y IN(batch) clause, binding batch+batch params. At the old 900-id slice, 600 ids alone
     bind 1200 params, over SQLite's default SQLITE_MAX_VARIABLE_NUMBER (999).
     Pins SQLITE_LIMIT_VARIABLE_NUMBER to that default since some builds
     compile in a higher limit and wouldn't otherwise overflow here."""
@@ -1310,24 +1307,14 @@ def test_touching_methods_batch_over_500_ids_avoid_variable_overflow(tmp_path):
     assert all(nid in (fr, to) for fr, to, _d in edges for nid in (fr, to) if nid.startswith("id"))
     assert not any(fr == "other" or to == "other-neighbor" for fr, to, _d in edges)
 
-    # delete_xlang_refs_touching: type-scoped, not id-scoped, so a
-    # same-endpoint non-xlang row must survive.
     store.insert_refs([(f"id{i}", "hub", "xlang") for i in range(n)])
     store.insert_refs([("unrelated-from", "unrelated-to", "xlang")])
-    store.insert_refs([("id0", "hub2", "calls")])
+    store.insert_refs([("hub2", "id0", "calls")])
     store.commit()
 
-    removed_xlang, _removed_xlang_to_ids = store.delete_xlang_refs_touching(ids)
-    assert removed_xlang == n
-    remaining = set(store.get_all_refs_typed())
-    assert ("unrelated-from", "unrelated-to", "xlang") in remaining
-    assert ("id0", "hub2", "calls") in remaining
-    assert not any(e == "xlang" and (fr in ids or to in ids) for fr, to, e in remaining)
-
     removed, _removed_to_ids = store.delete_refs_touching(ids)
-    assert removed == 1  # only the surviving ("id0","hub2","calls") row touches ids
-    remaining2 = set(store.get_all_refs_typed())
-    assert remaining2 == {("unrelated-from", "unrelated-to", "xlang")}
+    assert removed == n + 1
+    assert set(store.get_all_refs_typed()) == {("unrelated-from", "unrelated-to", "xlang")}
 
 
 # ---------------------------------------------------------------------------

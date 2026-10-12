@@ -10,7 +10,7 @@ from chonks.storage.store import Store
 
 def _run(store, **kw):
     args = dict(force=False, indexed=0, pruned=0, changed_chunk_ids=set(),
-                deleted_chunk_ids=set(), deleted_chunk_names=set(),
+                deleted_chunk_ids=set(), deleted_chunk_defs={},
                 edge_type_weights=None, cap_mentions_fanout=False, associated_top_frac=0.02)
     args.update(kw)
     return postindex.run_post_index_passes(store, object(), **args)

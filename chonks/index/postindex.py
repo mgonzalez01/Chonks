@@ -15,7 +15,7 @@ logger = logging.getLogger("chonks.chunker")
 
 
 def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_chunk_ids,
-                          deleted_chunk_ids, deleted_chunk_names, edge_type_weights,
+                          deleted_chunk_ids, deleted_chunk_defs, edge_type_weights,
                           cap_mentions_fanout, associated_top_frac):
     """Returns the elapsed seconds of each pass: (fts, refs, knn, summaries, pagerank, hierarchy)."""
     # After a full force re-index, rebuild FTS statistics from scratch.
@@ -49,7 +49,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
             store,
             changed_ids=None if force else changed_chunk_ids,
             deleted_ids=None if force else deleted_chunk_ids,
-            deleted_names=None if force else deleted_chunk_names,
+            deleted_defs=None if force else deleted_chunk_defs,
             cap_mentions=cap_mentions_fanout,
             associated_top_frac=associated_top_frac,
         )

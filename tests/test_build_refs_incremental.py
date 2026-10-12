@@ -82,20 +82,20 @@ def _assert_incremental_ran(caplog) -> None:
     )
 
 
-def _delete_tracked(store: Store, path: str, deleted_ids: set[str], deleted_names: set[str]) -> None:
+def _delete_tracked(store: Store, path: str, deleted_ids: set[str], deleted_defs: dict) -> None:
     """Mirrors chonks/index/pipeline.py's capture-before-delete pattern."""
-    deleted_names.update(store.get_names_for_path(path))
+    deleted_defs.update(store.get_definitions([path]))
     deleted_ids.update(store.delete_file(path))
 
 
 def _full_rebuild_edges(
-    final_chunks: list[dict], *, cap_mentions: bool = False,
+    final_chunks: list[dict], *, cap_mentions: bool = False, associated_top_frac: float = 0.0,
 ) -> set[tuple[str, str, str]]:
     """Ground truth: a fresh store seeded with exactly the final chunk set,
     full-rebuilt."""
     ref = _mk_store()
     _insert(ref, final_chunks)
-    build_refs(ref, cap_mentions=cap_mentions)
+    build_refs(ref, cap_mentions=cap_mentions, associated_top_frac=associated_top_frac)
     edges = _edges(ref)
     _assert_indegree_consistent(ref)
     ref.close()
@@ -118,7 +118,7 @@ def test_incremental_pure_add_matches_full_rebuild():
     _insert(store, new)
     changed_ids = {"b"}
 
-    build_refs(store, changed_ids=changed_ids, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids=changed_ids, deleted_ids=set(), deleted_defs={})
     got = _edges(store)
     _assert_indegree_consistent(store)
     want = _full_rebuild_edges(initial + new)
@@ -142,10 +142,10 @@ def test_incremental_pure_delete_matches_full_rebuild():
     assert ("a", "b2", "mentions") in before
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "b1.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "b1.cpp", deleted_ids, deleted_defs)
 
-    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
     remaining = [c for c in initial if c["id"] != "b1"]
@@ -158,7 +158,8 @@ def test_incremental_pure_delete_matches_full_rebuild():
 def test_incremental_modify_reuses_same_id_for_untouched_sibling_chunk():
     """A re-parse commonly regenerates the same content-addressed id for
     chunks whose content/start_line didn't change; that id lands in both
-    deleted_ids and changed_ids and must still keep its outgoing edges."""
+    deleted_ids and changed_ids and must still keep its outgoing edges. A
+    symbol row the re-parse adds to such a chunk still counts as a change."""
     store = _mk_store()
     # Filler chunks sized so batch/total stays under the 20% incremental
     # threshold, so the incremental path (not the fallback) is under test.
@@ -170,6 +171,7 @@ def test_incremental_modify_reuses_same_id_for_untouched_sibling_chunk():
         _chunk("foo", "driver.cpp", name="foo", content="void foo() { helper(); }"),
         _chunk("bar_old", "driver.cpp", name="bar", content="void bar() {}", start_line=3),
         _chunk("helper", "helper.cpp", name="helper", content="void helper() {}"),
+        _chunk("user", "user.cpp", name="user", content="void user() { fooAlias(); }"),
     ] + filler
     _insert(store, initial)
     build_refs(store)
@@ -177,8 +179,8 @@ def test_incremental_modify_reuses_same_id_for_untouched_sibling_chunk():
     assert ("foo", "helper", "mentions") in before
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "driver.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "driver.cpp", deleted_ids, deleted_defs)
 
     # Re-parse of driver.cpp: 'foo' is byte-identical (same id regenerated),
     # only 'bar' actually changed content -> new id.
@@ -187,15 +189,21 @@ def test_incremental_modify_reuses_same_id_for_untouched_sibling_chunk():
         _chunk("bar_new", "driver.cpp", name="bar", content="void bar() { helper(); }", start_line=3),
     ]
     _insert(store, new_driver)
+    alias = {"path": "driver.cpp", "name": "fooAlias", "kind": "function_definition", "language": "cpp",
+             "start_line": 1, "end_line": 1, "chunk_id": "foo"}
+    store.insert_symbols([alias])
     changed_ids = {"foo", "bar_new"}
 
-    build_refs(store, changed_ids=changed_ids, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids=changed_ids, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
-    final_chunks = new_driver + [initial[2]] + filler
-    want = _full_rebuild_edges(final_chunks)
-    assert got == want
+    ref = _mk_store()
+    _insert(ref, new_driver + initial[2:])
+    ref.insert_symbols([alias])
+    build_refs(ref)
+    assert got == _edges(ref)
     assert ("foo", "helper", "mentions") in got
+    assert ("user", "foo", "mentions") in got
 
 
 def test_incremental_modify_matches_full_rebuild():
@@ -210,14 +218,14 @@ def test_incremental_modify_matches_full_rebuild():
     build_refs(store)
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "b.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "b.cpp", deleted_ids, deleted_defs)
 
     new_b = [_chunk("b2", "b.cpp", name="helperRenamed", content="void helperRenamed() {}")]
     _insert(store, new_b)
     changed_ids = {"b2"}
 
-    build_refs(store, changed_ids=changed_ids, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids=changed_ids, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
     final_chunks = [initial[0]] + new_b
@@ -242,7 +250,7 @@ def test_incremental_typed_edge_added_when_target_appears():
 
     new = [_chunk("b", "b.cpp", name="helper", content="void helper() {}")]
     _insert(store, new)
-    build_refs(store, changed_ids={"b"}, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids={"b"}, deleted_ids=set(), deleted_defs={})
     got = _edges(store)
     _assert_indegree_consistent(store)
     want = _full_rebuild_edges(initial + new)
@@ -308,7 +316,7 @@ def test_incremental_calls_discriminator_matches_full_rebuild(caplog):
     store.insert_symbols(symbol_rows)
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"parser_cls", "lexer_cls"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"parser_cls", "lexer_cls"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
 
     got = _edges(store)
@@ -364,7 +372,7 @@ def test_incremental_calls_discriminator_fallback_matches_full_rebuild(caplog):
     store.insert_symbols(symbol_rows)
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"parser_cls", "lexer_cls"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"parser_cls", "lexer_cls"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
 
     got = _edges(store)
@@ -402,7 +410,7 @@ def test_incremental_qualified_definer_add_reachable_via_bare_alias():
         {"path": "b.cpp", "name": "Widget::applyStep", "kind": "method", "language": "cpp",
          "start_line": 1, "end_line": 1, "chunk_id": "b"},
     ])
-    build_refs(store, changed_ids={"b"}, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids={"b"}, deleted_ids=set(), deleted_defs={})
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -442,10 +450,10 @@ def test_incremental_deleting_qualified_definer_drops_only_its_own_bare_alias_ed
     assert ("r", "b", "mentions") in before
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "foo.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "foo.cpp", deleted_ids, deleted_defs)
 
-    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -487,13 +495,13 @@ def test_incremental_referencer_edit_preserves_edges_to_qualified_aliases_sharin
     assert ("r", "q2", "mentions") in before
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "r.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "r.cpp", deleted_ids, deleted_defs)
     r2 = _chunk("r2", "r.cpp", name="driver",
                 content="void driver() { /* edited */ bsearch(x); }")
     _insert(store, [r2])
 
-    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -550,12 +558,12 @@ def test_incremental_bare_alias_aggregate_at_cap_kept_on_referencer_edit():
     assert _d_edge_count(before) == n
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "r.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "r.cpp", deleted_ids, deleted_defs)
     r2 = _chunk("r2", "r.cpp", name="driver",
                 content="void driver() { /* edited */ make(); }")
     _insert(store, [r2])
-    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -587,12 +595,12 @@ def test_incremental_bare_alias_aggregate_over_cap_dropped_on_referencer_edit():
     assert _d_edge_count(before) == 0
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "r.cpp", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "r.cpp", deleted_ids, deleted_defs)
     r2 = _chunk("r2", "r.cpp", name="driver",
                 content="void driver() { /* edited */ make(); }")
     _insert(store, [r2])
-    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids={"r2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -612,7 +620,7 @@ def test_incremental_bare_alias_reappears_after_deletion_drops_aggregate_under_c
     """Starting over cap (aliases dropped, per the test above), deleting one
     definer brings the aggregate back to exactly the cap: the bare alias
     must reappear for the remaining definers. Here the definer side
-    changes, not the referencer, so deleted_names must carry the alias
+    changes, not the referencer, so deleted_defs must carry the alias
     correctly through the deletion path too."""
     n = _MAX_CROSS_LANG_OCCURRENCES + 1
     store = _mk_store()
@@ -625,9 +633,9 @@ def test_incremental_bare_alias_reappears_after_deletion_drops_aggregate_under_c
     assert _d_edge_count(before) == 0
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "d0.cpp", deleted_ids, deleted_names)
-    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "d0.cpp", deleted_ids, deleted_defs)
+    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -669,7 +677,7 @@ def test_incremental_xlang_cap_crossing_upward_suppresses_edges():
 
     new = [_xlang_definer(8, "cpp")]
     _insert(store, new)
-    build_refs(store, changed_ids={"x8"}, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids={"x8"}, deleted_ids=set(), deleted_defs={})
     got = _edges(store)
     _assert_indegree_consistent(store)
     want = _full_rebuild_edges(initial + new)
@@ -689,10 +697,10 @@ def test_incremental_xlang_cap_crossing_downward_restores_edges():
     assert not any(e == "xlang" for (_f, _t, e) in before), "fixture should start over the cap"
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "x8.src", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "x8.src", deleted_ids, deleted_defs)
 
-    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
     remaining = [c for c in initial if c["id"] != "x8"]
@@ -702,21 +710,37 @@ def test_incremental_xlang_cap_crossing_downward_restores_edges():
 
 
 # ---------------------------------------------------------------------------
-# Step-3 sibling-expansion fixpoint: a second-hop definer id, only reachable
-# through a name harvested off ANOTHER id's siblings, must have its own name
-# harvested too, or its xlang edge gets wiped but never rebuilt.
+# xlang through names the batch did not touch
 # ---------------------------------------------------------------------------
 
-def test_incremental_sibling_expansion_fixpoint_preserves_second_hop_xlang_edge():
-    """Chain: editing P touches name Alpha + P's folded symbol Beta. Beta is
-    also folded onto Q (own chunk name Gamma), so Q enters
-    affected_target_ids directly (hop 1). A single sibling-expansion pass
-    harvests Q's name Gamma and resolves it to R, but R is folded with
-    symbol name Gamma too (its own chunk name is Delta), so R only enters
-    affected_target_ids after that harvest already ran, and its own name
-    Delta (paired in an xlang edge with T) is never re-harvested by a
-    single pass. The fixpoint must re-harvest after each new id lands in
-    affected_target_ids so the R<->T edge survives, matching a full rebuild."""
+def test_incremental_keeps_an_xlang_edge_through_a_name_the_batch_left_alone():
+    """Editing `open_url` recomputes the Python `shell_open`, which calls it;
+    its pairing with the C++ `shell_open` goes through an untouched name."""
+    store = _mk_store()
+    cpp = _chunk("cpp", "os.cpp", name="shell_open", content="Error shell_open(const String &p_uri) {}")
+    py = _chunk("py", "serve.py", name="shell_open", language="python",
+                content="def shell_open(url):\n    open_url(url)")
+    helper = _chunk("helper", "util.py", name="open_url", language="python", content="def open_url(u):\n    pass")
+    _insert(store, [cpp, py, helper])
+    build_refs(store)
+    assert ("py", "cpp", "xlang") in _edges(store)
+
+    deleted_ids: set[str] = set()
+    deleted_defs: dict = {}
+    _delete_tracked(store, "util.py", deleted_ids, deleted_defs)
+    helper2 = _chunk("helper2", "util.py", name="open_url", language="python",
+                     content="def open_url(u):\n    return u")
+    _insert(store, [helper2])
+    build_refs(store, changed_ids={"helper2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
+    got = _edges(store)
+    _assert_indegree_consistent(store)
+    assert got == _full_rebuild_edges([cpp, py, helper2])
+    assert ("py", "cpp", "xlang") in got
+
+
+def test_incremental_preserves_an_xlang_edge_two_shared_names_away():
+    """P shares Beta with Q, Q shares Gamma with R, and R pairs with T across
+    languages through Delta. Editing P leaves R<->T as a full rebuild has it."""
     store = _mk_store()
     p = _chunk("p", "P.cs", name="Alpha", language="c_sharp")
     q = _chunk("q", "Q.cpp", name="Gamma", language="cpp")
@@ -737,8 +761,8 @@ def test_incremental_sibling_expansion_fixpoint_preserves_second_hop_xlang_edge(
         "fixture didn't produce the R<->T xlang edge to begin with"
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "P.cs", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "P.cs", deleted_ids, deleted_defs)
 
     p2 = _chunk("p2", "P.cs", name="Alpha", language="c_sharp", content="/* edited */")
     _insert(store, [p2])
@@ -747,7 +771,7 @@ def test_incremental_sibling_expansion_fixpoint_preserves_second_hop_xlang_edge(
          "start_line": 1, "end_line": 1, "chunk_id": "p2"},
     ])
 
-    build_refs(store, changed_ids={"p2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+    build_refs(store, changed_ids={"p2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     got = _edges(store)
     _assert_indegree_consistent(store)
 
@@ -767,8 +791,7 @@ def test_incremental_sibling_expansion_fixpoint_preserves_second_hop_xlang_edge(
     ref.close()
 
     assert got == want
-    assert any(e == "xlang" and {f, tgt} == {"r", "t"} for (f, tgt, e) in got), \
-        "R<->T xlang edge must survive the incremental update (second-hop definer)"
+    assert any(e == "xlang" and {f, tgt} == {"r", "t"} for (f, tgt, e) in got)
 
 
 # ---------------------------------------------------------------------------
@@ -796,7 +819,7 @@ def test_incremental_cap_mentions_matches_full_rebuild_over_cap():
 
     new = [_mentions_definer(8)]
     _insert(store, new)
-    build_refs(store, changed_ids={"m8"}, deleted_ids=set(), deleted_names=set(), cap_mentions=True)
+    build_refs(store, changed_ids={"m8"}, deleted_ids=set(), deleted_defs={}, cap_mentions=True)
     got = _edges(store)
     _assert_indegree_consistent(store)
     want = _full_rebuild_edges(initial + new, cap_mentions=True)
@@ -819,13 +842,50 @@ def test_incremental_cap_mentions_flag_off_keeps_uncapped_edges():
 
     new = [_mentions_definer(8)]
     _insert(store, new)
-    build_refs(store, changed_ids={"m8"}, deleted_ids=set(), deleted_names=set())
+    build_refs(store, changed_ids={"m8"}, deleted_ids=set(), deleted_defs={})
     got = _edges(store)
     _assert_indegree_consistent(store)
     want = _full_rebuild_edges(initial + new, cap_mentions=False)
     assert got == want
     assert sum(1 for (_f, _t, e) in got if e == "mentions") == 9, \
         "default (uncapped) behaviour must be unaffected"
+
+
+# ---------------------------------------------------------------------------
+# associated ranking
+# ---------------------------------------------------------------------------
+
+def test_incremental_reranks_associated_pairs_corpus_wide(caplog):
+    """r3 mentioning alpha lowers the PMI of (r1, alpha), so (r2, beta) takes
+    the one associated slot though neither r1 nor r2 is in the batch. A run
+    under another associated_top_frac rebuilds fully."""
+    store = _mk_store()
+    initial = [
+        _chunk("da", "a.cpp", name="alpha", content="void alpha() {}"),
+        _chunk("db", "b.cpp", name="beta", content="void beta() {}"),
+        _chunk("r1", "r1.cpp", name="run1", content="void run1() { alpha(); }"),
+        _chunk("r2", "r2.cpp", name="run2", content="void run2() { beta(); }"),
+    ]
+    _insert(store, initial)
+    build_refs(store, associated_top_frac=0.5)
+    assert ("r1", "da", "associated") in _edges(store)
+
+    r3 = _chunk("r3", "r3.cpp", name="run3", content="void run3() { alpha(); }")
+    _insert(store, [r3])
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"r3"}, deleted_ids=set(), deleted_defs={}, associated_top_frac=0.5)
+    _assert_incremental_ran(caplog)
+    got = _edges(store)
+    _assert_indegree_consistent(store)
+    assert got == _full_rebuild_edges(initial + [r3], associated_top_frac=0.5)
+    assert ("r2", "db", "associated") in got
+    assert ("r1", "da", "mentions") in got
+
+    r4 = _chunk("r4", "r4.cpp", name="run4", content="void run4() { beta(); }")
+    _insert(store, [r4])
+    build_refs(store, changed_ids={"r4"}, deleted_ids=set(), deleted_defs={}, associated_top_frac=0.0)
+    assert _edges(store) == _full_rebuild_edges(initial + [r3, r4])
+    _assert_indegree_consistent(store)
 
 
 # ---------------------------------------------------------------------------
@@ -851,29 +911,28 @@ def test_incremental_falls_back_to_full_rebuild_over_threshold(monkeypatch):
     try:
         # 10 out of 20 changed -> 50% > the 20% threshold -> full rebuild.
         changed = {f"c{i}" for i in range(10)}
-        build_refs(store, changed_ids=changed, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids=changed, deleted_ids=set(), deleted_defs={})
     finally:
         repomap._build_refs_incremental = original
     assert not called
     _assert_indegree_consistent(store)
 
 
-def test_incremental_aborts_on_referencer_fanout_and_full_rebuild_matches(monkeypatch):
-    """A batch small enough to pass the input-size gate can still touch a
-    name so widely referenced that recomputing every referencer costs more
-    than a full rebuild; the incremental path must detect that after
-    computing the fan-out and fall through to the full rebuild."""
+def test_incremental_gate_counts_the_chunks_a_batch_reaches(monkeypatch):
+    """Changing a hub fans out to its 19 referencers, past the 25% gate, and
+    falls through to a full rebuild. Changing a sibling in the hub's file, or
+    one link of a chain of chunks that share names pairwise, stays incremental."""
     monkeypatch.setattr(repomap, "_REFS_INCREMENTAL_MAX_REFERENCER_FRACTION", 0.25)
     store = _mk_store()
-    # 1 hub + 19 spokes, every spoke references the hub -> changing just the
-    # hub (5% batch, passes the 20% input gate) fans out to 19/20 = 95% of the
-    # corpus, over the 25% referencer gate.
-    initial = [_chunk("hub", "hub.cpp", name="hubfn", content="void hubfn() {}")]
-    initial += [
-        _chunk(f"s{i}", f"s{i}.cpp", name=f"fn{i}", content=f"void fn{i}() {{ hubfn(); }}")
-        for i in range(19)
-    ]
-    _insert(store, initial)
+    hub = [_chunk("hub", "hub.cpp", name="hubfn", content="void hubfn() {}"),
+           _chunk("leaf", "hub.cpp", name="leaf", content="void leaf() {}", start_line=3)]
+    spokes = [_chunk(f"s{i}", f"s{i}.cpp", name=f"fn{i}", content=f"void fn{i}() {{ hubfn(); }}")
+              for i in range(19)]
+    links = [_chunk(f"l{i}", f"l{i}.cpp", name=f"link{i}", content=f"void link{i}() {{}}") for i in range(20)]
+    link_symbols = [{"path": f"l{i}.cpp", "name": f"link{i + 1}", "kind": "function_definition", "language": "cpp",
+                     "start_line": 1, "end_line": 1, "chunk_id": f"l{i}"} for i in range(19)]
+    _insert(store, hub + spokes + links)
+    store.insert_symbols(link_symbols)
     build_refs(store)
 
     results = []
@@ -885,14 +944,29 @@ def test_incremental_aborts_on_referencer_fanout_and_full_rebuild_matches(monkey
 
     repomap._build_refs_incremental = _spy
     try:
-        build_refs(store, changed_ids={"hub"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"hub"}, deleted_ids=set(), deleted_defs={})
+        deleted_ids: set[str] = set()
+        deleted_defs: dict = {}
+        _delete_tracked(store, "hub.cpp", deleted_ids, deleted_defs)
+        leaf2 = _chunk("leaf2", "hub.cpp", name="leaf", content="void leaf() { return; }", start_line=3)
+        _insert(store, [hub[0], leaf2])
+        build_refs(store, changed_ids={"hub", "leaf2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
+        deleted_ids, deleted_defs = set(), {}
+        _delete_tracked(store, "l0.cpp", deleted_ids, deleted_defs)
+        l0b = _chunk("l0b", "l0.cpp", name="link0", content="void link0() { return; }")
+        _insert(store, [l0b])
+        store.insert_symbols([{**link_symbols[0], "chunk_id": "l0b"}])
+        build_refs(store, changed_ids={"l0b"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     finally:
         repomap._build_refs_incremental = original
 
-    assert results == [None], "incremental path should run, then abort on fan-out"
-    assert _edges(store) == _full_rebuild_edges(initial)
-    # The full rebuild's clear_refs + save_indegree subsumes any partial
-    # state left by the aborted incremental attempt.
+    assert results[0] is None
+    assert None not in results[1:]
+    ref = _mk_store()
+    _insert(ref, [hub[0], leaf2] + spokes + [l0b] + links[1:])
+    ref.insert_symbols([{**link_symbols[0], "chunk_id": "l0b"}] + link_symbols[1:])
+    build_refs(ref)
+    assert _edges(store) == _edges(ref)
     _assert_indegree_consistent(store)
 
 
@@ -906,7 +980,7 @@ def test_incremental_empty_changed_and_deleted_is_noop():
     build_refs(store)
     before = _edges(store)
 
-    written = build_refs(store, changed_ids=set(), deleted_ids=set(), deleted_names=set())
+    written = build_refs(store, changed_ids=set(), deleted_ids=set(), deleted_defs={})
     assert written == 0
     assert _edges(store) == before
     _assert_indegree_consistent(store)
@@ -953,7 +1027,7 @@ def test_unnamed_definer_chunk_discriminated_identically_on_both_paths():
     assert st.count_refs() > 0 and st.has_indegree()
     _insert(st, [named, anon])
     st.insert_symbols(syms)
-    build_refs(st, changed_ids={"named_cls", "anon"}, deleted_ids=set(), deleted_names=set())
+    build_refs(st, changed_ids={"named_cls", "anon"}, deleted_ids=set(), deleted_defs={})
     got = sorted(e for e in _edges(st) if e[0] == "caller")
 
     assert got == want
@@ -986,7 +1060,7 @@ def test_a_namespace_chunk_is_never_an_edge_target(caplog):
     new = [_chunk("run2", "run2.cpp", name="run2", content="void run2() { engine::advance(); }")]
     _insert(store, new)
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"run2"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"run2"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
     got = _edges(store)
     _assert_indegree_consistent(store)
@@ -1009,7 +1083,7 @@ def test_a_call_to_a_name_with_many_definers_stays_typed_incrementally(caplog):
     new["metadata"] = {"calls": ["tick"], "imports": [], "inherits": []}
     _insert(store, [new])
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"c2"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"c2"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
     got = _edges(store)
     assert got == _full_rebuild_edges(definers + [caller, new])
@@ -1039,7 +1113,7 @@ def test_an_incremental_call_takes_defaults_from_a_class_split_into_pieces(caplo
                  metadata={"calls": [{"name": "start", "receiver": None, "arity": 1}]})
     _insert(store, [new])
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
     got = _edges(store)
     ref = _mk_store()
@@ -1092,7 +1166,7 @@ def test_an_incremental_call_resolves_through_the_class_model(caplog):
                  metadata={"calls": [_DRAW_CALL]})
     _insert(store, [new])
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"c1"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
     got = _edges(store)
     ref = _mk_store()
@@ -1127,8 +1201,8 @@ def test_an_incremental_class_change_retargets_a_call_that_names_only_the_member
     build_refs(store)
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "shape.h", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "shape.h", deleted_ids, deleted_defs)
     new_rows = [_member("Shape", "draw", "method_decl", 2, "shape_h2", "shape.h"),
                 _member("Shape", "outline", "method_decl", 3, "shape_h2", "shape.h")]
     new_span = _class_span("Shape", "shape.h", 1, 4, "shape_h2")
@@ -1136,7 +1210,7 @@ def test_an_incremental_class_change_retargets_a_call_that_names_only_the_member
     store.replace_class_model("shape.h", new_rows, [], [])
     store.insert_symbols([new_span])
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"shape_h2"}, deleted_ids=deleted_ids, deleted_names=deleted_names)
+        build_refs(store, changed_ids={"shape_h2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     _assert_incremental_ran(caplog)
     got = _edges(store)
     ref = _mk_store()
@@ -1145,6 +1219,49 @@ def test_an_incremental_class_change_retargets_a_call_that_names_only_the_member
     build_refs(ref)
     assert got == _edges(ref)
     assert ("c1", "shape_h2", "calls") in got
+
+
+def test_a_new_base_retargets_a_call_in_a_subclass_that_spells_neither_class():
+    """L::run calls step(); L derives from B, and B now derives from X, which declares step."""
+    x_h = _chunk("x_h", "x.h", name="X", chunk_type="class_specifier", start_line=1, end_line=3,
+                 content="class X {\n  void step();\n};")
+    l_h = _chunk("l_h", "l.h", name="L", chunk_type="class_specifier", start_line=1, end_line=3,
+                 content="class L : public B {\n  void run();\n};")
+    l_run = _chunk("l_run", "l.cpp", name="L::run", content="void L::run() { step(); }",
+                   metadata={"calls": [{"name": "step", "receiver": None, "arity": 0, "cls": "L"}]})
+    old_b = _chunk("b_h", "b.h", name="B", chunk_type="class_specifier", start_line=1, end_line=3,
+                   content="class B {\n  int hp;\n};")
+    new_b = _chunk("b_h2", "b.h", name="B", chunk_type="class_specifier", start_line=1, end_line=3,
+                   content="class B : public X {\n  int hp;\n};")
+    model = {"x.h": ([_member("X", "step", "method_decl", 2, "x_h", "x.h")], []),
+             "l.h": ([_member("L", "run", "method_decl", 2, "l_h", "l.h")],
+                     [{"path": "l.h", "owner": "L", "base": "B", "line": 1}])}
+    spans = [_class_span("X", "x.h", 1, 3, "x_h"), _class_span("L", "l.h", 1, 3, "l_h")]
+
+    def seed(store, b, b_bases):
+        _insert(store, [x_h, l_h, l_run, b])
+        for path, (rows, bases) in model.items():
+            store.replace_class_model(path, rows, bases, [])
+        store.replace_class_model("b.h", [_member("B", "hp", "field", 2, b["id"], "b.h", "int")], b_bases, [])
+        store.insert_symbols(spans + [_class_span("B", "b.h", 1, 3, b["id"])])
+        store.set_meta("class_model_version", "1")
+
+    store = _mk_store()
+    seed(store, old_b, [])
+    build_refs(store)
+    deleted_ids: set[str] = set()
+    deleted_defs: dict = {}
+    _delete_tracked(store, "b.h", deleted_ids, deleted_defs)
+    new_bases = [{"path": "b.h", "owner": "B", "base": "X", "line": 1}]
+    _insert(store, [new_b])
+    store.replace_class_model("b.h", [_member("B", "hp", "field", 2, "b_h2", "b.h", "int")], new_bases, [])
+    store.insert_symbols([_class_span("B", "b.h", 1, 3, "b_h2")])
+    build_refs(store, changed_ids={"b_h2"}, deleted_ids=deleted_ids, deleted_defs=deleted_defs)
+    ref = _mk_store()
+    seed(ref, new_b, new_bases)
+    build_refs(ref)
+    assert _edges(store) == _edges(ref)
+    assert ("l_run", "x_h", "calls") in _edges(ref)
 
 
 _OUTLINE_CALLER = _chunk("c1", "use.cpp", name="render", content="void render(Server *s) { s->outline(); }",
@@ -1171,7 +1288,7 @@ def test_an_incremental_class_that_settles_an_unchanged_call_drops_its_mentions(
 
     _with_server(store, [_SERVER])
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids={"server_h"}, deleted_ids=set(), deleted_names=set())
+        build_refs(store, changed_ids={"server_h"}, deleted_ids=set(), deleted_defs={})
     _assert_incremental_ran(caplog)
     got = _edges(store)
     ref = _mk_store()
@@ -1189,10 +1306,10 @@ def test_an_incremental_class_removal_restores_the_mentions_of_an_unchanged_call
     assert ("c1", "canvas_outline", "mentions") not in _edges(store)
 
     deleted_ids: set[str] = set()
-    deleted_names: set[str] = set()
-    _delete_tracked(store, "server.h", deleted_ids, deleted_names)
+    deleted_defs: dict = {}
+    _delete_tracked(store, "server.h", deleted_ids, deleted_defs)
     with caplog.at_level(logging.INFO, logger="repomap"):
-        build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_names=deleted_names)
+        build_refs(store, changed_ids=set(), deleted_ids=deleted_ids, deleted_defs=deleted_defs)
     _assert_incremental_ran(caplog)
     got = _edges(store)
     ref = _mk_store()

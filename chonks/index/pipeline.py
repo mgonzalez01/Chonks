@@ -91,7 +91,7 @@ class RunState:
     worker_exc: list[Exception | None]
     changed_chunk_ids: set[str]
     deleted_chunk_ids: set[str]
-    deleted_chunk_names: set[str]
+    deleted_chunk_defs: dict[tuple[str, str | None], frozenset[tuple]]
     parse_q: queue.Queue
     embed_q: queue.Queue
     macro_file_counts: dict[str, int]
@@ -660,7 +660,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
     state = rs.state
     lock = rs.lock
     deleted_chunk_ids = rs.deleted_chunk_ids
-    deleted_chunk_names = rs.deleted_chunk_names
+    deleted_chunk_defs = rs.deleted_chunk_defs
     parse_q = rs.parse_q
     seen: set[str] = set()
     scanned_stored: set[str] = set()
@@ -708,13 +708,13 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                     return
                 old_vecs: dict[str, bytes] = {}
                 if stored_hash is not None:
-                    removed_names = store.get_names_for_path(stored_path)
+                    removed_defs = store.get_definitions([stored_path])
                     if rs.reuse_vectors:
                         old_vecs = _stored_vectors(store, stored_path)
                     removed_ids = store.delete_file(stored_path)
                     with lock:
                         deleted_chunk_ids.update(removed_ids)
-                        deleted_chunk_names.update(removed_names)
+                        deleted_chunk_defs.update(removed_defs)
                 with lock:
                     state["to_index"] += 1
                 parse_q.put((fpath, content_hash, stored_path, old_vecs))
@@ -825,20 +825,20 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
             if resolved.is_dir():
                 for db_path in store.get_paths_under(prefix + "/" if prefix else ""):
                     if db_path not in scanned_stored:
-                        removed_names = store.get_names_for_path(db_path)
+                        removed_defs = store.get_definitions([db_path])
                         removed_ids = store.delete_file(db_path)
                         with lock:
                             deleted_chunk_ids.update(removed_ids)
-                            deleted_chunk_names.update(removed_names)
+                            deleted_chunk_defs.update(removed_defs)
                             state["pruned"] += 1
                         pruned += 1
             else:
                 if prefix not in scanned_stored and store.get_file_hash(prefix) is not None:
-                    removed_names = store.get_names_for_path(prefix)
+                    removed_defs = store.get_definitions([prefix])
                     removed_ids = store.delete_file(prefix)
                     with lock:
                         deleted_chunk_ids.update(removed_ids)
-                        deleted_chunk_names.update(removed_names)
+                        deleted_chunk_defs.update(removed_defs)
                         state["pruned"] += 1
                     pruned += 1
 
@@ -887,10 +887,8 @@ def index_paths(
     reporter=None,
 ) -> dict[str, int]:
     """Three-stage pipeline (scan, parse, embed); returns run stats. Config
-    params are in DOCS.md. `cap_mentions_fanout`/`associated_top_frac` need
-    `--rebuild-graphs` to take effect on an existing index. `reporter` is a
-    context manager that yields an object with `tick` and `finish`; None
-    draws the tqdm bars."""
+    params are in DOCS.md. `reporter` is a context manager that yields an
+    object with `tick` and `finish`; None draws the tqdm bars."""
     excludes = _normalize_prefixes(exclude)
     includes = _normalize_prefixes(include)
     fallback_exts = {e.lower() for e in
@@ -989,17 +987,17 @@ def index_paths(
     # happen on the scan-producer thread, inserts on the embedder thread.
     changed_chunk_ids: set[str] = set()
     deleted_chunk_ids: set[str] = set()
-    # Names deleted chunks/symbols defined, captured BEFORE each delete_file
-    # call (those rows are gone by the time build_refs runs at the end).
+    # What deleted files defined, captured BEFORE each delete_file call
+    # (those rows are gone by the time build_refs runs at the end).
     # Guarded by `lock`, same as the id sets.
-    deleted_chunk_names: set[str] = set()
+    deleted_chunk_defs: dict[tuple[str, str | None], frozenset[tuple]] = {}
 
     parse_q: queue.Queue = queue.Queue(maxsize=64)    # (fpath, hash) → parser
     embed_q: queue.Queue = queue.Queue(maxsize=2000)  # chunk dicts  → embedder
     rs = RunState(
         state=state, lock=lock, done_event=done_event, file_symbols=file_symbols,
         worker_exc=worker_exc, changed_chunk_ids=changed_chunk_ids,
-        deleted_chunk_ids=deleted_chunk_ids, deleted_chunk_names=deleted_chunk_names,
+        deleted_chunk_ids=deleted_chunk_ids, deleted_chunk_defs=deleted_chunk_defs,
         parse_q=parse_q, embed_q=embed_q, macro_file_counts=macro_file_counts,
         unhealable_hashes=unhealable_hashes, unhealable_order=unhealable_order,
         new_unhealable=new_unhealable, reuse_vectors=reuse_vectors,
@@ -1166,7 +1164,7 @@ def index_paths(
         store, embedder,
         force=force, indexed=indexed, pruned=pruned,
         changed_chunk_ids=changed_chunk_ids, deleted_chunk_ids=deleted_chunk_ids,
-        deleted_chunk_names=deleted_chunk_names, edge_type_weights=edge_type_weights,
+        deleted_chunk_defs=deleted_chunk_defs, edge_type_weights=edge_type_weights,
         cap_mentions_fanout=cap_mentions_fanout, associated_top_frac=associated_top_frac,
     )
 

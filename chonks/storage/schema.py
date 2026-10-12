@@ -31,8 +31,6 @@ SCHEMA_DDL = """
 
             CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks(path);
             CREATE INDEX IF NOT EXISTS idx_files_path  ON files(path);
-            -- Backs build_refs' incremental "find chunks named X" lookup;
-            -- without it, resolving a few touched names is a full scan.
             CREATE INDEX IF NOT EXISTS idx_chunks_name ON chunks(name);
 
             CREATE TABLE IF NOT EXISTS chunk_refs (
@@ -45,6 +43,16 @@ SCHEMA_DDL = """
             -- The primary key serves lookups by from_id.
             DROP INDEX IF EXISTS idx_chunk_refs_from;
             CREATE INDEX IF NOT EXISTS idx_chunk_refs_to   ON chunk_refs(to_id);
+
+            -- The names behind each chunk's mentions edges, kept while
+            -- associated_top_frac > 0 so an incremental build_refs can redo
+            -- the corpus-wide PMI ranking. An old DB gains it empty; the
+            -- next graph build fills it.
+            CREATE TABLE IF NOT EXISTS chunk_mention_names (
+                chunk_id TEXT NOT NULL,
+                name     TEXT NOT NULL,
+                PRIMARY KEY (chunk_id, name)
+            ) WITHOUT ROWID;
 
             -- Persisted PageRank, computed once at index time. Empty on a
             -- DB from before this existed; compute_pagerank_global falls
