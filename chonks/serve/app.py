@@ -409,6 +409,7 @@ def index(req: IndexRequest) -> JSONResponse:
             embed_batch=project["embed_batch"],
             embed_inflight=project["embed_inflight"],
             edge_type_weights=project["edge_type_weights"] or None,
+            **project["index_options"],
         )
     finally:
         lock.release()

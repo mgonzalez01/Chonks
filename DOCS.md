@@ -485,7 +485,7 @@ It loads `exclude`, `include`, `subsystems`, `codebase`, `search`, `repomap`, an
 }
 ```
 
-Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard. `language_plugins` is not a per-project key at all: the language registry is one process-global object for the whole server, so a `projects[name].language_plugins` entry is refused and logged rather than applied to just that project.
+Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. The keys that shape an index (`macros`, `fallback_extensions`, `data_blob_size_limit`, `cap_mentions_fanout`, `associated_top_frac`) are top-level only, for `POST /index` as for `chonks index`. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard. `language_plugins` is not a per-project key at all: the language registry is one process-global object for the whole server, so a `projects[name].language_plugins` entry is refused and logged rather than applied to just that project.
 
 **`--db` resolution order.** `chonks serve --db PATH` takes the config's `db` key when set, and the `--db` flag otherwise, which itself defaults to `.db/chonks.db`. `chonks index`, `chonks doctor`, and `chonks report` go the other way, taking an explicitly passed CLI flag first, then the config key, then the built-in default, since their own `--db` default is `None`. So `--db` is authoritative for `serve` only when the config has no `db` key, or no `--config` is passed.
 
