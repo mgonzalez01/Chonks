@@ -120,6 +120,7 @@ def test_index_concurrent_returns_409(tmp_path):
         "embedder":     MagicMock(),
         "embed_batch":    128,
         "embed_inflight": 2,
+        "index_options":  {},
         "store":        MagicMock(),
         "searcher":     None,
         "index_lock":   threading.Lock(),

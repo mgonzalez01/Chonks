@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from chonks.core.config import load_config
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
-from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT, EMBED_WATCHDOG_SECS
-from chonks.index.pipeline import index_paths, reembed_all
+from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
+from chonks.index.pipeline import index_options, index_paths, reembed_all
 from chonks.index.plugins import load_plugins
 from chonks.ops.diagnostics import dominance_warning, family_breakdown
 from chonks.retrieval.scope_notes import config_warnings
@@ -171,15 +171,9 @@ def main(argv=None) -> None:
     if args.include:
         include_list.extend(args.include)
 
-    macros_seed: set[str] = set(config.get("macros") or [])
-    # Config-only settings (no CLI flag); see DOCS.md's config.json reference
-    # for each. None means "not set", so index_paths applies its own default.
-    fallback_extensions = config.get("fallback_extensions")
-    data_blob_size_limit = config.get("data_blob_size_limit")
+    # Config-only settings (no CLI flag); see DOCS.md's config.json reference.
+    options = index_options(config)
     edge_type_weights = config.get("edge_type_weights")
-    cap_mentions_fanout = bool(config.get("cap_mentions_fanout", False))
-    associated_top_frac = float(config.get("associated_top_frac", 0.02))
-    no_progress_timeout = config.get("embed_watchdog_secs") or EMBED_WATCHDOG_SECS
 
     # Validated here, not left to _Corpus's silent numpy fallback, so a config
     # typo doesn't silently disable acceleration. Env var wins when set.
@@ -246,8 +240,8 @@ def main(argv=None) -> None:
                 print("Skipping build_refs (--rebuild-knn): chunk_refs already persisted.")
             else:
                 ref_count = build_refs(
-                    store, cap_mentions=cap_mentions_fanout,
-                    associated_top_frac=associated_top_frac,
+                    store, cap_mentions=options["cap_mentions_fanout"],
+                    associated_top_frac=options["associated_top_frac"],
                 )
                 print(f"Rebuilt {ref_count} cross-reference edges.")
             neighbor_count = build_neighbors(store)
@@ -340,13 +334,8 @@ def main(argv=None) -> None:
                 include=include_list,
                 embed_batch=embed_batch,
                 embed_inflight=embed_inflight,
-                macros=macros_seed,
-                fallback_extensions=fallback_extensions,
-                data_blob_size_limit=data_blob_size_limit,
                 edge_type_weights=edge_type_weights,
-                cap_mentions_fanout=cap_mentions_fanout,
-                associated_top_frac=associated_top_frac,
-                no_progress_timeout=no_progress_timeout,
+                **options,
             )
 
             cov_note = ""

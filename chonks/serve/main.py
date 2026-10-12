@@ -16,6 +16,7 @@ from chonks.embed.client import probe_embedder
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.embed.reranker import Reranker
 from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
+from chonks.index.pipeline import index_options
 from chonks.index.plugins import load_plugins
 from chonks.serve.app import app
 from chonks.serve.projects import (
@@ -107,6 +108,8 @@ def main(argv=None) -> None:
     default_embed_inflight = full.get("embed_inflight") or EMBED_INFLIGHT
     # Absent turns reranking of hybrid results off.
     default_rerank_url = full.get("rerank_url")
+    # Top-level only, for every project: `chonks index` reads them from the top level too.
+    shared_index_options = index_options(full)
 
     _projects[DEFAULT_PROJECT] = {
         "db_path":      default_db,
@@ -123,6 +126,7 @@ def main(argv=None) -> None:
                                  query_token_budget=default_embed_query_token_budget),
         "embed_batch":    default_embed_batch,
         "embed_inflight": default_embed_inflight,
+        "index_options":  shared_index_options,
         "reranker":     Reranker(default_rerank_url) if default_rerank_url else None,
         "store":        None,
         "searcher":     None,
@@ -168,6 +172,7 @@ def main(argv=None) -> None:
             ),
             "embed_batch":    pcfg.get("embed_batch")    or default_embed_batch,
             "embed_inflight": pcfg.get("embed_inflight") or default_embed_inflight,
+            "index_options":  shared_index_options,
             "reranker":     Reranker(rerank_url) if rerank_url else None,
             "store":        None,
             "searcher":     None,

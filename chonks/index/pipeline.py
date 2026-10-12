@@ -866,6 +866,18 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
         parse_q.put(_SENTINEL)
 
 
+def index_options(config: dict) -> dict:
+    """index_paths keyword arguments from the config keys that shape an index."""
+    return {
+        "macros": set(config.get("macros") or []),
+        "fallback_extensions": config.get("fallback_extensions"),
+        "data_blob_size_limit": config.get("data_blob_size_limit"),
+        "cap_mentions_fanout": bool(config.get("cap_mentions_fanout", False)),
+        "associated_top_frac": float(config.get("associated_top_frac", 0.02)),
+        "no_progress_timeout": config.get("embed_watchdog_secs") or EMBED_WATCHDOG_SECS,
+    }
+
+
 def index_paths(
     paths: list[str | Path],
     store: Store,
