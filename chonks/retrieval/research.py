@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 
 from chonks.core.edges import DEFAULT_EDGE_TYPE_WEIGHTS, edge_provenance
+from chonks.core.paths import _in_scope, _path_scope
 from chonks.retrieval.searcher import Searcher
 from chonks.storage.store import Store
 
@@ -350,12 +351,9 @@ def _graph_expand(
     new_chunks = store.get_chunks_by_ids(list(expansion_ids))
     for c in new_chunks:
         c["_evidence"] = admitted_via.get(c["id"])
-    if path_prefix:
-        # Normalize like Store.search_semantic (strip trailing slash) so
-        # scope matches; a raw startswith on "foo/" would miss files
-        # search_semantic's LIKE 'foo%' matched, silently dropping in-scope chunks.
-        normalized_prefix = path_prefix.rstrip("/\\")
-        new_chunks = [c for c in new_chunks if c["path"].startswith(normalized_prefix)]
+    scope = _path_scope(path_prefix)
+    if scope is not None:
+        new_chunks = [c for c in new_chunks if _in_scope(c["path"], scope)]
     return new_chunks
 
 

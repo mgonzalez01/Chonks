@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chonks.ops.report import build_report
+from chonks.ops.report import _subsystem_for_path, build_report
 from chonks.storage.store import Store
 
 
@@ -167,6 +167,12 @@ def test_no_config_falls_back_to_path_grouping(tmp_path):
     assert "## Surprising connections" in report
     cross_section = report.split("### Cross-subsystem edges")[1].split("## Suggested questions")[0]
     assert "Engine" in cross_section and "Shader" in cross_section
+
+
+def test_a_subsystem_prefix_covers_its_directory_and_nothing_beside_it():
+    subsystems = {"core": ["core"], "core_x": ["core_x/"], "math": ["core/math/"]}
+    paths = ["core/a.cpp", "core/math/v.cpp", "core_x/b.cpp", "core2/c.cpp"]
+    assert [_subsystem_for_path(p, subsystems) for p in paths] == ["core", "math", "core_x", None]
 
 
 def test_cli_writes_report(tmp_path):

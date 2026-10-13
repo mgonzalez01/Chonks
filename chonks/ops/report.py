@@ -13,6 +13,7 @@ from pathlib import Path
 
 from chonks.core.config import load_config
 from chonks.core.edges import ASSOCIATED, MENTIONS, XLANG
+from chonks.core.paths import _in_scope, _path_scope
 from chonks.index.graph.pagerank import compute_pagerank_global
 from chonks.index.plugins import load_plugins
 from chonks.storage.store import Store
@@ -30,12 +31,12 @@ HUB_INDEGREE_MAX = 50
 
 def _subsystem_for_path(path: str, subsystems: dict[str, list[str]]) -> str | None:
     """Longest-matching subsystem name for `path`, or None if no prefix
-    matches. Kept local so report.py's import surface stays repomap/store only."""
+    matches."""
     best: tuple[int, str] | None = None
     for name, prefixes in (subsystems or {}).items():
-        for p in prefixes:
-            if path.startswith(p) and (best is None or len(p) > best[0]):
-                best = (len(p), name)
+        for scope in filter(None, map(_path_scope, prefixes)):
+            if _in_scope(path, scope) and (best is None or len(scope) > best[0]):
+                best = (len(scope), name)
     return best[1] if best else None
 
 

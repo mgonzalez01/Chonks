@@ -1,4 +1,5 @@
-"""Notes and warnings for scopes and config entries that can't match anything."""
+"""How a path_prefix reaches the index, and notes and warnings for scopes and
+config entries that can't match anything."""
 import collections
 import json
 import logging
@@ -7,6 +8,7 @@ import pytest
 
 import chonks.serve.app as serve_app
 import chonks.serve.main as serve_main
+import chonks.serve.models as serve_models
 import chonks.serve.projects as serve_projects
 from chonks.retrieval.scope_notes import config_warnings, excluded_scope_note
 from chonks.retrieval.searcher import Searcher
@@ -71,7 +73,8 @@ def _serve(monkeypatch, tmp_path, config: dict) -> dict:
 def test_search_and_research_say_when_the_scope_is_excluded(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 
-    _serve(monkeypatch, tmp_path, {"codebase": str(tmp_path), "exclude": ["build/"]})
+    project = _serve(monkeypatch, tmp_path, {"codebase": str(tmp_path), "exclude": ["build/"]})
+    project["store"].upsert_file("src/renderer.cpp", 1, 0.0, "h")
     monkeypatch.setattr(serve_app, "deep_research", lambda *a, **k: {
         "chunks": [], "count": 0, "iterations": 0, "connections": [], "degraded": None})
     with TestClient(serve_app.app) as client:
@@ -81,6 +84,39 @@ def test_search_and_research_say_when_the_scope_is_excluded(monkeypatch, tmp_pat
     assert excluded.json()["note"] == _BUILD_NOTE
     assert included.json()["note"] is None
     assert research.json()["note"] == _BUILD_NOTE
+
+
+_NEAR_SCENE = "did you mean Scene/, scene/, scene_x.py?"
+
+
+@pytest.mark.parametrize("path_prefix,paths,note", [
+    ("scene/main/", {"Scene/Main/node.py"}, None),
+    ("scene/", {"scene/a.py"}, None),
+    ("Scene", {"Scene/Main/node.py", "Scene/Mainline.py"}, None),
+    ("SCENE", set(), f"no indexed path under SCENE; {_NEAR_SCENE}"),
+    ("scen", set(), f"no indexed path under scen; {_NEAR_SCENE}"),
+    ("sc\x00ene/", set(), "no indexed path under sc\x00ene/"),
+    ("{root}/Scene/Main", {"Scene/Main/node.py"}, None),
+    ("{root}", {"Scene/Main/node.py", "Scene/Mainline.py", "scene/a.py", "scene_x.py"}, None),
+])
+def test_a_path_prefix_reaches_the_index_in_the_spelling_the_index_has(monkeypatch, tmp_path, path_prefix, paths, note):
+    project = _serve(monkeypatch, tmp_path, {})
+    root = tmp_path / "code"
+    project["root"] = root if "{root}" in path_prefix else None
+    path_prefix = path_prefix.format(root=root)
+    indexed = ["Scene/Main/node.py", "Scene/Mainline.py", "scene/a.py", "scene_x.py"]
+    project["store"].insert_chunks(
+        [{"id": p, "path": p, "language": "python", "content": "drop indicator", "start_line": 1, "end_line": 1}
+         for p in indexed],
+        [[0.5] * 4 for _ in indexed],
+    )
+    for p in indexed:
+        project["store"].upsert_file(p, 1, 0.0, "h")
+
+    body = json.loads(serve_app.search(serve_models.SearchRequest(query="drop", mode="fts", path_prefix=path_prefix)).body)
+    assert ({c["path"] for c in body["chunks"]}, body["note"]) == (paths, note)
+    for route, request in ((serve_app.repomap, serve_models.RepomapRequest), (serve_app.hubs, serve_models.HubsRequest)):
+        assert json.loads(route(request(path_prefix=path_prefix)).body)["note"] == note
 
 
 def test_status_warns_about_client_scopes_and_missing_entries(monkeypatch, tmp_path):

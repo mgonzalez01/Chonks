@@ -17,6 +17,7 @@ import sqlite_vec
 
 from chonks.core.batching import batched
 from chonks.core.edges import MENTIONS
+from chonks.core.paths import _path_scope
 from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FIELD, FORWARD_DECLARATION
@@ -83,12 +84,30 @@ def _definitions_first(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _escape_like(s: str) -> str:
-    """Escape SQL LIKE metacharacters so a literal '_' in a path prefix
-    isn't treated as a single-char wildcard. Pair with ESCAPE '\\'."""
+    """Escape SQL LIKE metacharacters so a literal '_' in a name isn't
+    treated as a single-char wildcard. Pair with ESCAPE '\\'."""
     s = s.replace("\\", "\\\\")  # escape existing backslashes first
     s = s.replace("%", r"\%")
     s = s.replace("_", r"\_")
     return s
+
+
+def _starts_with(column: str, prefix: str) -> tuple[str, list[str]]:
+    """SQL for `column` starting with `prefix`, case included, as a range its
+    index answers: `a/` runs up to `a0`, the next string after every `a/...`."""
+    if not prefix:
+        return f"{column} >= ?", [""]
+    return f"{column} >= ? AND {column} < ?", [prefix, prefix[:-1] + chr(ord(prefix[-1]) + 1)]
+
+
+def _scope_filter(column: str, path_prefix: str | None) -> tuple[str, list[str]]:
+    """An ` AND` clause keeping rows whose `column` is path_prefix's scope or
+    lies under it, so `scene/` never reaches `scene2/`; empty without a scope."""
+    scope = _path_scope(path_prefix)
+    if scope is None:
+        return "", []
+    under, args = _starts_with(column, scope + "/")
+    return f" AND ({column} = ? OR ({under}))", [scope, *args]
 
 
 # ---------------------------------------------------------------------------
@@ -322,12 +341,17 @@ class Store:
 
     def get_paths_under(self, prefix: str) -> list[str]:
         """Every indexed path that starts with `prefix`, case included."""
+        where, args = _starts_with("path", prefix)
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT path FROM files WHERE path >= ? AND path < ?",
-                (prefix, prefix + "\U0010FFFF"),
-            ).fetchall()
+            rows = self._conn.execute(f"SELECT path FROM files WHERE {where}", args).fetchall()
             return [r[0] for r in rows]
+
+    def get_paths_in_scope(self, path_prefix: str | None, limit: int = -1) -> list[str]:
+        """Indexed paths that are path_prefix's scope or lie under it."""
+        scope, args = _scope_filter("path", path_prefix)
+        sql = f"SELECT path FROM files WHERE 1=1{scope} LIMIT ?"
+        with self._lock:
+            return [r[0] for r in self._conn.execute(sql, [*args, limit])]
 
     def _delete_vectors(self, ids: list[str]) -> None:
         # One `id = ?` per row: vec0 answers that from its rowid map, but
@@ -443,16 +467,11 @@ class Store:
         """Every symbol (optionally under a path prefix), for repomap listing."""
         sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id "
                "FROM symbols WHERE kind != ?")
-        args: list = [FORWARD_DECLARATION]
-        if path_prefix:
-            sql += " AND path LIKE ? ESCAPE '\\'"
-            args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-        sql += " ORDER BY path, start_line"
+        scope, scope_args = _scope_filter("path", path_prefix)
+        sql += scope + " ORDER BY path, start_line"
+        args = [FORWARD_DECLARATION, *scope_args]
         with self._lock:
             return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
-
-    # Kept for callers outside this module (chonks.retrieval.graph_queries).
-    _like_escape = staticmethod(_escape_like)
 
     # C++ symbols are qualified ("AABB::encloses") but callers query the bare
     # method name, so an exact miss falls back to a last-component suffix
@@ -463,15 +482,12 @@ class Store:
         Bare names that miss exactly also match as the last component of a
         qualified name (see comment above)."""
         base = "SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols WHERE "
-        tail = " ORDER BY path, start_line"
+        scope, scope_args = _scope_filter("path", path_prefix)
+        tail = scope + " ORDER BY path, start_line"
 
         def run(where: str, args: list) -> list[dict[str, Any]]:
-            sql, a = base + where, list(args)
-            if path_prefix:
-                sql += " AND path LIKE ? ESCAPE '\\'"
-                a.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
             with self._lock:
-                return [dict(r) for r in self._conn.execute(sql + tail, a).fetchall()]
+                return [dict(r) for r in self._conn.execute(base + where + tail, [*args, *scope_args]).fetchall()]
 
         if prefix:
             return _definitions_first(run(r"name LIKE ? ESCAPE '\'", [_escape_like(name) + "%"]))
@@ -529,16 +545,13 @@ class Store:
         """Symbol rows on the given chunks, forward declarations aside,
         optionally under a path prefix."""
         out: list[dict[str, Any]] = []
+        scope, scope_args = _scope_filter("path", path_prefix)
         with self._lock:
             for batch in batched(list(chunk_ids), 900):
                 placeholders = ",".join("?" * len(batch))
                 sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
-                       f"WHERE kind != ? AND chunk_id IN ({placeholders})")
-                args: list = [FORWARD_DECLARATION, *batch]
-                if path_prefix:
-                    sql += " AND path LIKE ? ESCAPE '\\'"
-                    args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-                out.extend(dict(r) for r in self._conn.execute(sql + " ORDER BY path, start_line", args).fetchall())
+                       f"WHERE kind != ? AND chunk_id IN ({placeholders}){scope} ORDER BY path, start_line")
+                out.extend(dict(r) for r in self._conn.execute(sql, [FORWARD_DECLARATION, *batch, *scope_args]))
         return out
 
     def get_symbol_spans(self, name: str, kinds: list[str]) -> list[tuple[str, str, int, int]]:
@@ -806,7 +819,7 @@ class Store:
                 )
 
             kind_clause, kind_params = _chunk_kind_clause(chunk_kind)
-            path_clause = "AND path LIKE ? ESCAPE '\\'" if path_prefix else ""
+            path_clause, path_params = _scope_filter("path", path_prefix)
 
             # Path/kind filtering is a post-filter join (vec0 has no WHERE
             # pushdown), so a fixed oversample can under-fill top_k when the
@@ -838,10 +851,7 @@ class Store:
                 dist_by_id = {r["id"]: r["distance"] for r in rows}
 
                 placeholders = ",".join("?" * len(ids))
-                params: list[Any] = list(ids)
-                if path_prefix:
-                    params.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-                params.extend(kind_params)
+                params: list[Any] = [*ids, *path_params, *kind_params]
 
                 chunks = self._conn.execute(
                     f"""
@@ -882,12 +892,8 @@ class Store:
         chunk_kind ("code" | "docs" | "any"/None) filters before the SQL
         LIMIT, so a filtered search still returns up to top_k matches."""
         kind_clause, kind_params = _chunk_kind_clause(chunk_kind, column="c.language")
-        path_clause = "AND c.path LIKE ? ESCAPE '\\'" if path_prefix else ""
-        params: list[Any] = [query]
-        if path_prefix:
-            params.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-        params.extend(kind_params)
-        params.append(top_k)
+        path_clause, path_params = _scope_filter("c.path", path_prefix)
+        params: list[Any] = [query, *path_params, *kind_params, top_k]
 
         with self._lock:
             rows = self._conn.execute(
@@ -924,15 +930,13 @@ class Store:
             raise ValueError(f"Invalid regex pattern: {e}") from e
 
         kind_clause, kind_params = _chunk_kind_clause(chunk_kind)
-        path_clause = "AND path LIKE ? ESCAPE '\\'" if path_prefix else ""
-        params: list[Any] = []
-        if path_prefix:
-            params.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-        params.extend(kind_params)
+        path_clause, path_params = _scope_filter("path", path_prefix)
+        params: list[Any] = [*path_params, *kind_params]
 
+        # NOT INDEXED keeps hits in rowid order, which a scan of the path index would change.
         with self._lock:
             cursor = self._conn.execute(
-                f"SELECT * FROM chunks WHERE 1=1 {path_clause} {kind_clause}",
+                f"SELECT * FROM chunks NOT INDEXED WHERE 1=1 {path_clause} {kind_clause}",
                 params,
             )
             try:
@@ -950,10 +954,7 @@ class Store:
         """Chunks with non-null names, including `content` and `metadata`
         for build_refs. Display-only callers should use get_named_chunks_meta
         instead, to avoid materialising every chunk's body."""
-        path_clause = "AND path LIKE ? ESCAPE '\\'" if path_prefix else ""
-        params: list[Any] = []
-        if path_prefix:
-            params.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
+        path_clause, params = _scope_filter("path", path_prefix)
         with self._lock:
             rows = self._conn.execute(
                 f"""
@@ -971,10 +972,7 @@ class Store:
         """Like get_named_chunks but skips `content`, cutting peak memory a
         lot on a large corpus. `language` is kept for callers that colour
         by language."""
-        path_clause = "AND path LIKE ? ESCAPE '\\'" if path_prefix else ""
-        params: list[Any] = []
-        if path_prefix:
-            params.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
+        path_clause, params = _scope_filter("path", path_prefix)
         with self._lock:
             rows = self._conn.execute(
                 f"""
@@ -1008,16 +1006,13 @@ class Store:
     def get_chunk_spans(self, ids: list[str], path_prefix: str | None = None) -> list[dict[str, Any]]:
         """Chunks by id without content or metadata, optionally under a path prefix."""
         out: list[dict[str, Any]] = []
+        scope, scope_args = _scope_filter("path", path_prefix)
         with self._lock:
             for batch in batched(list(ids), 900):
                 placeholders = ",".join("?" * len(batch))
                 sql = ("SELECT id AS chunk_id, path, language, name, chunk_type, start_line, end_line "
-                       f"FROM chunks WHERE id IN ({placeholders})")
-                args: list = list(batch)
-                if path_prefix:
-                    sql += " AND path LIKE ? ESCAPE '\\'"
-                    args.append(_escape_like(path_prefix.rstrip("/\\")) + "%")
-                out.extend(dict(r) for r in self._conn.execute(sql, args).fetchall())
+                       f"FROM chunks WHERE id IN ({placeholders}){scope}")
+                out.extend(dict(r) for r in self._conn.execute(sql, [*batch, *scope_args]))
         return out
 
     def get_contents_containing(self, ids: list[str], text: str) -> list[tuple[str, str]]:
@@ -1748,14 +1743,9 @@ class Store:
             placeholders = ",".join("?" * len(edge_types_set))
             clauses.append(f"ci.edge_type IN ({placeholders})")
             params.extend(sorted(edge_types_set))
-        if path_prefix:
-            # RANGE, not LIKE: an ESCAPE clause disables SQLite's LIKE-prefix
-            # index optimization (same trick as _get_hubs_live in
-            # chonks/retrieval/graph_queries.py).
-            lo = path_prefix.rstrip("/\\")
-            clauses.append("c.path >= ? AND c.path < ?")
-            params.extend([lo, lo + "\U0010FFFF"])
-        where = " AND ".join(clauses)
+        scope, scope_args = _scope_filter("c.path", path_prefix)
+        where = " AND ".join(clauses) + scope
+        params.extend(scope_args)
         params.append(limit)
         with self._lock:
             return self._conn.execute(

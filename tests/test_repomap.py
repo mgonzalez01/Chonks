@@ -958,17 +958,18 @@ def test_format_map_no_footer_when_everything_fits():
         assert "[truncated" not in output
 
 
-def test_repomap_endpoint_applies_default_budget_to_scoped_calls(monkeypatch):
+def test_repomap_endpoint_applies_default_budget_to_scoped_calls(monkeypatch, tmp_path):
     import chonks.serve.app as serve_app
     import chonks.serve.models as serve_models
+    from chonks.storage.store import Store
 
     captured = {}
     def fake_build_repomap(store, path_prefix=None, query=None, token_budget=None):
         captured["budget"] = token_budget
         return "map"
     monkeypatch.setattr(serve_app, "build_repomap", fake_build_repomap)
-    monkeypatch.setattr(serve_app, "_get_project",
-                        lambda name: {"store": object(), "repomap_cfg": {}})
+    project = {"store": Store(tmp_path / "t.db"), "repomap_cfg": {}, "root": None, "exclude": [], "include": []}
+    monkeypatch.setattr(serve_app, "_get_project", lambda name: project)
 
     serve_app.repomap(serve_models.RepomapRequest(path_prefix="src/gfx/"))
     assert captured["budget"] == 8000, "scoped call must not be unbudgeted"
@@ -1034,7 +1035,7 @@ def test_dir_overview_scoped_map_restricted_no_false_prefix_match(tmp_path):
     out = build_repomap(store, path_prefix="core")
     assert "# Directory overview" in out
     assert "core/sub/ (1 file)" in out
-    assert "core_x" not in out.split("\n\n", 1)[0]  # not in the overview block
+    assert "core_x" not in out
     lines = out.split("\n\n", 1)[0].splitlines()
     assert "core/ (" not in "\n".join(lines)
     store.close()

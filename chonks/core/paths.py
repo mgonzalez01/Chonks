@@ -4,7 +4,7 @@ import re
 import sys
 import unicodedata
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 _IGNORE_CASE = sys.platform in ("win32", "darwin")
 
@@ -70,6 +70,35 @@ def _spelled_as_listed(paths: list[Path], root: Path | None) -> list[Path]:
             spelled = spelled / listed(spelled, name)
         out.append(spelled)
     return out
+
+
+def _path_scope(path_prefix: str | None) -> str | None:
+    """The stored path a query's path_prefix names, `scene` for `./scene/`;
+    None when it names the whole index."""
+    if not path_prefix:
+        return None
+    scope = PurePosixPath(path_prefix.replace("\\", "/")).as_posix()
+    return None if scope in (".", "/") else scope
+
+
+def _in_scope(path: str, scope: str) -> bool:
+    """Whether stored `path` is `scope` or lies under it, case included."""
+    return path == scope or path.startswith(scope + "/")
+
+
+def _scope_under_root(scope: str, root: Path | None) -> str | None:
+    """An absolute scope under root as the relative path the index stores,
+    None for root itself; any other scope as given."""
+    path = Path(scope)
+    if root is None or not path.is_absolute():
+        return scope
+    try:
+        if not _is_under(path, root):
+            return scope
+    except (OSError, ValueError):
+        return scope
+    rest = path.parts[len(root.parts):]
+    return PurePosixPath(*rest).as_posix() if rest else None
 
 
 def _normalize_prefixes(prefixes: list[str] | None) -> list[str]:
@@ -157,11 +186,8 @@ def _dir_should_prune(dir_stored_path: str, excludes: list[str], includes: list[
 def _scope_exclusion(path_prefix: str, excludes: list[str], includes: list[str]) -> str | None:
     """The exclude entry that keeps everything under path_prefix out of the
     index, or None when some of it is indexed."""
-    scopes = _normalize_prefixes([path_prefix])
-    if not scopes:
-        return None
-    scope = scopes[0][:-1]
-    if not _dir_should_prune(scope, excludes, includes):
+    scope = _path_scope(path_prefix)
+    if scope is None or not _dir_should_prune(scope, excludes, includes):
         return None
     return _most_specific_match(scope, excludes)
 

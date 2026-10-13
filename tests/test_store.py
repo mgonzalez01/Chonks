@@ -1195,51 +1195,59 @@ def test_find_symbols_bare_name_matches_qualified(tmp_path):
         store.close()
 
 
-def test_like_metacharacters_in_path_prefix_dont_leak_scope(tmp_path):
-    """Regression: get_all_symbols/find_symbols/find_usages built bare LIKE
-    clauses with no ESCAPE, so '_' (a LIKE wildcard) in path_prefix 'a_b/'
-    silently also matched the sibling directory 'axb/'."""
+_SCOPED_PATHS = ["scene/a.cpp", "scene/main/b.cpp", "scene2/c.cpp", "scene.cpp",
+                 "a_b/x.cpp", "axb/x.cpp", "a%b/x.cpp", "a12b/x.cpp"]
+
+
+@pytest.mark.parametrize("path_prefix,expected", [
+    ("scene/", {"scene/a.cpp", "scene/main/b.cpp"}),
+    ("scene", {"scene/a.cpp", "scene/main/b.cpp"}),
+    ("scene\\main\\", {"scene/main/b.cpp"}),
+    ("scene.cpp", {"scene.cpp"}),
+    ("a_b/", {"a_b/x.cpp"}),
+    ("a%b/", {"a%b/x.cpp"}),
+    ("Scene/", set()),
+])
+def test_a_path_prefix_gives_every_reader_the_same_paths(tmp_path, path_prefix, expected):
+    from chonks.retrieval.research import _graph_expand
     store = _make_store(tmp_path)
+    ids = [f"c{i}" for i in range(len(_SCOPED_PATHS))]
     store.insert_chunks(
-        [_chunk("c1", "a_b/x.cpp", "shared_fn"),
-         _chunk("c2", "axb/x.cpp", "shared_fn")],
-        [_fake_embedding(), _fake_embedding()],
+        [_chunk(i, path, "fn") for i, path in zip(ids, _SCOPED_PATHS)]
+        + [_chunk("r", "main.cpp", "caller"), _chunk("t", "lib/t.cpp", "applyStep")],
+        [_fake_embedding()] * (len(ids) + 2),
     )
-    store.insert_symbols([
-        _sym("a_b/x.cpp", "shared_fn", chunk_id="c1"),
-        _sym("axb/x.cpp", "shared_fn", chunk_id="c2"),
-        # Same path as shared_fn above: isolates the prefix-name branch's own
-        # escape from the path-filter escape, since only the NAME's '_'
-        # differs between a literal match and a wildcard match here.
-        _sym("a_b/x.cpp", "render_pass", chunk_id="c1"),
-        _sym("a_b/x.cpp", "renderXpass", chunk_id="c1"),
-    ])
+    store.insert_symbols([_sym(path, "fn", chunk_id=i) for i, path in zip(ids, _SCOPED_PATHS)]
+                         + [_sym("main.cpp", "caller", chunk_id="r"), _sym("lib/t.cpp", "applyStep", chunk_id="t")])
+    store.insert_refs([("r", i, "calls") for i in ids] + [(i, "t", "calls") for i in ids])
 
-    paths = {s["path"] for s in store.get_all_symbols(path_prefix="a_b/")}
-    assert paths == {"a_b/x.cpp"}, f"'_' acted as a wildcard: {paths}"
+    readers = {
+        "search_semantic": lambda: store.search_semantic(_fake_embedding(), 50, path_prefix),
+        "search_fts": lambda: store.search_fts("applyStep", 50, path_prefix),
+        "search_regex": lambda: store.search_regex("applyStep", 50, path_prefix),
+        "get_all_symbols": lambda: store.get_all_symbols(path_prefix),
+        "find_symbols": lambda: store.find_symbols("fn", path_prefix),
+        "get_symbols_by_chunk_ids": lambda: store.get_symbols_by_chunk_ids(ids, path_prefix),
+        "get_named_chunks": lambda: store.get_named_chunks(path_prefix),
+        "get_named_chunks_meta": lambda: store.get_named_chunks_meta(path_prefix),
+        "get_chunk_spans": lambda: store.get_chunk_spans(ids, path_prefix),
+        "find_usages": lambda: find_usages(store, "applyStep", path_prefix)["results"],
+        "find_outgoing": lambda: find_outgoing(store, "caller", path_prefix)["results"],
+        "get_impact": lambda: get_impact(store, "applyStep", path_prefix)["files"],
+        "hubs (live)": lambda: get_hubs(store, path_prefix)["hubs"],
+        "research expansion": lambda: _graph_expand(store, [{"id": "r", "_score": 1.0}], seeds_per_iter=1,
+                                                    neighbours_per_seed=0, path_prefix=path_prefix),
+    }
+    got = {name: {r["path"] for r in read()} for name, read in readers.items()}
+    store.save_indegree({(i, "calls"): 1 for i in ids})
+    got["hubs (precomputed)"] = {h["path"] for h in get_hubs(store, path_prefix)["hubs"]}
+    assert got == dict.fromkeys(got, expected)
 
-    hits = store.find_symbols("shared_fn", path_prefix="a_b/")
-    assert [h["path"] for h in hits] == ["a_b/x.cpp"], hits
 
-    prefix_hits = store.find_symbols("shared", path_prefix="a_b/", prefix=True)
-    assert [h["path"] for h in prefix_hits] == ["a_b/x.cpp"], prefix_hits
-
-    render_hits = store.find_symbols("render_", path_prefix="a_b/", prefix=True)
-    assert [h["name"] for h in render_hits] == ["render_pass"], (
-        f"'_' in the prefix NAME acted as a wildcard, pulled in siblings: {render_hits}"
-    )
-
-    # find_usages: path_prefix scopes the REFERENCING chunks, not the
-    # definition site, so scoping to 'a_b/' must exclude the axb/ sibling
-    # caller rather than including it via the '_' wildcard.
-    store.insert_chunks(
-        [{**_chunk("caller_ab", "a_b/caller.cpp", "caller_in_ab"), "content": "shared_fn();"},
-         {**_chunk("caller_x", "axb/caller.cpp", "caller_in_axb"), "content": "shared_fn();"}],
-        [_fake_embedding(), _fake_embedding()],
-    )
-    store.insert_refs([("caller_ab", "c1"), ("caller_x", "c1")])
-    usage_hits = find_usages(store, "shared_fn", path_prefix="a_b/")["results"]
-    assert [h["path"] for h in usage_hits] == ["a_b/caller.cpp"], usage_hits
+def test_find_symbols_prefix_lookup_reads_underscore_as_itself(tmp_path):
+    store = _make_store(tmp_path)
+    store.insert_symbols([_sym("a.cpp", "render_pass"), _sym("a.cpp", "renderXpass")])
+    assert [h["name"] for h in store.find_symbols("render_", prefix=True)] == ["render_pass"]
 
 
 def test_purge_orphan_neighbors_and_refs(tmp_path):
@@ -1669,21 +1677,6 @@ def test_store_open_with_unparseable_language_set_does_not_raise(tmp_path, caplo
     with caplog.at_level(logging.WARNING, logger="chonks.store"):
         Store(tmp_path / "test.db")
     assert len(caplog.records) == 1
-
-
-def test_like_escape_single_implementation_with_unchanged_output():
-    import chonks.storage.store as store_mod
-
-    def old_module(s):
-        return s.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
-
-    def old_method(s):
-        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-    for s in ["plain", "a_b", "50%", "C:\\dir\\x_y%", "\\%_", "", "__%%\\\\"]:
-        assert store_mod._escape_like(s) == old_module(s) == old_method(s)
-        assert store_mod.Store._like_escape(s) == old_method(s)
-    assert store_mod.Store._like_escape is store_mod._escape_like
 
 
 def test_vector_deletes_use_the_id_lookup_not_a_scan(tmp_path):

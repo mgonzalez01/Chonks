@@ -264,7 +264,7 @@ def test_investigate_path_prefix_never_scopes_definitions(monkeypatch, tmp_path)
     project = _setup_default_project(monkeypatch, tmp_path)
     _seed_investigate_fixture(project["store"])
 
-    req = serve_models.InvestigateRequest(name="applyStep", path_prefix="caller")
+    req = serve_models.InvestigateRequest(name="applyStep", path_prefix="caller.cpp")
     body = json.loads(serve_app.investigate(req).body)
 
     assert len(body["definitions"]) == 1          # widget.cpp, outside the prefix
