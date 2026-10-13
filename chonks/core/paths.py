@@ -1,5 +1,8 @@
 """Path normalization and filtering helpers for chunking."""
+import os
+import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 _IGNORE_CASE = sys.platform in ("win32", "darwin")
@@ -37,16 +40,47 @@ def _normalize_prefixes(prefixes: list[str] | None) -> list[str]:
     return out
 
 
-def _longest_prefix_match(stored_path: str, prefixes: list[str]) -> str | None:
-    """Longest prefix in `prefixes` matching `stored_path` (path equals the
-    prefix's directory or starts with it), or None. Case is ignored where
-    the file system ignores it by default."""
+@lru_cache(maxsize=None)
+def _segment_patterns(entry: str) -> tuple[re.Pattern[str], ...]:
+    """One pattern per segment of `entry`: `*` matches within the segment, the rest is literal."""
+    return tuple(re.compile("[^/]*".join(re.escape(part) for part in seg.split("*")))
+                 for seg in entry.rstrip("/").split("/"))
+
+
+def _segments_agree(parts: list[str], entry: str) -> bool:
+    return all(p.fullmatch(s) for p, s in zip(_segment_patterns(entry), parts))
+
+
+def _entry_matches(path: str, entry: str) -> bool:
+    """Whether `path` is `entry` or lies under it; both folded."""
+    if "*" not in entry:
+        return path == entry[:-1] or path.startswith(entry)
+    parts = path.split("/")
+    return len(parts) >= len(_segment_patterns(entry)) and _segments_agree(parts, entry)
+
+
+def _entry_reaches_into(dir_path: str, entry: str) -> bool:
+    """Whether `entry` names `dir_path` or something under it; both folded."""
+    if "*" not in entry:
+        return entry.startswith(dir_path + "/")
+    parts = dir_path.split("/")
+    return len(parts) <= len(_segment_patterns(entry)) and _segments_agree(parts, entry)
+
+
+def _specificity(entry: str) -> tuple[int, int]:
+    """Deeper entries win, then those with more literal characters; for plain
+    prefixes matching one path this orders them by length."""
+    return entry.count("/"), len(entry) - entry.count("*")
+
+
+def _most_specific_match(stored_path: str, prefixes: list[str]) -> str | None:
+    """Most specific entry in `prefixes` matching `stored_path`, or None.
+    Case is ignored where the file system ignores it by default."""
     path = _fold(stored_path)
     best: str | None = None
     for p in prefixes:
-        fp = _fold(p)
-        if path == fp[:-1] or path.startswith(fp):
-            if best is None or len(p) > len(best):
+        if _entry_matches(path, _fold(p)):
+            if best is None or _specificity(p) > _specificity(best):
                 best = p
     return best
 
@@ -55,24 +89,20 @@ def _path_allowed(stored_path: str, excludes: list[str], includes: list[str]) ->
     """Allowed unless an exclude matches, unless a strictly more specific
     include rescues it. Includes are exception markers only, never an
     allowlist on their own."""
-    excl = _longest_prefix_match(stored_path, excludes)
+    excl = _most_specific_match(stored_path, excludes)
     if excl is None:
         return True
-    incl = _longest_prefix_match(stored_path, includes)
+    incl = _most_specific_match(stored_path, includes)
     if incl is None:
         return False
-    return len(incl) > len(excl)
+    return _specificity(incl) > _specificity(excl)
 
 
 def _dir_should_prune(dir_stored_path: str, excludes: list[str], includes: list[str]) -> bool:
     if _path_allowed(dir_stored_path, excludes, includes):
         return False
-    probe = _fold(dir_stored_path) + "/"
-    for inc in includes:
-        fi = _fold(inc)
-        if fi == probe or fi.startswith(probe):
-            return False
-    return True
+    probe = _fold(dir_stored_path)
+    return not any(_entry_reaches_into(probe, _fold(inc)) for inc in includes)
 
 
 def _scope_exclusion(path_prefix: str, excludes: list[str], includes: list[str]) -> str | None:
@@ -84,12 +114,32 @@ def _scope_exclusion(path_prefix: str, excludes: list[str], includes: list[str])
     scope = scopes[0][:-1]
     if not _dir_should_prune(scope, excludes, includes):
         return None
-    return _longest_prefix_match(scope, excludes)
+    return _most_specific_match(scope, excludes)
+
+
+def _names_something(root: Path, entry: str) -> bool:
+    if "*" not in entry:
+        return (root / entry.rstrip("/")).exists()
+    return _matches_below(root, entry.rstrip("/").split("/"), _segment_patterns(_fold(entry)))
+
+
+def _matches_below(d: Path, segments: list[str], patterns: tuple[re.Pattern[str], ...]) -> bool:
+    """Whether `segments` name something under `d`; stops at the first hit."""
+    if not segments:
+        return d.exists()
+    if "*" not in segments[0]:
+        return _matches_below(d / segments[0], segments[1:], patterns[1:])
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return False
+    return any(patterns[0].fullmatch(_fold(name)) and _matches_below(d / name, segments[1:], patterns[1:])
+               for name in names)
 
 
 def _missing_prefixes(root: Path, prefixes: list[str]) -> list[str]:
     """Entries of `prefixes` that name nothing on disk under root."""
-    return [p for p in prefixes if not (root / p.rstrip("/")).exists()]
+    return [p for p in prefixes if not _names_something(root, p)]
 
 
 def _dotdir_prefix(stored_dir_path: str) -> str | None:
