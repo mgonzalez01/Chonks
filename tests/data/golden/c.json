@@ -109,7 +109,7 @@
         {
           "arity": [
             1,
-            4,
+            1,
             true
           ],
           "chunk_index": 0,
@@ -246,17 +246,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "f"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "function_definition",
@@ -326,17 +316,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "calloc"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "type_definition",
@@ -404,15 +384,6 @@
           ],
           "chunk_index": 0,
           "name": "helper"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "process"
         }
       ],
       "segments": [

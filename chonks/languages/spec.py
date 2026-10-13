@@ -213,6 +213,9 @@ class LanguageSpec:
     # can name; its own always can.
     typed_ref_languages: frozenset[str] = frozenset()
     def_signature_keyword: str | None = None
+    # Without that keyword: whether the `name(` at this offset of a chunk can
+    # be a signature rather than a call.
+    signature_at: "Callable[[str, int], bool] | None" = None
     classify_param: "Callable[[str], str | object] | None" = None
     strip_implicit_params: "Callable[[list[str]], list[str]] | None" = None
     empty_param_spellings: frozenset[str] = frozenset()

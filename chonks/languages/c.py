@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ._ast import is_forward_declaration
+from ._braces import outside_bodies
 from ._naming import cpp_function_declarator_name, tag_specifier_name, typedef_name
 from .cpp import INCLUDE, classify_param, is_function_definition
 from .spec import Field, LanguageSpec, LiteralSpec, NameRule
@@ -53,6 +54,7 @@ C = LanguageSpec(
     },
     chain_base_fields={"field_expression": "argument"},
     identifier_leaf_types=frozenset({"identifier", "field_identifier", "type_identifier"}),
+    signature_at=outside_bodies(frozenset({"struct", "union", "enum"})),
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
     kind_labels={
