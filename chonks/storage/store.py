@@ -16,6 +16,7 @@ import numpy as np
 import sqlite_vec
 
 from chonks.core.batching import batched
+from chonks.core.edges import MENTIONS
 from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FIELD, FORWARD_DECLARATION
@@ -1492,7 +1493,7 @@ class Store:
         that don't carry a type."""
         if not refs:
             return
-        rows3 = [r if len(r) == 3 else (r[0], r[1], "mentions") for r in refs]
+        rows3 = [r if len(r) == 3 else (r[0], r[1], MENTIONS) for r in refs]
         with self._lock:
             self._conn.executemany(
                 "INSERT OR IGNORE INTO chunk_refs(from_id, to_id, edge_type) VALUES(?,?,?)",

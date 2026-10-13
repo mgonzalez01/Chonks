@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 
 from chonks.core.config import load_config
+from chonks.core.edges import ASSOCIATED, MENTIONS, XLANG
 from chonks.index.graph.pagerank import compute_pagerank_global
 from chonks.index.plugins import load_plugins
 from chonks.storage.store import Store
@@ -104,7 +105,7 @@ def _connections_section(chunks_by_id: dict[str, dict], typed_refs: list[tuple[s
     # report each crossing once.
     xlang_pairs: dict[tuple[str, str], float] = {}
     for u, v, et in typed_refs:
-        if et != "xlang" or u not in chunks_by_id or v not in chunks_by_id:
+        if et != XLANG or u not in chunks_by_id or v not in chunks_by_id:
             continue
         pair = (u, v) if u < v else (v, u)
         w = weight(u, v)
@@ -126,7 +127,7 @@ def _connections_section(chunks_by_id: dict[str, dict], typed_refs: list[tuple[s
     # associated_top_frac).
     cross_group = []
     for u, v, et in typed_refs:
-        if et in ("mentions", "associated") or u not in chunks_by_id or v not in chunks_by_id:
+        if et in (MENTIONS, ASSOCIATED) or u not in chunks_by_id or v not in chunks_by_id:
             continue
         gu = _group_for(chunks_by_id[u]["path"], subsystems)
         gv = _group_for(chunks_by_id[v]["path"], subsystems)

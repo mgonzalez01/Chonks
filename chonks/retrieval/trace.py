@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from chonks.core.edges import edge_provenance
+from chonks.core.edges import ASSOCIATED, MENTIONS, edge_provenance
 from chonks.retrieval.callers import resolve_targets
 
 if TYPE_CHECKING:
@@ -18,9 +18,9 @@ _SEMANTIC_RANK = 3   # semantic k-NN edges are the least preferred, fallback-onl
 
 
 def _edge_rank(edge_type: str) -> int:
-    if edge_type == "mentions":
+    if edge_type == MENTIONS:
         return _MENTIONS_RANK
-    if edge_type == "associated":
+    if edge_type == ASSOCIATED:
         return _ASSOCIATED_RANK
     return 0
 

@@ -4,7 +4,10 @@ from collections import Counter
 from typing import Any
 
 from chonks.core.batching import batched
-from chonks.core.edges import CALLS, _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, edge_provenance
+from chonks.core.edges import (
+    ASSOCIATED, CALLS, MENTIONS, XLANG, _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES,
+    edge_provenance,
+)
 from chonks.core.refresh import register_refresh
 from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import union as _lang_union
@@ -235,9 +238,9 @@ def find_usages(store, name: str, path_prefix: str | None = None,
         notes.append(left)
     if limit and len(results) > limit:
         omitted = results[limit:]
-        omitted_xlang = sum(1 for r in omitted if r["edge_type"] == "xlang")
-        omitted_associated = sum(1 for r in omitted if r["edge_type"] == "associated")
-        omitted_mentions = sum(1 for r in omitted if r["edge_type"] == "mentions")
+        omitted_xlang = sum(1 for r in omitted if r["edge_type"] == XLANG)
+        omitted_associated = sum(1 for r in omitted if r["edge_type"] == ASSOCIATED)
+        omitted_mentions = sum(1 for r in omitted if r["edge_type"] == MENTIONS)
         omitted_typed = len(omitted) - omitted_xlang - omitted_associated - omitted_mentions
         notes.append(
             f"limit={limit} truncated {len(omitted)} result(s): "
@@ -293,7 +296,7 @@ def find_outgoing(store, name: str, path_prefix: str | None = None,
     results: list[dict[str, Any]] = []
     for r in store.get_chunk_spans(to_ids, path_prefix):
         r.pop("language", None)
-        et = edge_type_by_to.get(r["chunk_id"], "mentions")
+        et = edge_type_by_to.get(r["chunk_id"], MENTIONS)
         r["edge_type"] = et
         r["provenance"] = edge_provenance(et)
         results.append(r)
