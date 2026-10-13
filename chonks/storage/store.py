@@ -1284,8 +1284,8 @@ class Store:
 
     def get_neighbor_worst_distances(self) -> dict[str, tuple[float, str, int]]:
         """{chunk_id: (worst_distance, worst_neighbor_id, count)}. Tie-break
-        (largest neighbor_id) must match trim_neighbors' rule exactly, or
-        an incremental update can diverge from a full rebuild."""
+        (largest neighbor_id) must match knn._merge_displaced's rule exactly,
+        or an incremental update can diverge from a full rebuild."""
         with self._lock:
             rows = self._conn.execute(
                 """
@@ -1305,25 +1305,29 @@ class Store:
             ).fetchall()
         return {r["chunk_id"]: (r["worst"], r["worst_id"], r["cnt"]) for r in rows}
 
-    def trim_neighbors(self, chunk_id: str, k: int) -> int:
-        """Keep the k closest neighbor rows for `chunk_id`, deleting the
-        rest. Tie-break (smaller neighbor_id kept) must match the bulk
-        rebuild's rule exactly, or incremental drifts from a full rebuild."""
+    def get_neighbors_from(self, chunk_ids: list[str]) -> list[tuple[str, str, float]]:
+        """(chunk_id, neighbor_id, distance) rows stored for `chunk_ids`."""
+        out: list[tuple[str, str, float]] = []
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT neighbor_id FROM chunk_neighbors WHERE chunk_id=? "
-                "ORDER BY distance, neighbor_id",
-                (chunk_id,),
-            ).fetchall()
-            if len(rows) <= k:
-                return 0
-            excess = [r["neighbor_id"] for r in rows[k:]]
-            placeholders = ",".join("?" * len(excess))
-            self._conn.execute(
-                f"DELETE FROM chunk_neighbors WHERE chunk_id=? AND neighbor_id IN ({placeholders})",
-                [chunk_id] + excess,
+            for batch in batched(chunk_ids, 900):
+                placeholders = ",".join("?" * len(batch))
+                out.extend(
+                    (r[0], r[1], r[2]) for r in self._conn.execute(
+                        "SELECT chunk_id, neighbor_id, distance FROM chunk_neighbors "
+                        f"WHERE chunk_id IN ({placeholders})",
+                        batch,
+                    )
+                )
+        return out
+
+    def delete_neighbors(self, pairs: list[tuple[str, str]]) -> None:
+        """Delete the (chunk_id, neighbor_id) rows in `pairs`."""
+        if not pairs:
+            return
+        with self._lock:
+            self._conn.executemany(
+                "DELETE FROM chunk_neighbors WHERE chunk_id=? AND neighbor_id=?", pairs,
             )
-            return len(excess)
 
     def get_all_neighbors(self) -> list[tuple[str, str]]:
         """Every (chunk_id, neighbor_id) edge, distance omitted; use

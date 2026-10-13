@@ -23,20 +23,19 @@ GRAPHRAG_TOP_K = 10
 _NEIGHBOR_INSERT_BATCH = 10000
 
 # Below this batch fraction, update the k-NN graph incrementally; above
-# it, a full rebuild beats the per-row bookkeeping cost.
+# it, a full rebuild is cheaper.
 _NEIGHBOR_INCREMENTAL_MAX_FRACTION = 0.20
 
 # How often (seconds) the incremental k-NN path logs progress, so a
 # multi-minute silent stretch doesn't read as a hang.
 _NEIGHBOR_PROGRESS_INTERVAL_S = 15.0
 
-# Below this many displaced rows, per-row SQL is fast enough that bailing
-# to a full rebuild would only add work.
+# Below this many displaced rows, bailing to a full rebuild would only add work.
 _NEIGHBOR_INCREMENTAL_BAIL_MIN_ROWS = 1000
 
-# On MLX/CUDA the full rebuild is fast enough that the incremental path's
-# per-row SQL loses at a much lower churn fraction, so this gate is
-# tighter than the numpy one above.
+# On MLX/CUDA the full rebuild is fast enough that the incremental path
+# loses at a much lower churn fraction, so this gate is tighter than the
+# numpy one above.
 _NEIGHBOR_INCREMENTAL_MAX_FRACTION_DEVICE = 0.02
 
 # Floor/fallback block size for the k-NN matmul; auto-scaled up when RAM
@@ -381,7 +380,7 @@ class _Corpus:
 
 def _id_rank(ids: list[str]) -> np.ndarray:
     """rank[i] = position of ids[i] in ascending lexicographic order; must
-    match Store.trim_neighbors' ORDER BY tie-break exactly."""
+    match _merge_displaced's tie-break exactly."""
     n = len(ids)
     order = sorted(range(n), key=lambda i: ids[i])
     rank = np.empty(n, dtype=np.int64)
@@ -395,6 +394,21 @@ def _tie_break_keys(sims: np.ndarray, rank: np.ndarray, n: int) -> np.ndarray:
     float64 holds every reachable value exactly and propagates -inf (the
     self-mask sentinel) unchanged."""
     return sims.astype(np.float64) * (n + 1) - rank[None, :]
+
+
+def _merge_displaced(
+    stored: dict[str, float], rows: list[tuple[str, str, float]], k: int,
+) -> tuple[list[str], list[tuple[str, str, float]]]:
+    """Cuts a row's stored neighbours plus its displacing candidates back to
+    the k smallest (distance, neighbor_id). Returns the stored ids that drop
+    out and the candidate rows that stay; a stored id keeps its stored distance."""
+    merged = dict(stored)
+    for _cid, neighbor_id, dist in rows:
+        merged.setdefault(neighbor_id, dist)
+    order = sorted(merged.items(), key=lambda e: (e[1], e[0]))
+    kept = {neighbor_id for neighbor_id, _dist in order[:k]}
+    gone = [neighbor_id for neighbor_id in stored if neighbor_id not in kept]
+    return gone, [row for row in rows if row[1] in kept and row[1] not in stored]
 
 
 def _device_backend_armed(dim: int) -> bool:
@@ -441,8 +455,8 @@ def build_neighbors(
     if changed_ids is not None and deleted_ids is not None:
         n_before = n - len(changed_ids) + len(deleted_ids)
         batch = len(changed_ids) + len(deleted_ids)
-        # On a device backend the incremental path's per-row SQL loses far
-        # sooner than the numpy-tuned fraction; see the constant's docstring.
+        # On a device backend the incremental path loses far sooner than
+        # the numpy-tuned fraction; see the constant's comment.
         device_backend = _device_backend_armed(dim)
         max_fraction = (
             _NEIGHBOR_INCREMENTAL_MAX_FRACTION_DEVICE if device_backend
@@ -677,8 +691,7 @@ def _build_neighbors_incremental(
                 improved[cid].append((cid, qid, dist))
 
         # Mid-flight bail, see the docstring: only the displaced count enters
-        # the budget, since step 4's damaged-row repair is one cheap bulk
-        # insert while every displaced row here costs individual insert+trim SQL.
+        # the budget.
         total_improved = len(improved)
         if total_improved > max(_NEIGHBOR_INCREMENTAL_BAIL_MIN_ROWS,
                                 max_fraction * n):
@@ -689,21 +702,18 @@ def _build_neighbors_incremental(
             )
             return None
 
-        # Per-cid SQL (insert + trim) dominates step 3's wall time regardless
-        # of matmul backend; progress logged so a long run doesn't read as a hang.
-        t0 = time.monotonic()
-        last_log = t0
-        for i, (cid, rows) in enumerate(improved.items(), start=1):
-            store.insert_neighbors(rows)
-            inserted += len(rows)
-            store.trim_neighbors(cid, k)
-            now = time.monotonic()
-            if now - last_log >= _NEIGHBOR_PROGRESS_INTERVAL_S:
-                logger.info(
-                    "k-NN incremental displaced-neighbour trim: %d/%d rows (%.0fs elapsed).",
-                    i, total_improved, now - t0,
-                )
-                last_log = now
+        stored: dict[str, dict[str, float]] = defaultdict(dict)
+        for cid, neighbor_id, dist in store.get_neighbors_from(list(improved)):
+            stored[cid][neighbor_id] = dist
+        dropped: list[tuple[str, str]] = []
+        added: list[tuple[str, str, float]] = []
+        for cid, rows in improved.items():
+            gone, new = _merge_displaced(stored.get(cid, {}), rows, k)
+            dropped.extend((cid, neighbor_id) for neighbor_id in gone)
+            added.extend(new)
+        store.delete_neighbors(dropped)
+        store.insert_neighbors(added)
+        inserted += len(added)
 
     # Step 4: damaged rows get a full recompute, restoring exact top-k for
     # rows that lost an entry to a deletion.
