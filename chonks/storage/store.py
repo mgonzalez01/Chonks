@@ -321,11 +321,11 @@ class Store:
             # Don't commit here: caller batches.
 
     def get_paths_under(self, prefix: str) -> list[str]:
-        """Return all indexed paths that start with the given POSIX prefix."""
+        """Every indexed path that starts with `prefix`, case included."""
         with self._lock:
             rows = self._conn.execute(
-                "SELECT path FROM files WHERE path LIKE ? ESCAPE '\\'",
-                (_escape_like(prefix) + "%",),
+                "SELECT path FROM files WHERE path >= ? AND path < ?",
+                (prefix, prefix + "\U0010FFFF"),
             ).fetchall()
             return [r[0] for r in rows]
 

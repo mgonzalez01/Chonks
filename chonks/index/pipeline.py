@@ -21,6 +21,8 @@ from chonks.core.paths import (
     _path_allowed,
     _dir_should_prune,
     _dotdir_prefix,
+    _is_under,
+    _spelled_as_listed,
     _stored_dirname,
 )
 from chonks.core.files import INCOMPLETE_FILE_HASH
@@ -575,7 +577,7 @@ def _root_scope_covers(stored: str, root: Path) -> bool:
     indexed from outside the root is stored absolute and kept unless it is gone
     from disk; an absolute path under the root is left from a run without one."""
     p = Path(stored)
-    if not p.is_absolute() or p.is_relative_to(root):
+    if not p.is_absolute() or _is_under(p, root):
         return True
     try:
         p.stat()
@@ -919,6 +921,7 @@ def index_paths(
     """Three-stage pipeline (scan, parse, embed); returns run stats. Config
     params are in DOCS.md. `reporter` is a context manager that yields an
     object with `tick` and `finish`; None draws the tqdm bars."""
+    paths = _spelled_as_listed([Path(p).resolve() for p in paths], root)
     excludes = _normalize_prefixes(exclude)
     includes = _normalize_prefixes(include)
     fallback_exts = {e.lower() for e in

@@ -329,6 +329,53 @@ def test_indexing_one_folder_still_sees_macros_defined_elsewhere(tmp_path, tmp_p
     store.close()
 
 
+def test_indexing_a_folder_keeps_a_sibling_spelled_in_another_case(tmp_path):
+    from chonks.index.pipeline import index_paths
+
+    store = Store(tmp_path / "test.db")
+    store.upsert_file("Foo/b.c", 1, 0.0, "h")
+    assert store.get_paths_under("foo/") == []
+    (tmp_path / "foo").mkdir()
+    if (tmp_path / "FOO").exists():
+        pytest.skip("the file system ignores case")
+    (tmp_path / "Foo").mkdir()
+    (tmp_path / "foo" / "a.c").write_text("int a(void) { return 1; }\n")
+    (tmp_path / "Foo" / "b.c").write_text("int b(void) { return 2; }\n")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    stats = index_paths([str(tmp_path / "foo")], store, _FakeEmbedder(), root=tmp_path)
+    assert stats["pruned"] == 0
+    assert set(store.get_paths_under("")) == set(store.get_macro_definitions()) == {"Foo/b.c", "foo/a.c"}
+    store.close()
+
+
+def test_each_path_is_stored_as_its_directories_list_it(tmp_path):
+    from chonks.index.pipeline import index_paths
+
+    root, other = tmp_path / "code", tmp_path / "CODE"
+    (root / "sub").mkdir(parents=True)
+    (root / "a.c").write_text("int a(void) { return 1; }\n")
+    (root / "sub" / "b.c").write_text("int b(void) { return 2; }\n")
+    store = Store(tmp_path / "test.db")
+    if not other.exists():
+        other.mkdir()
+        (other / "a.c").write_text("int a(void) { return 1; }\n")
+        index_paths([str(other)], store, _FakeEmbedder(), root=root)
+        stats = index_paths([str(root)], store, _FakeEmbedder(), root=root)
+        assert stats["pruned"] == 0 and sorted(store.get_paths_under("")) == [(other / "a.c").as_posix(), "a.c", "sub/b.c"]
+        store.close()
+        return
+    index_paths([str(other)], store, _FakeEmbedder(), root=root)
+    index_paths([str(other / "SUB")], store, _FakeEmbedder(), root=root)
+    assert sorted(store.get_paths_under("")) == ["a.c", "sub/b.c"]
+    index_paths([str(other / "SUB")], store, _FakeEmbedder())
+    assert set(store.get_paths_under("")) == {"a.c", "sub/b.c", (root / "sub" / "b.c").as_posix()}
+    store.upsert_file((other / "a.c").as_posix(), 1, 0.0, "h")
+    stats = index_paths([str(root)], store, _FakeEmbedder(), root=root)
+    assert stats["pruned"] == 2
+    assert sorted(store.get_paths_under("")) == sorted(store.get_macro_definitions()) == ["a.c", "sub/b.c"]
+    store.close()
+
+
 def test_definition_records_are_reused_and_dropped_with_their_file(tmp_path, monkeypatch):
     import chonks.index.pipeline as pipeline
 

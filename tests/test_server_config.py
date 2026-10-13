@@ -75,21 +75,34 @@ def test_named_project_can_override_top_level_edge_type_weights(monkeypatch, tmp
     assert serve_projects._projects["proj"]["edge_type_weights"] == override
 
 
-def test_index_endpoint_applies_top_level_index_settings_to_every_project(monkeypatch, tmp_path):
+def test_index_endpoint_applies_index_settings_and_keeps_to_the_root(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
+    code = tmp_path / "code"
+    code.mkdir()
     _run_main_with_config(monkeypatch, tmp_path, {
         "macros": ["GDCLASS"],
         "cap_mentions_fanout": True,
         "associated_top_frac": 0.05,
-        "projects": {"proj": {"db": str(tmp_path / "proj.db"), "associated_top_frac": 0.5}},
+        "projects": {"proj": {"db": str(tmp_path / "proj.db"), "codebase": str(code), "associated_top_frac": 0.5}},
     })
     calls = []
     monkeypatch.setattr(serve_app, "index_paths", lambda *a, **kw: calls.append(kw) or {})
     client = TestClient(serve_app.app)
-    for project in (None, "proj"):
-        assert client.post("/index", json={"paths": [str(tmp_path)], "project": project}).status_code == 200
+    for project, path in ((None, tmp_path), ("proj", code)):
+        assert client.post("/index", json={"paths": [str(path)], "project": project}).status_code == 200
     for kw in calls:
         assert (kw["macros"], kw["cap_mentions_fanout"], kw["associated_top_frac"]) == ({"GDCLASS"}, True, 0.05)
+
+    outside = [tmp_path, tmp_path / "cod"]
+    try:
+        (code / "out").symlink_to(tmp_path, target_is_directory=True)
+        outside.append(code / "out")
+    except OSError:
+        pass
+    other = tmp_path / "CODE"
+    statuses = {p: client.post("/index", json={"paths": [str(p)], "project": "proj"}).status_code
+                for p in [*outside, other]}
+    assert statuses == {**{p: 400 for p in outside}, other: 200 if other.exists() else 400}
 
 
 def test_project_language_plugins_is_refused(monkeypatch, tmp_path, capsys):
