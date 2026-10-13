@@ -237,25 +237,54 @@ def test_incremental_modify_matches_full_rebuild():
 # Typed edges (calls/imports/inherits) reverse resolution
 # ---------------------------------------------------------------------------
 
-def test_incremental_typed_edge_added_when_target_appears():
+def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(caplog):
     store = _mk_store()
     initial = [
         _chunk("a", "a.cpp", name="driver", content="void driver() { helper(); }",
                metadata={"calls": ["helper"], "imports": [], "inherits": []}),
-    ]
+        _chunk("d", "derived.h", name="Derived", chunk_type="class_specifier",
+               content="class Derived : public Base, public Box<int> {};",
+               metadata={"calls": [], "imports": [], "inherits": ["Base", "Box"]}),
+    ] + _chained_fillers()
     _insert(store, initial)
     build_refs(store)
     before = _edges(store)
     assert not any(t == "helper" for (_f, t, _e) in before)  # nothing to resolve to yet
 
-    new = [_chunk("b", "b.cpp", name="helper", content="void helper() {}")]
+    new = [
+        _chunk("b", "b.cpp", name="helper", content="void helper() {}"),
+        _chunk("base", "base.h", name="Base", chunk_type="class_specifier", content="class Base {\n  Base();\n};"),
+        _chunk("ctor", "base.cpp", name="Base::Base", content="Base::Base() {}"),
+        _chunk("box", "box.h", name="Box", chunk_type="template_declaration",
+               content="template <class T>\nclass Box {};"),
+    ]
+    symbol_rows = [
+        {"path": "base.h", "name": "Base", "kind": "class_specifier", "language": "cpp",
+         "start_line": 1, "end_line": 3, "chunk_id": "base"},
+        {"path": "base.cpp", "name": "Base::Base", "kind": "function_definition", "language": "cpp",
+         "start_line": 1, "end_line": 1, "chunk_id": "ctor"},
+        {"path": "box.h", "name": "Box", "kind": "class_specifier", "language": "cpp",
+         "start_line": 2, "end_line": 2, "chunk_id": "box"},
+    ]
     _insert(store, new)
-    build_refs(store, changed_ids={"b"}, deleted_ids=set(), deleted_defs={})
+    store.insert_symbols(symbol_rows)
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={c["id"] for c in new}, deleted_ids=set(), deleted_defs={})
+    _assert_incremental_ran(caplog)
     got = _edges(store)
     _assert_indegree_consistent(store)
-    want = _full_rebuild_edges(initial + new)
+
+    ref = _mk_store()
+    _insert(ref, initial + new)
+    ref.insert_symbols(symbol_rows)
+    build_refs(ref)
+    want = _edges(ref)
+    _assert_indegree_consistent(ref)
+    ref.close()
     assert got == want
     assert ("a", "b", "calls") in got
+    assert {t for (f, t, e) in got if f == "d" and e == "inherits"} == {"base", "box"}
 
 
 # ---------------------------------------------------------------------------
@@ -858,7 +887,8 @@ def test_incremental_cap_mentions_flag_off_keeps_uncapped_edges():
 def test_incremental_reranks_associated_pairs_corpus_wide(caplog):
     """r3 mentioning alpha lowers the PMI of (r1, alpha), so (r2, beta) takes
     the one associated slot though neither r1 nor r2 is in the batch. A run
-    under another associated_top_frac rebuilds fully."""
+    under another associated_top_frac, or over a graph built under older
+    rules, rebuilds fully."""
     store = _mk_store()
     initial = [
         _chunk("da", "a.cpp", name="alpha", content="void alpha() {}"),
@@ -886,6 +916,15 @@ def test_incremental_reranks_associated_pairs_corpus_wide(caplog):
     build_refs(store, changed_ids={"r4"}, deleted_ids=set(), deleted_defs={}, associated_top_frac=0.0)
     assert _edges(store) == _full_rebuild_edges(initial + [r3, r4])
     _assert_indegree_consistent(store)
+
+    store.set_meta(repomap._REFS_PARAMS_META_KEY, "[false, 0.0]")
+    r5 = _chunk("r5", "r5.cpp", name="run5", content="void run5() { beta(); }")
+    _insert(store, [r5])
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="repomap"):
+        build_refs(store, changed_ids={"r5"}, deleted_ids=set(), deleted_defs={})
+    assert any("full rebuild" in r.message for r in caplog.records)
+    assert not any("chunk_refs incremental update:" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------

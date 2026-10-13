@@ -95,6 +95,16 @@ def test_validate_missing_kind_label():
         languages.Registry((unlabeled,))
 
 
+def test_validate_inherits_needs_class_like_chunk_types():
+    from chonks.languages.spec import Field
+    rules = {"refs_spec": {"klass": Field("base", "inherits")}, "boundary_nodes": frozenset({"klass"}),
+             "kind_labels": {"klass": "class"}, "extensions": frozenset({".kl"})}
+    with pytest.raises(ValueError, match="no class_like_chunk_types"):
+        languages.Registry((LanguageSpec(name="klasses", grammar="klasses", **rules),))
+    languages.Registry((LanguageSpec(name="klasses", grammar="klasses",
+                                     class_like_chunk_types=frozenset({"klass"}), **rules),))
+
+
 @pytest.mark.parametrize("spec", languages._discover(), ids=lambda spec: spec.name)
 def test_every_boundary_and_container_has_a_name_rule(spec):
     # Both become chunks, and a chunk is named only through a name rule.
