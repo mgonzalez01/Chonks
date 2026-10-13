@@ -7,7 +7,7 @@ from typing import NamedTuple
 from tree_sitter import Node
 
 from chonks.core.refresh import register_refresh
-from chonks.languages import table as _lang_table
+from chonks.languages import get as _lang_spec, table as _lang_table
 from chonks.languages._ast import name_call_target as _name_call_target
 from chonks.languages.spec import CallSiteSpec as _CallSiteSpec
 
@@ -21,10 +21,11 @@ _TYPE_LOOKUP_DEPTH = 4
 class CallSites:
     """Caches over one tree, keyed by node id. Holding the root keeps the
     tree alive, so no other tree can reuse its ids while this is cached."""
-    __slots__ = ("cs", "src", "root", "blocks", "scopes", "scope_owner", "classes", "evidence")
+    __slots__ = ("cs", "leaves", "src", "root", "blocks", "scopes", "scope_owner", "classes", "evidence")
 
-    def __init__(self, cs: _CallSiteSpec, src: bytes, root: Node):
+    def __init__(self, cs: _CallSiteSpec, leaves: frozenset[str], src: bytes, root: Node):
         self.cs = cs
+        self.leaves = leaves
         self.src = src
         self.root = root
         self.blocks: dict[int, list] = {}
@@ -50,7 +51,7 @@ def sites_for(node: Node, lang: str, src: bytes) -> CallSites | None:
         last = _last_sites[0]
         if last.src is src and last.cs is cs and last.root.id == root.id:
             return last
-    sites = CallSites(cs, src, root)
+    sites = CallSites(cs, _lang_spec(lang).identifier_leaf_types, src, root)
     _last_sites[:] = [sites]
     return sites
 
@@ -66,7 +67,7 @@ def _bare_name(n: Node, sites: CallSites) -> str:
 
 
 def _member_name(n: Node, sites: CallSites) -> str:
-    return _name_call_target(n, sites.src) or _text(n, sites.src)
+    return _name_call_target(n, sites.src, sites.leaves) or _text(n, sites.src)
 
 
 def _first_named(n: Node) -> "Node | None":

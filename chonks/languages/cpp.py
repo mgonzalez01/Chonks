@@ -39,7 +39,10 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
             cur = nxt
         else:
             break
-    return terminal_identifier(cur.child_by_field_name("scope"), src, CPP.identifier_leaf_types)
+    scope = cur.child_by_field_name("scope")
+    if scope is not None and scope.type == "namespace_identifier":
+        return name_text(scope, src)
+    return terminal_identifier(scope, src, CPP.identifier_leaf_types)
 
 
 _CLASS_TYPES = ("class_specifier", "struct_specifier")
@@ -258,9 +261,7 @@ CPP = LanguageSpec(
         "struct_specifier": BASES,
     },
     chain_base_fields={"field_expression": "argument"},
-    identifier_leaf_types=frozenset({
-        "identifier", "field_identifier", "type_identifier", "namespace_identifier",
-    }),
+    identifier_leaf_types=frozenset({"identifier", "field_identifier", "type_identifier"}),
     call_receiver=qualified_receiver,
     call_sites=CALL_SITES,
     variadic_arg_types=frozenset({"parameter_pack_expansion"}),

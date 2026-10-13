@@ -1,4 +1,6 @@
 import json
+import runpy
+import sys
 from pathlib import Path
 
 import pytest
@@ -281,3 +283,12 @@ def test_project_rerank_url_overrides_or_turns_off_the_top_level_one(monkeypatch
     })
     assert serve_projects._projects["own"]["reranker"].url == "http://gpu:11440/v1/rerank"
     assert serve_projects._projects["off"]["reranker"] is None
+
+
+def test_launcher_run_as_a_file_takes_chonks_dir_off_sys_path(monkeypatch):
+    launcher = Path(serve_main.__file__).parents[1] / "server.py"
+    monkeypatch.setattr(sys, "path", [str(launcher.parent), *sys.path])
+    monkeypatch.setattr(sys, "argv", [str(launcher), "--help"])
+    with pytest.raises(SystemExit):
+        runpy.run_path(str(launcher), run_name="__main__")
+    assert str(launcher.parent) not in sys.path
