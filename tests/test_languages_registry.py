@@ -43,7 +43,7 @@ _UNION_CASES = {
     ),
     "identifier_leaf_types": (
         lambda: languages.union("identifier_leaf_types"),
-        lambda: {"identifier", "field_identifier", "type_identifier", "namespace_identifier"},
+        lambda: {"identifier", "field_identifier", "type_identifier"},
     ),
     "variadic_arg_types": (
         lambda: languages.union("variadic_arg_types"),

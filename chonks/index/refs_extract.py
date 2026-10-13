@@ -12,7 +12,10 @@ from chonks.index.call_sites import (
     sites_for as _sites_for,
 )
 from chonks.languages import get_or_none as _lang_spec, table as _lang_table
-from chonks.languages._ast import terminal_identifier as _terminal_identifier
+from chonks.languages._ast import (
+    name_call_target as _name_call_target,
+    terminal_identifier as _terminal_identifier,
+)
 from chonks.languages.spec import (
     FieldChildren as _FieldChildren,
     Field as _Field,
@@ -65,6 +68,12 @@ def _receiver(call_node: Node, callee: Node, src: bytes, lang: str) -> str | Non
         if result is not _NOT_HANDLED:
             return result
     return _call_receiver(callee, src, lang)
+
+
+def _field_name(rule: "_Field", target: Node, src: bytes, lang: str) -> str | None:
+    if rule.name_fn is not None:
+        return rule.name_fn(target, src)
+    return _name_call_target(target, src, _lang_spec(lang).identifier_leaf_types)
 
 
 # A named `comment` node between arguments would otherwise inflate arity
@@ -170,13 +179,13 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
         if target is not None:
             if rule.bucket == "calls":
                 add_call(
-                    rule.name_fn(target, src),
+                    _field_name(rule, target, src, lang),
                     _receiver(n, target, src, lang),
                     _call_arity(n.child_by_field_name("arguments"), lang),
                     target,
                 )
             else:
-                add(rule.bucket, rule.name_fn(target, src))
+                add(rule.bucket, _field_name(rule, target, src, lang))
     elif isinstance(rule, _FieldChildren):
         target = n.child_by_field_name(rule.field)
         if target is not None:

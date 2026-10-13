@@ -277,7 +277,7 @@ A plugin extension already claimed by one of the indexer's admission sets — `D
 
 `chonks init` does not offer this key. Loading a plugin is a trust decision, not a first-run default; see [DEPLOY.md](DEPLOY.md).
 
-`chain_base_fields`, `identifier_leaf_types`, `variadic_arg_types`, and `keyword_arg_types` on `LanguageSpec` are validated at registry-build time but never read by the chunking or refs-extraction code, built-in language or plugin alike (the engine uses literals instead, in `chonks/index/refs_extract.py` and `chonks/index/_ast.py`); a plugin can set them without any effect.
+A plugin's call fingerprints come from its own `LanguageSpec`. `chain_base_fields` maps a member-access node to the field that holds what the member is reached through, and the receiver is that field's rightmost `identifier_leaf_types` leaf (`b` in `a.b.c()`). A `Field` rule without a `name_fn` names the call by the rightmost `identifier_leaf_types` leaf of its target. `identifier_leaf_types` defaults to `identifier`, `field_identifier` and `type_identifier`. An argument whose type is in `variadic_arg_types` or `keyword_arg_types` makes the call's arity a wildcard.
 
 #### Typed edges (calls, imports, inherits)
 

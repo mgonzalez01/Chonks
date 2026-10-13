@@ -10,7 +10,8 @@ import pytest
 import chonks.core.refresh as refresh
 import chonks.languages as languages
 from chonks.index.plugins import load_plugins
-from chonks.languages.spec import LanguageSpec
+from chonks.index.segment import segment_file
+from chonks.languages.spec import Field, LanguageSpec
 from chonks.storage.store import Store
 
 
@@ -123,6 +124,44 @@ def test_synthetic_plugin_admitted_and_chunks(monkeypatch, tmp_path):
     store.close()
     assert rows, "no chunk was produced for the plugin-language file"
     assert all(language == "acme_zig" for language, _ in rows)
+
+
+def _chain_call_plugin(name, grammar, function, call, member, **kw):
+    return LanguageSpec(
+        name=name,
+        grammar=grammar,
+        extensions=frozenset({"." + name}),
+        boundary_nodes=frozenset({function}),
+        kind_labels={function: "function"},
+        refs_spec={call: Field("function", "calls")},
+        chain_base_fields={member: "object"},
+        **kw,
+    )
+
+
+_CHAIN_CALL_PLUGINS = {
+    "spec_leaves": (
+        _chain_call_plugin("acme_script", "javascript", "function_declaration", "call_expression",
+                           "member_expression",
+                           identifier_leaf_types=frozenset({"identifier", "property_identifier"})),
+        b"function shoot() {\n  player.weapon.fire();\n  hud.flash();\n}\n",
+    ),
+    "default_leaves": (
+        _chain_call_plugin("acme_py", "python", "function_definition", "call", "attribute"),
+        b"def shoot():\n    player.weapon.fire()\n    hud.flash()\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_CHAIN_CALL_PLUGINS))
+def test_plugin_call_name_and_receiver_follow_identifier_leaf_types(monkeypatch, case):
+    spec, src = _CHAIN_CALL_PLUGINS[case]
+    _install_module(monkeypatch, "acme_chain_plugin", (spec,))
+    load_plugins(["acme_chain_plugin"])
+
+    segs = segment_file(src, spec.name, path="t")
+    calls = [(c["name"], c["receiver"]) for s in segs for c in s["refs"]["calls"]]
+    assert calls == [("fire", "weapon"), ("flash", "hud")]
 
 
 # ---------------------------------------------------------------------------

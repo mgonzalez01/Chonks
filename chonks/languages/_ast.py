@@ -10,19 +10,22 @@ if TYPE_CHECKING:
 # `f<T>(x)` in C++ and C#: the type arguments are not the called name.
 _TYPE_ARGUMENT_LISTS = frozenset({"template_argument_list", "type_argument_list"})
 
+DEFAULT_IDENTIFIER_LEAVES = frozenset({"identifier", "field_identifier", "type_identifier"})
 
-def last_identifier(node: Node, src: bytes, skip: Collection[str] = ()) -> str | None:
-    """Rightmost identifier-like leaf of a dotted/member chain (a.b.c):
+
+def last_identifier(node: Node, src: bytes, skip: Collection[str] = (),
+                    leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES) -> str | None:
+    """Rightmost `leaf_types` leaf of a dotted/member chain (a.b.c):
     the referenced name, not the receiver it's called through. Children
     whose type is in `skip` are not searched."""
     for child in reversed(node.children):
         if child.type in skip:
             continue
-        if child.type in ("identifier", "field_identifier", "type_identifier"):
+        if child.type in leaf_types:
             return src[child.start_byte:child.end_byte].decode(errors="replace")
         # recurse into nested chains (field_expression/member_access_expression/attribute)
         if child.is_named:
-            found = last_identifier(child, src, skip)
+            found = last_identifier(child, src, skip, leaf_types)
             if found:
                 return found
     return None
@@ -35,7 +38,7 @@ def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Col
         return None
     if n.type in identifier_leaf_types:
         return name_text(n, src)
-    return last_identifier(n, src)
+    return last_identifier(n, src, leaf_types=identifier_leaf_types)
 
 
 def name_text(n: Node, src: bytes) -> str:
@@ -46,13 +49,14 @@ def name_last_or_text(n: Node, src: bytes) -> str | None:
     return last_identifier(n, src) or name_text(n, src)
 
 
-def name_call_target(n: Node, src: bytes) -> str | None:
+def name_call_target(n: Node, src: bytes,
+                     leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES) -> str | None:
     # The called *name* is always the rightmost identifier-like leaf of
     # whatever expression is being invoked (bare name, member access,
     # qualified/namespaced name, ...).
-    if n.type in ("identifier", "field_identifier"):
+    if n.type in leaf_types:
         return name_text(n, src)
-    return last_identifier(n, src, _TYPE_ARGUMENT_LISTS)
+    return last_identifier(n, src, _TYPE_ARGUMENT_LISTS, leaf_types)
 
 
 def name_strip_angle_brackets(n: Node, src: bytes) -> str:

@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Mapping
 
-from ._ast import name_call_target, name_text
+from ._ast import DEFAULT_IDENTIFIER_LEAVES, name_text
 
 if TYPE_CHECKING:
     import re
@@ -35,7 +35,7 @@ class ChildSpec:
 class Field:
     field: str
     bucket: str
-    name_fn: NameFn = name_call_target
+    name_fn: NameFn | None = None  # None: the rightmost identifier_leaf_types leaf
 
 
 @dataclass(frozen=True)
@@ -201,7 +201,7 @@ class LanguageSpec:
     # tier 2: typed refs, receivers, arity
     refs_spec: Mapping[str, "NodeRule"] | None = None
     chain_base_fields: Mapping[str, str] = field(default_factory=dict)
-    identifier_leaf_types: frozenset[str] = frozenset()
+    identifier_leaf_types: frozenset[str] = DEFAULT_IDENTIFIER_LEAVES
     call_receiver: "Callable[[Node, Node, bytes], str | None | object] | None" = None
     call_sites: "CallSiteSpec | None" = None
     variadic_arg_types: frozenset[str] = frozenset()
