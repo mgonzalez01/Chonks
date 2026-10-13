@@ -84,10 +84,12 @@ def reaching_edges(store, targets: Targets, edges: list[tuple[str, str, str]],
     spelled = {cid for cid, content in store.get_contents_containing(named, member) if word.search(content)}
     mentioning = sorted({f for f, _t, et in edges if et in (MENTIONS, ASSOCIATED) and f in spelled})
 
+    # A pair holds one typed edge whatever typed facts link it, so any typed bucket can explain it.
     reading: dict[str, set[str]] = defaultdict(set)
     for f, _t, et in edges:
         if et in TYPED_EDGE_TYPES:
-            reading[et].add(f)
+            for key in TYPED_EDGE_TYPES:
+                reading[key].add(f)
     reading[CALLS].update(mentioning)
     names = sorted(set().union(*allowed.values()))
     index = shared_members_index(store)
@@ -115,7 +117,7 @@ def reaching_edges(store, targets: Targets, edges: list[tuple[str, str, str]],
     kept: list[Reached] = []
     for f, t, et in edges:
         if et in TYPED_EDGE_TYPES:
-            found = [got for ref, got, _h in refs.get((f, et), ()) if ref in allowed[t]]
+            found = [got for key in TYPED_EDGE_TYPES for ref, got, _h in refs.get((f, key), ()) if ref in allowed[t]]
             if any(got is not None and t in got for got in found):
                 kept.append(Reached(f, t, et, True if et == CALLS else None))
             elif any(got is None for got in found):
