@@ -326,7 +326,7 @@ A sqlite-vec database with int8-quantized embeddings, holding the vector index, 
 
 **Graph accessors.** `chunk_refs(from_id, to_id)` is written by `chonks.index.graph.refs.build_refs` at the end of every `index_paths()` run that indexed or pruned a file, holding the content-scan edges plus bidirectional cross-language edges between chunks defining the same name in different languages, for example a GDScript call and the C++ method it binds through `ClassDB::bind_method`; a name with more than 8 cross-language definitions (`_MAX_CROSS_LANG_OCCURRENCES`) is skipped. `store.get_all_refs()` returns every edge for the whole-index repomap, `store.get_refs_for_chunks(ids)` the edges of a chunk subset for the scoped repomap, and `store.clear_refs()` and `store.insert_refs()` are the write primitives. `chunk_neighbors(chunk_id, neighbor_id, distance)` holds the top-K semantic neighbours per chunk, K=10 by default. `folder_summaries(path, summary, summary_embedding, content_hash, generated_at)` holds one row per folder, its embedding packed as float32 through `_pack_f32` and `_unpack_f32`; `store.get_folder_embeddings(paths)` bulk-fetches a candidate set, batching the IN clause at 900 to stay under SQLite's variable limit.
 
-**Path LIKE safety.** Every `path_prefix` passes through `_escape_like()` before it reaches a SQL `LIKE`, paired with `ESCAPE '\\'`, so a prefix containing `%` or `_` cannot match unintended paths.
+**Path scope.** A `path_prefix` reaches SQL through `_scope_filter()`, as the scope path itself or the range from `scope/` up to `scope0`, `0` being the character after `/`, which the path indexes answer. `get_paths_under()` builds its string-prefix range with the same `_starts_with()`. No `LIKE` is involved, so `%` and `_` match only themselves.
 
 ---
 
@@ -510,6 +510,8 @@ Base URL: `http://localhost:11438`
 
 There is no authentication, and the server binds loopback by default; see [chonks/serve/](#chonksserve--fastapi-http-server). Every POST endpoint takes an optional `project: string` field (max 100 characters) selecting a configured project in multi-project mode, defaulting to the default project when omitted and returning 404 for an unknown name.
 
+A `path_prefix` names a directory or a file, with or without a trailing slash: `scene/` and `scene` match `scene` and everything under `scene/`, never `scene2/` or `scene.cpp`. Case counts, and `%` and `_` are ordinary characters. An absolute prefix under the project's `codebase` root is read relative to the root, and the root itself scopes to the whole index. When nothing indexed lies under the prefix, it is compared with the indexed paths again ignoring case and Unicode form; if they spell it exactly one way, that spelling is used, so `scene/main` reaches `Scene/Main/`. Otherwise the prefix stays as written and the response's `note` says that no indexed path lies under it, naming up to three indexed paths that start with it.
+
 ### GET /
 
 Requires no project. Response: `{ "name": "chonks", "version": "0.1.0", "description": "...", "endpoints": [{"method", "path", "description"}, ...], "status_url": "/status" }`. This is a static index; health and degradation state live in `/status` and in the per-response `degraded` fields.
@@ -550,7 +552,7 @@ In **multi-project mode** the response shape changes to:
 | `query` | string (max 2000 chars) | required | Search query or regex pattern |
 | `mode` | string | `"semantic"` | `"semantic"` \| `"fts"` \| `"regex"` \| `"hybrid"` |
 | `top_k` | int | 50 | Max results. Server caps at 200; values above return 422. |
-| `path_prefix` | string (max 500 chars) | null | Restrict search to this path prefix |
+| `path_prefix` | string (max 500 chars) | null | Restrict search to this directory or file |
 | `min_score` | float in [-1, 1] | null | (semantic only) Drop matches below this similarity. Applied to the blended score when `folder_blend=true`, else to chunk similarity. |
 | `folder_blend` | bool | false | (semantic only) Re-rank candidates by `α · chunk_sim + β · folder_summary_sim`. α/β taken from server config (`search.blend_alpha` / `search.blend_beta`). |
 | `chunk_kind` | string | `"any"` | `"code"` (AST-tier chunks only) \| `"docs"` (text-fallback chunks only, e.g. `.md`/`.json`) \| `"any"` (no filter). Applies to every mode. Filtering happens before `top_k` truncation, so a filtered search still returns up to `top_k` matches when they exist. 422 on any other value. |
@@ -622,7 +624,7 @@ There is no `answer` field, since the outer LLM synthesizes from the chunks. `co
 
 The same length caps as for `/search` apply to `query` and `path_prefix`. `token_budget`, 8000 by default from the `repomap.token_budget` config, applies whether or not `path_prefix` is set; see [repomap](#repomap--structural-symbol-map).
 
-Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\n..." }`. On a cutoff, `map` ends with `[truncated: showing N of M files by importance — narrow path_prefix or raise token_budget]`.
+Response: `{ "map": "src/renderer/RenderPass.cpp\n  class RenderPass  (line 10)\n...", "note": null }`, `note` as described under [HTTP API](#http-api). On a cutoff, `map` ends with `[truncated: showing N of M files by importance — narrow path_prefix or raise token_budget]`.
 
 ### POST /symbol
 
@@ -697,7 +699,7 @@ Response: `{ "symbol", "definitions": [{"path", "name", "chunk_type"}], "total_r
 
 Ranks named chunks by structural importance, in-degree first, then persisted PageRank. `path_prefix` (500 characters) scopes the hub chunks themselves, not their referrers. `edge_types`, an optional list, restricts both the in-degree count and the breakdown to those `chunk_refs` types, for example dropping `mentions` to keep generic-name noise from burying real hubs; an unknown type returns 400. `limit` (1 to 100, default 20) caps the number of hubs, and a candidate with zero incoming edges after filtering is excluded.
 
-Response: `{ "hubs": [{"path", "name", "chunk_type", "start_line", "in_degree", "pagerank", "edge_types", "by_provenance"}] }`. Each hub's `edge_types` breakdown carries a sibling `by_provenance` rollup into extracted, inferred, and paired counts. On a large corpus an unscoped query is guarded against an unbounded scan and can return 400; scoping with `path_prefix` avoids it.
+Response: `{ "hubs": [{"path", "name", "chunk_type", "start_line", "in_degree", "pagerank", "edge_types", "by_provenance"}], "note": "..." | null }`, `note` as described under [HTTP API](#http-api). Each hub's `edge_types` breakdown carries a sibling `by_provenance` rollup into extracted, inferred, and paired counts. On a large corpus an unscoped query is guarded against an unbounded scan and can return 400; scoping with `path_prefix` avoids it.
 
 ### POST /investigate
 

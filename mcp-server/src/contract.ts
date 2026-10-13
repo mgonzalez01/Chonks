@@ -52,7 +52,7 @@ export const TOOLS = [
             "where you expect to scan many candidates. Results re-enter your " +
             "context every turn, so oversized result sets compound in cost.",
         },
-        path_prefix: { type: "string", description: "Alternative to @subsystem: explicit path prefix filter." },
+        path_prefix: { type: "string", description: "Alternative to @subsystem: restrict search to this directory or file." },
         chunk_kind: {
           type: "string",
           enum: ["code", "docs", "any"],
@@ -85,7 +85,7 @@ export const TOOLS = [
       type: "object",
       properties: {
         query: { type: "string", description: "Research question or topic." },
-        path_prefix: { type: "string", description: "Optional path prefix filter." },
+        path_prefix: { type: "string", description: "Restrict research to this directory or file." },
         scope: {
           type: "string",
           enum: ["lookup", "explore"],

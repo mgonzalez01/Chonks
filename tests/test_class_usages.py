@@ -201,8 +201,8 @@ def test_find_symbol_miss_names_the_class_that_lacks_the_method(tmp_path):
 
 def test_find_symbol_scopes_a_class_method_to_path_prefix(tmp_path):
     store = _index(tmp_path, _VECTORS)
-    assert _sites(find_symbol(store, "Vector::size", path_prefix="vec")) == [("size", "vector.h", 9)]
-    assert find_symbol(store, "Vector::size", path_prefix="string")["symbols"] == []
+    assert _sites(find_symbol(store, "Vector::size", path_prefix="vector.h")) == [("size", "vector.h", 9)]
+    assert find_symbol(store, "Vector::size", path_prefix="string.h")["symbols"] == []
 
 
 def test_find_symbol_reads_bare_names_and_prefixes_from_the_symbol_index(tmp_path):
@@ -214,7 +214,7 @@ def test_find_symbol_reads_bare_names_and_prefixes_from_the_symbol_index(tmp_pat
 
 def test_symbol_and_investigate_routes_name_the_base_of_an_inherited_method(monkeypatch, tmp_path):
     store = _index(tmp_path, _SHAPES)
-    monkeypatch.setattr(serve_projects, "_projects", {serve_projects.DEFAULT_PROJECT: {"store": store}})
+    monkeypatch.setattr(serve_projects, "_projects", {serve_projects.DEFAULT_PROJECT: {"store": store, "root": None, "exclude": [], "include": []}})
     note = "Circle does not define 'fill'; it inherits Shape::fill, whose definitions these are"
     body = json.loads(serve_app.symbol(serve_models.SymbolRequest(name="Circle::fill")).body)
     assert (body["count"], body["note"]) == (1, note)

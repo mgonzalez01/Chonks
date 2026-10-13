@@ -175,7 +175,7 @@ export async function toolCodebaseMap(args: any): Promise<string> {
 
   if (hubs) {
     const res = await httpPost("/hubs", { path_prefix: pathPrefix, edge_types: edgeTypes });
-    return renderHubs(res);
+    return `${formatNotes([res.note])}${renderHubs(res)}`;
   }
 
   const res = await httpPost("/repomap", {
@@ -183,7 +183,7 @@ export async function toolCodebaseMap(args: any): Promise<string> {
     query,
     token_budget: tokenBudget,
   });
-  return res.map ?? "(empty map)";
+  return `${formatNotes([res.note])}${res.map ?? "(empty map)"}`;
 }
 
 export async function toolFindSymbol(args: any): Promise<string> {

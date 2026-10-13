@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from typing import TYPE_CHECKING
 
+from chonks.core.paths import _in_scope, _path_scope
 from chonks.core.refresh import register_refresh
 from chonks.languages import GENERIC_KIND_LABELS, merged as _lang_merged
 
@@ -52,7 +53,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
             subtree[cur] += n
             cur = id_to_parent.get(cur)
 
-    prefix = (path_prefix or "").rstrip("/") or None
+    prefix = _path_scope(path_prefix)
 
     def _depth(path: str) -> int | None:
         """Levels below the scope root, or None if `path` isn't under scope."""
@@ -62,7 +63,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
             return len(path.split("/"))
         if path == prefix:
             return 0
-        if not path.startswith(prefix + "/"):
+        if not _in_scope(path, prefix):
             return None
         rel = path[len(prefix) + 1:]
         return len(rel.split("/"))
@@ -70,7 +71,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
     candidates: list[tuple[int, str, int]] = []
     for d in dirs:
         path = d["path"]
-        if prefix is not None and not (path == prefix or path.startswith(prefix + "/")):
+        if prefix is not None and not _in_scope(path, prefix):
             continue
         depth = _depth(path)
         if depth is None or depth == 0 or depth > _DIR_OVERVIEW_MAX_DEPTH:

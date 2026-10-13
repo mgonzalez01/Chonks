@@ -448,30 +448,6 @@ def test_graph_expand_paired_evidence_uses_seed_anchor():
     assert out[0]["_evidence"] == {"origin": "paired", "anchor_id": "A", "edge_type": "paired"}
 
 
-def test_graph_expand_normalizes_path_prefix_like_search_semantic():
-    """Regression: _graph_expand used to scope expanded chunks with a raw
-    startswith(path_prefix), while Store.search_semantic (scoping the seed
-    chunks) normalizes by stripping trailing slashes before a LIKE match.
-    Both must apply the same rstrip('/\\') so expansion scope agrees with
-    seed scope, e.g. for prefix 'foo/' against a path like 'foobar.py'."""
-    from chonks.retrieval.research import _graph_expand
-
-    class _StoreWithChunks(_FakeStore):
-        def get_chunks_by_ids(self, ids):
-            return [{"id": i, "path": "foobar.py"} for i in ids]
-
-    seeds = [{"id": "A", "_score": 0.9}]
-    store = _StoreWithChunks(edges=[("A", "N", "mentions")])
-
-    out = _graph_expand(store, seeds, seeds_per_iter=20, neighbours_per_seed=5,
-                         path_prefix="foo/")
-
-    assert [c["id"] for c in out] == ["N"], (
-        "expansion scope diverged from search_semantic's normalized prefix "
-        f"match: {out}"
-    )
-
-
 def test_graph_seed_confidence_gate_filters_low_scorers(monkeypatch):
     """graph_seed_min_rel_score must drop low-scoring candidates from the
     expansion seed set only (the pool itself is untouched). Gate off (0.0)

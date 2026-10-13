@@ -8,6 +8,7 @@ from chonks.core.edges import (
     ASSOCIATED, CALLS, MENTIONS, XLANG, _COLLAPSE_RANK, _HUB_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES,
     edge_provenance,
 )
+from chonks.core.paths import _path_scope
 from chonks.core.refresh import register_refresh
 from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import union as _lang_union
@@ -409,9 +410,10 @@ def get_hubs(store, path_prefix: str | None = None, limit: int = 20,
                 f"{sorted(_HUB_EDGE_TYPES)}"
             )
 
+    scope = _path_scope(path_prefix)
     if store.has_indegree():
-        return _get_hubs_precomputed(store, path_prefix, limit, edge_types_set)
-    return _get_hubs_live(store, path_prefix, limit, edge_types_set)
+        return _get_hubs_precomputed(store, scope, limit, edge_types_set)
+    return _get_hubs_live(store, scope, limit, edge_types_set)
 
 
 def _get_hubs_precomputed(
@@ -460,16 +462,7 @@ def _get_hubs_live(
     """Live fallback for get_hubs when chunk_indegree is empty (old DB).
     edge_types_set is filtered in Python, not pushed into SQL."""
     if path_prefix:
-        # RANGE, not LIKE: chunks is wide, so an unindexed LIKE scan
-        # reads the whole corpus off disk. U+10FFFF bounds the range
-        # to exactly the lo-prefixed paths.
-        lo = path_prefix.rstrip("/\\")
-        with store._lock:
-            candidates = [dict(r) for r in store._conn.execute(
-                "SELECT id, path, name, chunk_type, start_line FROM chunks"
-                " WHERE name IS NOT NULL AND path >= ? AND path < ?",
-                (lo, lo + "\U0010FFFF"),
-            ).fetchall()]
+        candidates = store.get_named_chunks_meta(path_prefix)
         if not candidates:
             return {"hubs": []}
         ids = [c["id"] for c in candidates]

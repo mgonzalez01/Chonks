@@ -18,7 +18,7 @@ from chonks.retrieval.trace import trace_path
 from chonks.retrieval.research import deep_research
 from chonks.retrieval import graph_queries, message_match
 from chonks.retrieval.results import detect_near_dup_wall, format_results, rank_files
-from chonks.retrieval.scope_notes import config_warnings, excluded_scope_note
+from chonks.retrieval.scope_notes import config_warnings, resolve_scope
 from chonks.retrieval.source import _attach_definition_source
 from chonks.retrieval.searcher import DEFAULT_BLEND_ALPHA, DEFAULT_BLEND_BETA, DEFAULT_FILE_CAP
 from chonks.serve.models import (
@@ -54,6 +54,15 @@ logger = logging.getLogger("chonks.server")
 
 app = FastAPI(title="Chonks", lifespan=lifespan)
 
+
+def _scope(project: dict, path_prefix: str | None) -> tuple[str | None, str | None]:
+    return resolve_scope(project["store"], path_prefix, project["root"], project["exclude"], project["include"])
+
+
+def _notes(*notes: str | None) -> str | None:
+    return "\n".join(n for n in notes if n) or None
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -71,6 +80,7 @@ def search(req: SearchRequest) -> JSONResponse:
             422,
             "min_score, folder_blend, and file_cap are only valid with mode='semantic'.",
         )
+    scope, scope_note = _scope(project, req.path_prefix)
 
     # A request-level file_cap, if given, overrides the project config.
     blend: tuple[float, float] | None = None
@@ -98,7 +108,7 @@ def search(req: SearchRequest) -> JSONResponse:
             )
         try:
             chunks = searcher.semantic(
-                req.query, req.top_k, req.path_prefix,
+                req.query, req.top_k, scope,
                 min_score=req.min_score, folder_blend=blend, chunk_kind=req.chunk_kind,
                 file_cap=file_cap,
             )
@@ -110,9 +120,9 @@ def search(req: SearchRequest) -> JSONResponse:
                 "Retry with mode='fts' (keyword search needs no embedding).",
             )
     elif req.mode == "fts":
-        chunks, mode_note = searcher.fts_or_any(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
+        chunks, mode_note = searcher.fts_or_any(req.query, req.top_k, scope, chunk_kind=req.chunk_kind)
     elif req.mode == "regex":
-        chunks = searcher.regex(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
+        chunks = searcher.regex(req.query, req.top_k, scope, chunk_kind=req.chunk_kind)
     elif req.mode == "hybrid":
         query_truncated = searcher.query_truncated(req.query)
         if query_truncated:
@@ -125,11 +135,11 @@ def search(req: SearchRequest) -> JSONResponse:
         try:
             if project["reranker"] is not None:
                 chunks, rerank_note = reranked_hybrid(
-                    searcher, project["reranker"], req.query, req.top_k, req.path_prefix,
+                    searcher, project["reranker"], req.query, req.top_k, scope,
                     chunk_kind=req.chunk_kind,
                 )
             else:
-                chunks = searcher.hybrid(req.query, req.top_k, req.path_prefix, chunk_kind=req.chunk_kind)
+                chunks = searcher.hybrid(req.query, req.top_k, scope, chunk_kind=req.chunk_kind)
         except httpx.HTTPError as e:
             raise HTTPException(
                 503,
@@ -155,9 +165,7 @@ def search(req: SearchRequest) -> JSONResponse:
         "near_dup":         near_dup,
         "files":            rank_files(chunks),
         "query_truncated":  query_truncated,
-        "note":             "\n".join(n for n in (
-            excluded_scope_note(req.path_prefix, project["exclude"], project["include"]), mode_note, rerank_note)
-            if n) or None,
+        "note":             _notes(scope_note, mode_note, rerank_note),
     })
 
 
@@ -169,17 +177,18 @@ def research(req: ResearchRequest) -> JSONResponse:
     cfg = dict(project["research_cfg"] or {})
     # Top-level config key, not nested under `research`, so it must be set here explicitly.
     cfg.setdefault("edge_type_weights", project["edge_type_weights"])
+    scope, scope_note = _scope(project, req.path_prefix)
     if req.edge_type_weights is not None:
         cfg["edge_type_weights"] = req.edge_type_weights
     result = deep_research(
         req.query,
         project["searcher"],
         cfg=cfg or None,
-        path_prefix=req.path_prefix,
+        path_prefix=scope,
         compact=req.compact,
     )
     result["files"] = rank_files(result["chunks"])
-    result["note"] = excluded_scope_note(req.path_prefix, project["exclude"], project["include"])
+    result["note"] = scope_note
     return JSONResponse(result)
 
 
@@ -198,13 +207,14 @@ def repomap(req: RepomapRequest) -> JSONResponse:
     if budget is None:
         budget = project["repomap_cfg"].get("token_budget", 8000)
 
+    path_prefix, scope_note = _scope(project, req.path_prefix)
     map_text = build_repomap(
         project["store"],
-        path_prefix=req.path_prefix,
+        path_prefix=path_prefix,
         query=req.query,
         token_budget=budget,
     )
-    return JSONResponse({"map": map_text})
+    return JSONResponse({"map": map_text, "note": scope_note})
 
 
 @app.post("/symbol")
@@ -212,11 +222,12 @@ def symbol(req: SymbolRequest) -> JSONResponse:
     """Exact-name (or prefix) definition lookup; see DOCS.md for the
     field-level contract and find_symbol in chonks/retrieval/graph_queries.py."""
     project = _get_project(req.project)
-    result = graph_queries.find_symbol(project["store"], req.name, req.path_prefix, prefix=req.prefix)
+    scope, scope_note = _scope(project, req.path_prefix)
+    result = graph_queries.find_symbol(project["store"], req.name, scope, prefix=req.prefix)
     rows = result["symbols"]
     logger.info("symbol  project=%r  name=%r  prefix=%s  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, req.prefix, len(rows))
-    return JSONResponse({"symbols": rows, "count": len(rows), "note": result["note"]})
+    return JSONResponse({"symbols": rows, "count": len(rows), "note": _notes(scope_note, result["note"])})
 
 
 @app.post("/usages")
@@ -224,12 +235,13 @@ def usages(req: UsagesRequest) -> JSONResponse:
     """Who references `name`. The above-cap case returns `content_matches`
     (FTS scan hits) as a separate list, not merged into `usages`."""
     project = _get_project(req.project)
-    result = graph_queries.find_usages(project["store"], req.name, req.path_prefix, limit=req.limit)
+    scope, scope_note = _scope(project, req.path_prefix)
+    result = graph_queries.find_usages(project["store"], req.name, scope, limit=req.limit)
     rows = result["results"]
     logger.info("usages  project=%r  name=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, len(rows))
     return JSONResponse({
-        "usages": rows, "count": len(rows), "note": result["note"],
+        "usages": rows, "count": len(rows), "note": _notes(scope_note, result["note"]),
         "by_class": result["by_class"], "content_matches": result["content_matches"],
     })
 
@@ -240,13 +252,15 @@ def impact(req: ImpactRequest) -> JSONResponse:
     for the field-level contract and get_impact in chonks/retrieval/graph_queries.py
     for the ranking."""
     project = _get_project(req.project)
+    scope, scope_note = _scope(project, req.path_prefix)
     try:
         result = graph_queries.get_impact(project["store"],
-            req.name, req.path_prefix, limit=req.limit or 20,
+            req.name, scope, limit=req.limit or 20,
             rank_by=req.rank_by or "pagerank_sum",
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+    result["note"] = _notes(scope_note, result["note"])
     logger.info(
         "impact  project=%r  name=%r  total_references=%d  files=%d  files_total=%d",
         req.project or DEFAULT_PROJECT, req.name,
@@ -260,12 +274,13 @@ def outgoing(req: OutgoingRequest) -> JSONResponse:
     """Forward counterpart to /usages. Zero outgoing edges is a valid empty
     result (note: None), distinct from a symbol-not-found miss."""
     project = _get_project(req.project)
-    result = graph_queries.find_outgoing(project["store"], req.name, req.path_prefix, limit=req.limit)
+    scope, scope_note = _scope(project, req.path_prefix)
+    result = graph_queries.find_outgoing(project["store"], req.name, scope, limit=req.limit)
     rows = result["results"]
     logger.info("outgoing  project=%r  name=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.name, len(rows))
     return JSONResponse({
-        "outgoing": rows, "count": len(rows), "note": result["note"],
+        "outgoing": rows, "count": len(rows), "note": _notes(scope_note, result["note"]),
     })
 
 
@@ -296,9 +311,10 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
     if req.definition_source:
         _attach_definition_source(store, definitions, req.definition_source_max_chars)
 
-    usages_result = graph_queries.find_usages(store, req.name, req.path_prefix, limit=req.usages_limit or 30)
-    outgoing_result = graph_queries.find_outgoing(store, req.name, req.path_prefix, limit=req.outgoing_limit or 30)
-    impact_result = graph_queries.get_impact(store, req.name, req.path_prefix, limit=req.impact_limit or 10)
+    scope, scope_note = _scope(project, req.path_prefix)
+    usages_result = graph_queries.find_usages(store, req.name, scope, limit=req.usages_limit or 30)
+    outgoing_result = graph_queries.find_outgoing(store, req.name, scope, limit=req.outgoing_limit or 30)
+    impact_result = graph_queries.get_impact(store, req.name, scope, limit=req.impact_limit or 10)
 
     logger.info(
         "investigate  project=%r  name=%r  definitions=%d  usages=%d  outgoing=%d  impact_files=%d",
@@ -319,9 +335,9 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
         "impact": impact_result,
         "notes": {
             "definitions": found["note"],
-            "usages": usages_result["note"],
-            "outgoing": outgoing_result["note"],
-            "impact": impact_result["note"],
+            "usages": _notes(scope_note, usages_result["note"]),
+            "outgoing": _notes(scope_note, outgoing_result["note"]),
+            "impact": _notes(scope_note, impact_result["note"]),
         },
     })
 
@@ -330,16 +346,17 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
 def hubs(req: HubsRequest) -> JSONResponse:
     """path_prefix scopes the hub chunks themselves, not their referrers."""
     project = _get_project(req.project)
+    scope, scope_note = _scope(project, req.path_prefix)
     try:
         result = graph_queries.get_hubs(project["store"],
-            req.path_prefix, limit=req.limit or 20, edge_types=req.edge_types,
+            scope, limit=req.limit or 20, edge_types=req.edge_types,
         )
     except ValueError as e:
         # 400 covers both the global-scope guard and an invalid edge_types value.
         raise HTTPException(400, str(e))
     logger.info("hubs  project=%r  path_prefix=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.path_prefix, len(result["hubs"]))
-    return JSONResponse(result)
+    return JSONResponse({**result, "note": scope_note})
 
 
 @app.post("/trace")
