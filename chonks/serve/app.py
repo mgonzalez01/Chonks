@@ -8,6 +8,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
+from chonks.core.paths import _is_under
 from chonks.core.refresh import register_refresh
 from chonks.index.pipeline import index_paths
 from chonks.index.segment import CODE_LANGUAGES
@@ -391,9 +392,7 @@ def index(req: IndexRequest) -> JSONResponse:
         # Blocks re-indexing arbitrary filesystem locations via HTTP.
         if root is not None:
             for p in req.paths:
-                try:
-                    Path(p).resolve().relative_to(root)
-                except ValueError:
+                if not _is_under(Path(p).resolve(), root):
                     raise HTTPException(
                         400,
                         f"Path {p!r} is outside the configured codebase root "
