@@ -31,14 +31,15 @@ def last_identifier(node: Node, src: bytes, skip: Collection[str] = (),
     return None
 
 
-def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Collection[str]) -> str | None:
+def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Collection[str],
+                        skip: Collection[str] = ()) -> str | None:
     """`n`'s own text if it's one of the caller's language's identifier-leaf
-    types, else the rightmost such leaf in its subtree."""
+    types, else the rightmost such leaf in its subtree outside `skip` nodes."""
     if n is None:
         return None
     if n.type in identifier_leaf_types:
         return name_text(n, src)
-    return last_identifier(n, src, leaf_types=identifier_leaf_types)
+    return last_identifier(n, src, skip, identifier_leaf_types)
 
 
 def name_text(n: Node, src: bytes) -> str:

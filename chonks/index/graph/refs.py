@@ -55,7 +55,8 @@ def _typed_refs(
 ) -> tuple[dict[str, str], set[str]]:
     """The chunk's typed edges as {to_id: edge_type}, and the names every call
     of which the class model settles. A base links only the chunks
-    `class_holders` keeps."""
+    `class_holders` keeps. A target reached under several types keeps the
+    first in TYPED_EDGE_TYPES, so a call into a base's chunk stays a call."""
     cid = c["id"]
     md = c.get("metadata") or {}
     lang = c.get("language") or ""
@@ -85,7 +86,7 @@ def _typed_refs(
                            if edge_type == CALLS else ids)
             for target_id in targets:
                 if target_id != cid:
-                    out[target_id] = edge_type
+                    out.setdefault(target_id, edge_type)
     return out, settled - unsettled
 
 
@@ -109,7 +110,7 @@ _REFS_PARAMS_META_KEY = "refs_params"
 
 # Bumped when a full rebuild writes different edges for the same chunks, so a
 # graph built under older rules is rebuilt rather than patched.
-_REFS_RULES = 2
+_REFS_RULES = 3
 
 
 # ---------------------------------------------------------------------------

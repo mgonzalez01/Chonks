@@ -87,10 +87,19 @@ def test_a_method_a_base_defines_answers_through_the_derived_class(tmp_path):
         "label.cpp": '#include "shapes.h"\n\nvoid Label::fill() {}\n',
         "paint.cpp": '#include "shapes.h"\nvoid paint(Circle &c) { c.fill(); }\n',
         "print.cpp": '#include "shapes.h"\nvoid print(Label &l) { l.fill(); }\n',
+        "ref_counted.h": "class RefCounted {\npublic:\n    struct Count { Count(int) {} };\n"
+                         "    void retain_object() {}\n};\n",
+        "node.h": '#include "ref_counted.h"\nclass Node : public RefCounted {\n'
+                  "    void grab() { retain_object(); }\n};\n",
+        "timer.h": '#include "ref_counted.h"\nclass Timer : public RefCounted {\n    void reset() { Count(0); }\n};\n',
+        "other.cpp": '#include "ref_counted.h"\nvoid other(RefCounted &r) { r.retain_object(); }\n',
     })
     result = find_usages(store, "Circle::fill")
     assert _names(result) == {"paint"}
     assert "Shape::fill" in result["note"]
+    assert _names(find_usages(store, "retain_object")) == {"Node", "other"}
+    assert _names(find_usages(store, "RefCounted::retain_object")) == {"Node", "other"}
+    assert {"Node", "Timer"} <= _names(find_usages(store, "RefCounted"))
 
 
 def test_a_namespace_function_keeps_its_qualified_callers(tmp_path):

@@ -1390,7 +1390,7 @@ def test_extract_refs_cpp():
 #include <foo.h>
 #include "bar.h"
 
-class Foo : public Base, protected IOther {
+class Foo : public Base, protected IOther, public ns::Vector<Node>, Ref<Resource> {
 public:
     void run() { helper(); this->other->call(x); Bar::Static(); }
 };
@@ -1399,7 +1399,7 @@ public:
     refs = _refs(segs, "Foo")
     assert _call_names(refs) == {"helper", "call", "Static"}
     assert set(refs["imports"]) == {"foo.h", "bar.h"}
-    assert set(refs["inherits"]) == {"Base", "IOther"}
+    assert set(refs["inherits"]) == {"Base", "IOther", "Vector", "Ref"}
     assert _call_entry(refs, "helper") == {"name": "helper", "receiver": None, "arity": 0, "cls": "Foo"}
     assert _call_entry(refs, "call") == {
         "name": "call", "receiver": "other", "arity": 1, "racc": "->",
@@ -1557,6 +1557,7 @@ def test_call_receiver_cpp_scoped_qualified_chain():
     src = b'''
 void driver() {
     A::B::C::method(1, 2);
+    Vector<Node>::make();
 }
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
@@ -1565,6 +1566,7 @@ void driver() {
         "name": "method", "receiver": "C", "arity": 2, "racc": "::",
         "rhead": {"name": "A::B::C", "via": "type", "type": "A::B::C"},
     }
+    assert _call_entry(refs, "make")["receiver"] == "Vector"
 
 
 def test_templated_call_names_the_function_not_its_type_argument():

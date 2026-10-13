@@ -5,8 +5,8 @@ import re
 from typing import TYPE_CHECKING
 
 from ._ast import (
-    has_body, is_forward_declaration, is_opaque_typedef, name_last_or_text,
-    name_strip_angle_brackets, name_text, terminal_identifier,
+    has_body, is_forward_declaration, is_opaque_typedef, name_strip_angle_brackets, name_text,
+    terminal_identifier,
 )
 from ._braces import outside_bodies
 from ._naming import (
@@ -27,10 +27,13 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
+_TEMPLATE_ARGUMENTS = ("template_argument_list",)
+
+
 def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None | object":
-    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls'. Right-recursive
-    grammar: follow 'name' down to the deepest qualified_identifier, then
-    read its 'scope'."""
+    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls', of 'Vector<Node>::make'
+    -> 'Vector'. Right-recursive grammar: follow 'name' down to the deepest
+    qualified_identifier, then read its 'scope'."""
     if callee.type != "qualified_identifier":
         return NOT_HANDLED
     cur = callee
@@ -43,7 +46,12 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
     scope = cur.child_by_field_name("scope")
     if scope is not None and scope.type == "namespace_identifier":
         return name_text(scope, src)
-    return terminal_identifier(scope, src, CPP.identifier_leaf_types)
+    return terminal_identifier(scope, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
+
+
+def base_name(node: Node, src: bytes) -> str | None:
+    """`public ns::Vector<Node>` -> 'Vector'."""
+    return terminal_identifier(node, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
 
 
 _CLASS_TYPES = ("class_specifier", "struct_specifier")
@@ -188,7 +196,7 @@ INCLUDE = Children((
 ))
 BASES = Children((
     ChildSpec(("base_class_clause",), "inherits",
-              nested=NestedSpec(("type_identifier", "qualified_identifier"), name_last_or_text)),
+              nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"), base_name)),
 ))
 
 CLASS_MODEL = ClassModelSpec(
