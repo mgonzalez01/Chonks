@@ -784,7 +784,7 @@ It is registered with `claude mcp add` and exposes nine tools. Registration, bac
 
 The tools are narrow wrappers over the HTTP API with their own clamps, for example `top_k` capped at 100 against the API's 200, and they fold the request shaping, such as subsystem prefixes and the mapping of `scope` to `edge_type_weights`, behind the tool name.
 
-**Multi-project caveat.** The MCP tools address only the default project: they expose no `project` argument and do not surface multi-project status, although the HTTP API supports multiple projects. When several are configured, all MCP queries hit the default one, and `curl` against the HTTP API is the way to reach another.
+**Multi-project caveat.** The MCP tools address only the default project: they expose no `project` argument, and `codebase_status` reports the default project and names the others, although the HTTP API supports multiple projects. When several are configured, all MCP queries hit the default one, and `curl` against the HTTP API is the way to reach another.
 
 | Tool | Endpoint | Tables read |
 |---|---|---|

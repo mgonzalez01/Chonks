@@ -1,7 +1,7 @@
 // The nine MCP tool implementations.
 
 import { RESEARCH_TIMEOUT_MS } from "./config.js";
-import { httpPost, httpGet } from "./client.js";
+import { DEFAULT_PROJECT, defaultProjectStatus, httpPost, httpGet } from "./client.js";
 import {
   type Chunk,
   formatChunks,
@@ -432,11 +432,14 @@ export async function toolTracePath(args: any): Promise<string> {
 export async function toolCodebaseStatus(): Promise<string> {
   const scopes = [...new Set(Object.values(SUBSYSTEMS).flat())];
   const query = scopes.map((s) => `scope=${encodeURIComponent(s)}`).join("&");
-  const s = await httpGet(query ? `/status?${query}` : "/status");
+  const raw = await httpGet(query ? `/status?${query}` : "/status");
+  const s = defaultProjectStatus(raw);
   const warnings: string[] = s?.warnings ?? [];
   const warningLines = warnings.length ? ["  warnings:", ...warnings.map((w) => `    ${w}`)] : [];
+  const others = Object.keys(raw?.projects ?? {}).filter((name) => name !== DEFAULT_PROJECT);
+  const otherLines = others.length ? [`  other projects: ${others.join(", ")}`] : [];
   if (!s?.ready) {
-    return ["Backend reports: not ready.", ...warningLines].join("\n");
+    return ["Backend reports: not ready.", ...otherLines, ...warningLines].join("\n");
   }
   const files = s.files ?? "?";
   const chunks = s.chunks ?? "?";
@@ -450,6 +453,7 @@ export async function toolCodebaseStatus(): Promise<string> {
     `  db size:       ${sizeMb}`,
     `  embedding dim: ${dim}`,
     `  indexed root:  ${root}`,
+    ...otherLines,
     ...warningLines,
   ].join("\n");
 }

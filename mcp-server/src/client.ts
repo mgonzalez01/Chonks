@@ -42,6 +42,13 @@ export async function httpGet(path: string, timeoutMs = 10_000): Promise<any> {
   }
 }
 
+export const DEFAULT_PROJECT = "default";
+
+/** /status is flat with one project and {"projects": {name: status}} with several; the tools reach the default. */
+export function defaultProjectStatus(s: any): any {
+  return s?.projects ? s.projects[DEFAULT_PROJECT] : s;
+}
+
 // ---------------------------------------------------------------------------
 // Staleness header
 // ---------------------------------------------------------------------------
@@ -68,7 +75,7 @@ async function getStalenessHeader(): Promise<string | null> {
   }
   let text: string | null = null;
   try {
-    const s = await httpGet("/status", 5_000);
+    const s = defaultProjectStatus(await httpGet("/status", 5_000));
     if (s?.ready && typeof s.chunks === "number") {
       const chunks = s.chunks.toLocaleString("en-US");
       let age = "unknown age";
