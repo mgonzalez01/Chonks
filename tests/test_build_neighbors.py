@@ -182,10 +182,11 @@ def test_incremental_mixed_add_delete_matches_full_rebuild():
     _run_incremental_case(n_initial=300, n_add=20, n_delete=20, k=6, seed=3)
 
 
-def test_incremental_modify_matches_full_rebuild():
+def test_incremental_modify_matches_full_rebuild(monkeypatch):
     """A 'modify' is delete-then-insert of the same logical file: same shape
     of mutation as add+delete but exercised as the paired operation chonks/index/pipeline.py
-    actually performs on a changed file."""
+    actually performs on a changed file. The bail budget counts only displaced rows."""
+    import chonks.index.graph.knn as repomap
     rng = np.random.default_rng(4)
     n = 250
     dim = 8
@@ -195,6 +196,7 @@ def test_incremental_modify_matches_full_rebuild():
     store = Store(tempfile.mktemp(suffix=".db"))
     _seed_chunks(store, ids, vecs, offset=0)
     build_neighbors(store, k=5)
+    before = _all_edges(store)
 
     modify_idx = sorted(rng.choice(n, size=12, replace=False))
     keep_mask = np.array([i not in set(modify_idx) for i in range(n)])
@@ -206,11 +208,23 @@ def test_incremental_modify_matches_full_rebuild():
     new_vecs = _rand_unit_vecs(rng, len(modify_idx), dim)
     _seed_chunks(store, new_ids, new_vecs, offset=10_000)
     changed_ids = set(new_ids)
-
-    build_neighbors(store, k=5, changed_ids=changed_ids, deleted_ids=deleted_ids)
-    got = _all_edges(store)
     want = _build_mutated_reference(ids, vecs, keep_mask, new_ids, new_vecs, k=5)
-    _assert_graphs_equal(got, want)
+
+    def neighbors(edges, cid):
+        return {b for a, b in edges if a == cid}
+
+    damaged = {a for a, b in before if b in deleted_ids}
+    displaced = [
+        c for c in ids
+        if c not in deleted_ids and c not in damaged and neighbors(before, c) != neighbors(want, c)
+    ]
+    assert damaged and displaced
+    monkeypatch.setattr(repomap, "_NEIGHBOR_INCREMENTAL_BAIL_MIN_ROWS", len(displaced))
+    all_ids, blob, emb_dim = store.get_all_int8_embeddings()
+    assert repomap._build_neighbors_incremental(
+        store, all_ids, blob, emb_dim, 5, changed_ids, deleted_ids, max_fraction=0.0,
+    ) is not None
+    _assert_graphs_equal(_all_edges(store), want)
 
 
 def test_incremental_k_close_to_n_edge_case():

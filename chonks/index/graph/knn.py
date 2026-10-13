@@ -651,14 +651,15 @@ def _build_neighbors_incremental(
         store.insert_neighbors(own_topk)
         inserted += len(own_topk)
 
-        # Threshold per column is -inf for changed/damaged ids (handled
-        # elsewhere), else the current worst neighbour's tie-break key: using
-        # its id, not just distance, so an exact-tie candidate can still displace it.
+        # Threshold per column is +inf for changed/damaged ids, whose rows are
+        # recomputed in full, else the current worst neighbour's tie-break key:
+        # using its id, not just distance, so an exact-tie candidate can still displace it.
         worst = store.get_neighbor_worst_distances()
         excluded = changed_ids | damaged_ids
         thresholds = np.full(n, -np.inf, dtype=np.float64)
         for j, cid in enumerate(ids):
             if cid in excluded:
+                thresholds[j] = np.inf
                 continue
             w = worst.get(cid)
             if not w:
