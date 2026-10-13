@@ -145,7 +145,7 @@ Writes `config.json` for a new install, from `uv run chonks init` or `make init`
 
 In: a source tree. Out: rows in `chunks`, `symbols`, `members`, `class_bases`, `using_namespaces`, and `chunk_literals`, plus the derived graphs. Chunks follow AST boundaries, that is, functions, classes, and structs. Three concurrent stages, a scan producer, a parser thread, and an embedder thread, are joined by bounded queues (`parse_q` at 64, `embed_q` at 2000).
 
-**Scan.** The producer walks the tree, applies the exclude and include prefixes, hashes each file inline, and pushes it to `parse_q` when the hash changed. It runs the orphan prune itself after the walk, since pruning needs the complete `scanned_stored` set, and commits its pre-deletes and prunes once at the end. The progress bar starts as an indeterminate `Scanning N file` counter and switches to `Parsed n/M` when the scan finishes.
+**Scan.** The producer walks the tree, applies the exclude and include prefixes, hashes each file inline, and pushes it to `parse_q` when the hash changed. It runs the orphan prune itself after the walk, since pruning needs the complete `scanned_stored` set, and commits its pre-deletes and prunes once at the end. The prune covers only the paths the run names. A file indexed from outside the root is stored under its absolute path; a run on the root keeps it while it is on disk and prunes it once it is gone. A run on the root also prunes absolute paths under the root, left by a run without one. The progress bar starts as an indeterminate `Scanning N file` counter and switches to `Parsed n/M` when the scan finishes.
 
 **Chunking algorithm:**
 1. Parse the file into a tree-sitter AST, with the macro self-heal loop for C, C++ and HLSL.

@@ -567,6 +567,22 @@ def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: l
                         yield fpath, stored
 
 
+def _root_scope_covers(stored: str, root: Path) -> bool:
+    """Whether a run on the root prunes `stored` when its walk misses it. A file
+    indexed from outside the root is stored absolute and kept unless it is gone
+    from disk; an absolute path under the root is left from a run without one."""
+    p = Path(stored)
+    if not p.is_absolute() or p.is_relative_to(root):
+        return True
+    try:
+        p.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return True
+    except OSError:
+        return False
+    return False
+
+
 def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str],
                       includes: list[str], data_limit: int) -> DefinitionTable:
     """The definition table over every C, C++ and HLSL file the index holds. Files
@@ -610,7 +626,8 @@ def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str
     for stored, (key, rec_json) in cached.items():
         if stored in seen:
             continue
-        if stored in scope_files or any(stored.startswith(d) for d in scope_dirs):
+        if stored in scope_files or any(stored.startswith(d) if d else _root_scope_covers(stored, root)
+                                        for d in scope_dirs):
             gone.append(stored)
             continue
         if key.startswith(f"{SCAN_VERSION}:"):
@@ -820,7 +837,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
             # "pruning steadily" from "frozen".
             if resolved.is_dir():
                 for db_path in store.get_paths_under(prefix + "/" if prefix else ""):
-                    if db_path not in scanned_stored:
+                    if db_path not in scanned_stored and (prefix or _root_scope_covers(db_path, root)):
                         removed_defs = store.get_definitions([db_path])
                         removed_ids = store.delete_file(db_path)
                         with lock:
