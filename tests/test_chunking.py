@@ -1558,6 +1558,8 @@ def test_call_receiver_cpp_scoped_qualified_chain():
 void driver() {
     A::B::C::method(1, 2);
     Vector<Node>::make();
+    ::free_function();
+    ::Foo().run();
 }
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
@@ -1567,6 +1569,11 @@ void driver() {
         "rhead": {"name": "A::B::C", "via": "type", "type": "A::B::C"},
     }
     assert _call_entry(refs, "make")["receiver"] == "Vector"
+    assert _call_entry(refs, "free_function") == {
+        "name": "free_function", "receiver": None, "arity": 0, "racc": "::",
+        "rhead": {"name": "", "via": "type", "type": ""},
+    }
+    assert _call_entry(refs, "run")["rhead"] == {"name": "Foo()", "via": "unknown", "type": None}
 
 
 def test_type_arguments_name_no_call_and_no_receiver_outside_call_results():
@@ -1599,6 +1606,35 @@ void driver(Node *p) {
     refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
     assert [_call_entry(refs, n)["receiver"] for n in ("Make", "Build", "Create", "Clear", "Hide", "Run")] == [
         "Array", "Array", "Inner", "IList", "Player", "Foo"]
+
+
+def test_explicit_operator_call_is_named_like_the_operator_member():
+    cpp = b'''
+void Variant::driver(Variant &v, Variant *p) {
+    Base<T>::operator=(v);
+    A::operator()(1);
+    this->operator[](2);
+    v.operator == (v);
+    p->operator String();
+    v.operator Vector< float >();
+    p->operator int *();
+    ::operator new(4);
+    ::operator delete(p);
+    x = operator int64_t() + 1;
+    y = operator()(1, 2);
+    z = operator Array().size();
+    return operator Object *();
+}
+'''
+    refs = _refs(segment_file(cpp, "cpp", path="t.cpp"), "Variant::driver")
+    assert _call_names(refs) == {
+        "operator=", "operator()", "operator[]", "operator==", "operator String",
+        "operator Vector<float>", "operator int*", "operator new", "operator delete", "operator int64_t",
+        "operator Array", "size",
+    }
+    assert _call_entry(refs, "operator=")["receiver"] == "Base"
+    assert _call_entry(refs, "operator String")["receiver"] == "p"
+    assert {(e["receiver"], e["arity"]) for e in refs["calls"] if e["name"] == "operator()"} == {("A", 1), (None, 2)}
 
 
 def test_call_arity_varargs_and_defaults_wildcard_python():

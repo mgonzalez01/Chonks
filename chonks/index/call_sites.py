@@ -275,7 +275,7 @@ def _value_type(v: "Node | None", sites: CallSites, depth: int, inferred: bool) 
 
 
 def _scope_text(n: Node, sites: CallSites) -> str | None:
-    """`ns::X` for `ns::X::f`: the qualifier as written, or None."""
+    """`ns::X` for `ns::X::f`, '' for the global `::f`: the qualifier as written, or None."""
     cs = sites.cs
     if n.type not in cs.scope_access:
         return None
@@ -288,8 +288,7 @@ def _scope_text(n: Node, sites: CallSites) -> str | None:
     if name is None:
         return None
     scope = " ".join(sites.src[n.start_byte:name.start_byte].decode(errors="replace").split())
-    scope = scope.removesuffix(cs.scope_operator).strip().removeprefix(cs.scope_operator).strip()
-    return scope or None
+    return scope.removesuffix(cs.scope_operator).strip().removeprefix(cs.scope_operator).strip()
 
 
 def _head(name: str, via: str, typ: str | None) -> dict:
@@ -340,7 +339,7 @@ def _receiver_chain(obj: "Node | None", sites: CallSites) -> tuple[dict, list[st
                 continue
             scope = _scope_text(callee, sites)
             called = _member_name(callee, sites) + "()"
-            if scope is not None:
+            if scope:
                 steps.append(called)
                 head = _head(scope, "type", scope)
             else:
@@ -348,7 +347,7 @@ def _receiver_chain(obj: "Node | None", sites: CallSites) -> tuple[dict, list[st
             break
         if t in cs.scope_access:
             scope = _scope_text(n, sites)
-            if scope is not None:
+            if scope:
                 steps.append(_member_name(n, sites))
                 head = _head(scope, "type", scope)
                 break

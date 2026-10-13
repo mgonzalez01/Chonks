@@ -12,6 +12,7 @@ from chonks.core.paths import _path_scope
 from chonks.core.refresh import register_refresh
 from chonks.core.symbols import FORWARD_DECLARATION
 from chonks.languages import union as _lang_union
+from chonks.resolve.members import spelled
 from chonks.retrieval.callers import (
     Reached, Targets, last_component, owners_by_chunk, reaching_edges, resolve_targets, whole_word,
 )
@@ -138,7 +139,7 @@ def _method_rows(store, targets: Targets, path_prefix: str | None) -> list[dict[
     """Symbol rows of a method on its defining chunks, without the rows of a
     class named like it (a constructor's class, and a template around that class)."""
     rows = [r for r in store.get_symbols_by_chunk_ids(targets.chunk_ids, path_prefix)
-            if r["name"] == targets.name or last_component(r["name"]) == targets.member]
+            if r["name"] == targets.name or last_component(spelled(r["name"])) == targets.member]
     classes = [r for r in rows if r["kind"] in _CLASS_LIKE_KINDS]
     return [r for r in rows if not any(
         c["path"] == r["path"] and c["name"] == r["name"] and r["start_line"] <= c["start_line"]

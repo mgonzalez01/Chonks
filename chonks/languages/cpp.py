@@ -5,8 +5,8 @@ import re
 from typing import TYPE_CHECKING
 
 from ._ast import (
-    has_body, is_forward_declaration, is_opaque_typedef, name_strip_angle_brackets, name_text,
-    terminal_identifier,
+    has_body, is_forward_declaration, is_opaque_typedef, name_call_target, name_strip_angle_brackets,
+    name_text, terminal_identifier,
 )
 from ._braces import outside_bodies
 from ._naming import (
@@ -14,8 +14,8 @@ from ._naming import (
     template_inner_name, typedef_name,
 )
 from ._members import (
-    class_name, name_without_template_args, read_definition, read_member, type_ref,
-    using_namespace_name,
+    class_name, member_name, name_without_template_args, operator_spelling, read_definition, read_member,
+    type_ref, using_namespace_name,
 )
 from .spec import (
     CallSiteSpec, ChildSpec, Children, ClassModelSpec, Field, LanguageSpec, LiteralSpec, NameRule,
@@ -47,6 +47,77 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
     if scope is not None and scope.type == "namespace_identifier":
         return name_text(scope, src)
     return terminal_identifier(scope, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
+
+
+def _conversion_name(start: Node, end: Node, src: bytes) -> str:
+    return operator_spelling(src[start.start_byte:end.end_byte].decode(errors="replace"))
+
+
+# Callees that can be the type of a conversion `operator T()`; a call chained off one is not.
+_TYPE_NAMES = frozenset({
+    "identifier", "type_identifier", "primitive_type", "qualified_identifier", "template_function",
+})
+
+
+def _is_keyword(n: Node | None, src: bytes) -> bool:
+    return n is not None and name_text(n, src) == "operator"
+
+
+def _keyword_before(n: Node, src: bytes) -> Node | None:
+    """An ERROR holding only `operator` just before `n`: inside a member, `operator String()`
+    parses as one, then the call `String()`."""
+    while n.prev_sibling is None and n.parent is not None:
+        n = n.parent
+    prev = n.prev_sibling
+    return prev if prev is not None and prev.type == "ERROR" and _is_keyword(prev, src) else None
+
+
+def call_name(callee: Node, src: bytes) -> str | None:
+    """The called name, an operator's spelled as its definition is named:
+    `Base<T>::operator=` -> 'operator=', `v.operator String` -> 'operator String'."""
+    keyword = _keyword_before(callee, src) if callee.type in _TYPE_NAMES else None
+    if keyword is not None:
+        return _conversion_name(keyword, callee, src)
+    if callee.type == "call_expression":
+        # Inside a member, `operator()(x)` parses as a call of the call `operator()`.
+        inner, args = callee.child_by_field_name("function"), callee.child_by_field_name("arguments")
+        if _is_keyword(inner, src) and args is not None and not args.named_children:
+            return "operator()"
+    if _is_keyword(callee, src):
+        return None
+    n: Node | None = callee
+    while n is not None:
+        if n.type == "field_expression":
+            field = n.child_by_field_name("field")
+            keyword = field.prev_sibling if field is not None else None
+            # `v.operator String()` parses as an ERROR holding `operator`, then the type as the field.
+            if keyword is not None and keyword.type == "ERROR" and _is_keyword(keyword, src):
+                return _conversion_name(keyword, field, src)
+            n = field
+        elif n.type == "qualified_identifier":
+            # Inside a member, `operator ::AABB()` parses as `AABB` in a namespace `operator`.
+            if _is_keyword(n.child_by_field_name("scope"), src):
+                return _conversion_name(n, n, src)
+            n = n.child_by_field_name("name")
+        elif n.type == "dependent_name":
+            n = n.named_children[0] if n.named_children else None
+        elif n.type in ("template_method", "template_function"):
+            name = n.child_by_field_name("name")
+            # Inside a member, `operator Vector<int>()` parses as a template `operator`.
+            if _is_keyword(name, src):
+                return _conversion_name(n, n, src)
+            n = name
+        elif n.type == "subscript_expression":
+            # Inside a member, `operator[](i)` parses as `operator` subscripted with nothing.
+            obj, index = n.child_by_field_name("argument"), n.child_by_field_name("indices")
+            if _is_keyword(obj, src) and index is not None and not index.named_children:
+                return "operator[]"
+            break
+        else:
+            break
+    if n is not None and n.type == "operator_name":
+        return member_name(n, src)
+    return name_call_target(callee, src, CPP.identifier_leaf_types)
 
 
 def base_name(node: Node, src: bytes) -> str | None:
@@ -217,6 +288,8 @@ CLASS_MODEL = ClassModelSpec(
     type_ref=type_ref,
     pointer_access="->",
     operator_members={"->": "operator->", "[]": "operator[]", "*": "operator*"},
+    model_only_calls=re.compile(r"operator\b"),
+    member_spelling=operator_spelling,
 )
 
 CPP = LanguageSpec(
@@ -269,7 +342,7 @@ CPP = LanguageSpec(
     c_macro_self_heal=True,
     refs_spec={
         "preproc_include": INCLUDE,
-        "call_expression": Field("function", "calls"),
+        "call_expression": Field("function", "calls", name_fn=call_name),
         "class_specifier": BASES,
         "struct_specifier": BASES,
     },

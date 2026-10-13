@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from chonks.core.edges import ASSOCIATED, CALLS, MENTIONS, TYPED_EDGE_TYPES, XLANG
-from chonks.resolve.members import OUTSIDE_CLASSES, Lookup, settled_targets, shared_members_index
+from chonks.resolve.members import OUTSIDE_CLASSES, Lookup, settled_targets, shared_members_index, spelled
 
 _QUALIFIER = re.compile(r"::|\.")
 
@@ -44,14 +44,16 @@ def resolve_targets(store, name: str) -> Targets:
     """The chunks defining `name`. A qualified method name goes through the class
     model, as the graph build resolves calls, plus any symbol spelled that way;
     any other name through the symbol index, a bare one with its qualified
-    definitions (`Array::size` for `size`)."""
+    definitions (`Array::size` for `size`). The class model and callers' references
+    read the member's own spelling (`operator&=` for `operator &=`)."""
     index = shared_members_index(store)
-    found = index.lookup(name) if index is not None else None
+    member_name = spelled(name)
+    found = index.lookup(member_name) if index is not None else None
     if found is not None and found.targets:
         ids = list(dict.fromkeys([*found.targets, *store.resolve_symbol_chunk_ids(name)]))
     else:
         ids = store.resolve_symbol_chunk_ids(name, with_qualified=True)
-    return Targets(name, last_component(name), ids, found)
+    return Targets(name, last_component(member_name), ids, found)
 
 
 def owners_by_chunk(store, chunk_ids: list[str], member: str) -> dict[str, list[str]]:

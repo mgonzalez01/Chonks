@@ -140,6 +140,35 @@ public:
     assert _files(store, "width") == {"texture.cpp"}
 
 
+def test_an_explicit_operator_call_links_the_operator_of_its_class(tmp_path):
+    ops = "operator String() const;\n    bool operator==(const {0} &p_other) const;\n" \
+          "    bool operator()(int p_x) const;\n    int operator[](int p_idx) const;\n"
+    defs = "{0}::operator String() const {{ return String(); }}\n" \
+           "bool {0}::operator==(const {0} &p_other) const {{ return true; }}\n" \
+           "bool {0}::operator()(int p_x) const {{ return false; }}\n" \
+           "int {0}::operator[](int p_idx) const {{ return 0; }}\n"
+    store = _index(tmp_path, {
+        "variant.h": "template <class T>\nclass Base {\npublic:\n    Base &operator=(const Base &p_other);\n};\n"
+                     "class Variant {\npublic:\n    " + ops.format("Variant") + "    int first() const;\n};\n"
+                     "class Color {\npublic:\n    " + ops.format("Color") + "};\n"
+                     "template <class T>\nclass Typed : public Base<T> {\npublic:\n"
+                     "    void assign(const Typed &p_other);\n};\n",
+        "base.cpp": '#include "variant.h"\ntemplate <class T>\n'
+                    "Base<T> &Base<T>::operator=(const Base &p_other) { return *this; }\n",
+        "variant.cpp": '#include "variant.h"\n' + defs.format("Variant"),
+        "color.cpp": '#include "variant.h"\n' + defs.format("Color"),
+        "use.cpp": '#include "variant.h"\nbool use(const Variant &v, const Variant *p) {\n'
+                   "    v.operator String();\n    return p->operator==(v);\n}\n",
+        "first.cpp": '#include "variant.h"\n'
+                     "int Variant::first() const { return this->operator[](0) + Variant::operator()(1); }\n",
+        "assign.cpp": '#include "variant.h"\ntemplate <class T>\n'
+                      "void Typed<T>::assign(const Typed &p_other) { Base<T>::operator=(p_other); }\n",
+    })
+    assert _files(store, "use") == {"variant.cpp"}
+    assert _files(store, "Variant::first") == {"variant.cpp"}
+    assert _files(store, "Typed<T>::assign") == {"base.cpp"}
+
+
 def test_a_static_call_reaches_members_defined_under_a_using_directive(tmp_path):
     store = _index(tmp_path, {
         "server.h": """namespace ns {
@@ -179,6 +208,21 @@ public:
         "control.cpp": '#include "node.h"\nvoid Control::update() {}\n',
     })
     assert _files(store, "Node::queue_redraw") == {"node.cpp"}
+
+
+def test_a_global_call_links_only_free_functions(tmp_path):
+    store = _index(tmp_path, {
+        "file.h": "class File {\npublic:\n    void flush();\n    void close();\n    void sync();\n};\n"
+                  "class Pipe {\npublic:\n    void flush();\n    void close();\n};\n"
+                  "class Buffer {\npublic:\n    Buffer(int p_size);\n};\n",
+        "file_flush.cpp": '#include "file.h"\nvoid File::flush() {}\n',
+        "file_close.cpp": '#include "file.h"\nvoid File::close() {}\n',
+        "pipe.cpp": '#include "file.h"\nvoid Pipe::flush() {}\nvoid Pipe::close() {}\n',
+        "buffer.cpp": '#include "file.h"\nBuffer::Buffer(int p_size) {}\n',
+        "global.cpp": "void flush() {}\n",
+        "sync.cpp": '#include "file.h"\nvoid File::sync() { ::flush(); ::close(3); ::Buffer(4); }\n',
+    })
+    assert _files(store, "File::sync") == {"global.cpp", "buffer.cpp"}
 
 
 def test_a_method_only_declared_links_the_chunk_holding_the_declaration(tmp_path):
@@ -239,6 +283,18 @@ def test_calls_the_model_cannot_place_link_nothing(tmp_path):
     store = _index(tmp_path, _MISSING)
     assert _files(store, "poll") == set()
     assert _files(store, "wait") == set()
+
+
+def test_an_operator_call_the_model_cannot_place_takes_no_name_index(tmp_path):
+    store = _index(tmp_path, {
+        "vec.h": "class Vec {\npublic:\n    Vec &operator=(const Vec &p_other);\n    void reset();\n};\n"
+                 "class Mat {\npublic:\n    Mat &operator=(const Mat &p_other);\n};\nusing Alias = Vec;\n",
+        "vec.cpp": '#include "vec.h"\nVec &Vec::operator=(const Vec &p_other) { return *this; }\n',
+        "vec_reset.cpp": '#include "vec.h"\nvoid Vec::reset() {}\n',
+        "mat.cpp": '#include "vec.h"\nMat &Mat::operator=(const Mat &p_other) { return *this; }\n',
+        "use.cpp": '#include "vec.h"\nvoid assign(const Vec &b) { Alias::operator=(b); Alias::reset(); }\n',
+    })
+    assert _files(store, "assign") == {"vec_reset.cpp"}
 
 
 @pytest.mark.parametrize("outcome, caller", [(members.NOT_IN_CLASS, "poll"), (members.NO_CLASS, "wait")])

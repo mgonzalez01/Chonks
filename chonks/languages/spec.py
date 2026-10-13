@@ -170,6 +170,12 @@ class ClassModelSpec:
     type_ref: "Callable[[str], TypeRef | None] | None" = None
     pointer_access: str | None = None
     operator_members: Mapping[str, str] = field(default_factory=dict)
+    # Called names that do not say which class is meant (`operator=`): a call of one the
+    # model cannot place links nothing rather than every definer of the name.
+    model_only_calls: "re.Pattern[str] | None" = None
+    # The one spelling of a member name that members, calls and queries share (`operator &=`
+    # -> `operator&=`); chunk and symbol names keep the written one.
+    member_spelling: "Callable[[str], str] | None" = None
 
 
 @dataclass(frozen=True)
