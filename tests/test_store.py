@@ -387,13 +387,15 @@ def test_insert_refs_typed(tmp_path):
     assert set(store.get_all_refs()) == {("a", "b"), ("a", "c"), ("a", "d")}
 
 
-def test_iter_refs_typed_streams_every_edge_across_batches(tmp_path):
+def test_iter_refs_typed_streams_across_batches_and_skips_excluded_types(tmp_path):
     store = _make_store(tmp_path)
     store.insert_refs([("a", "b", "calls"), ("a", "c", "imports"), ("b", "c", "mentions"),
                        ("c", "a", "xlang"), ("d", "a", "inherits")])
     streamed = list(store.iter_refs_typed(batch_size=2))
     assert len(streamed) == 5
     assert sorted(streamed) == sorted(store.get_all_refs_typed())
+    kept = store.iter_refs_typed(batch_size=2, exclude_types=("imports", "mentions", "inherits"))
+    assert sorted(kept) == [("a", "b", "calls"), ("c", "a", "xlang")]
     store.close()
 
 

@@ -2,6 +2,7 @@
 
 import hashlib
 
+from chonks.core.edges import TYPED_EDGE_TYPES
 from chonks.languages import get_or_none as _lang_spec
 
 
@@ -27,7 +28,7 @@ def _chunk_metadata(file_metadata: dict | None, refs: dict | None) -> dict | Non
     non-empty ref lists are added, so untouched chunks keep the column as
     before typed edges existed."""
     md = dict(file_metadata) if file_metadata else {}
-    for key in ("calls", "imports", "inherits"):
+    for key in TYPED_EDGE_TYPES:
         vals = (refs or {}).get(key)
         if vals:
             md[key] = vals

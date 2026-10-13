@@ -5,6 +5,7 @@ import sys
 
 from tree_sitter import Node
 
+from chonks.core.edges import CALLS, IMPORTS, INHERITS
 from chonks.core.refresh import register_refresh
 from chonks.index.call_sites import (
     CallSites as _CallSites,
@@ -172,12 +173,12 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
         entry = {"name": name, "receiver": receiver, "arity": arity}
         if sites is not None:
             entry.update(_call_evidence(n, callee, sites))
-        _add_call_entry(refs["calls"], entry)
+        _add_call_entry(refs[CALLS], entry)
 
     if isinstance(rule, _Field):
         target = n.child_by_field_name(rule.field)
         if target is not None:
-            if rule.bucket == "calls":
+            if rule.bucket == CALLS:
                 add_call(
                     _field_name(rule, target, src, lang),
                     _receiver(n, target, src, lang),
@@ -204,7 +205,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                             add(spec.bucket, spec.nested.name_fn(cc, src))
                             if spec.nested.break_inner:
                                 break
-                elif spec.bucket == "calls":
+                elif spec.bucket == CALLS:
                     # gdscript's chain is flat, so `c` itself carries no receiver;
                     # the gdscript call_receiver hook scans the siblings instead.
                     receiver = _receiver(n, c, src, lang)
@@ -396,7 +397,7 @@ def _extract_refs(node: Node, lang: str, src: bytes,
     arity=None so old stored data still resolves. `lines` (first, last, 1-based)
     keeps only references that start on those lines, for one piece of a split node;
     call-site evidence still reads declarations anywhere in the tree."""
-    refs: dict[str, list[str]] = {"calls": [], "imports": [], "inherits": [], "literals": []}
+    refs: dict[str, list[str]] = {CALLS: [], IMPORTS: [], INHERITS: [], "literals": []}
     first, last = lines if lines is not None else (0, sys.maxsize)
 
     spec = LANG_REFS_SPECS.get(lang)
@@ -426,8 +427,8 @@ def _extract_refs(node: Node, lang: str, src: bytes,
     return refs
 
 
-_EMPTY_REFS: dict[str, list[str]] = {"calls": [], "imports": [], "inherits": [], "literals": []}
-_REFS_KEYS = ("calls", "imports", "inherits", "literals")
+_EMPTY_REFS: dict[str, list[str]] = {CALLS: [], IMPORTS: [], INHERITS: [], "literals": []}
+_REFS_KEYS = (CALLS, IMPORTS, INHERITS, "literals")
 
 
 def _merge_refs(a: dict[str, list[str]], b: dict[str, list[str]]) -> dict[str, list[str]]:
@@ -437,7 +438,7 @@ def _merge_refs(a: dict[str, list[str]], b: dict[str, list[str]]) -> dict[str, l
     out: dict[str, list[str]] = {}
     for key in _REFS_KEYS:
         merged = list(a.get(key) or [])
-        if key == "calls":
+        if key == CALLS:
             for entry in b.get(key) or []:
                 _add_call_entry(merged, entry)
         else:

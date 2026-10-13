@@ -16,6 +16,7 @@ import numpy as np
 import sqlite_vec
 
 from chonks.core.batching import batched
+from chonks.core.edges import MENTIONS
 from chonks.core.refresh import register_refresh
 from chonks.core.skeleton import _compute_skeleton
 from chonks.core.symbols import FIELD, FORWARD_DECLARATION
@@ -1492,7 +1493,7 @@ class Store:
         that don't carry a type."""
         if not refs:
             return
-        rows3 = [r if len(r) == 3 else (r[0], r[1], "mentions") for r in refs]
+        rows3 = [r if len(r) == 3 else (r[0], r[1], MENTIONS) for r in refs]
         with self._lock:
             self._conn.executemany(
                 "INSERT OR IGNORE INTO chunk_refs(from_id, to_id, edge_type) VALUES(?,?,?)",
@@ -1897,11 +1898,14 @@ class Store:
             ).fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
 
-    def iter_refs_typed(self, batch_size: int = 100_000) -> Iterator[tuple[str, str, str]]:
-        """Every (from_id, to_id, edge_type) edge, fetched a batch at a time.
-        Holds the store lock until exhausted or closed."""
+    def iter_refs_typed(self, batch_size: int = 100_000,
+                        exclude_types: tuple[str, ...] = ()) -> Iterator[tuple[str, str, str]]:
+        """Every (from_id, to_id, edge_type) edge not of `exclude_types`, fetched a
+        batch at a time. Holds the store lock until exhausted or closed."""
+        where = f" WHERE edge_type NOT IN ({','.join('?' * len(exclude_types))})" if exclude_types else ""
         with self._lock:
-            cursor = self._conn.execute("SELECT from_id, to_id, edge_type FROM chunk_refs")
+            cursor = self._conn.execute(
+                f"SELECT from_id, to_id, edge_type FROM chunk_refs{where}", exclude_types)
             while rows := cursor.fetchmany(batch_size):
                 for r in rows:
                     yield r[0], r[1], r[2]

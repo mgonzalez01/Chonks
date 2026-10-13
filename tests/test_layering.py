@@ -205,13 +205,6 @@ _KNOWN_LITERALS: set[tuple[str, str]] = {
     ("chonks/index/plugins.py", "javascript"),
     ("chonks/index/macro_heal.py", "class_specifier"),
     ("chonks/index/macro_heal.py", "struct_specifier"),
-    *{("chonks/index/graph/refs.py", t) for t in ("associated", "mentions", "xlang")},
-    *{("chonks/index/refs_extract.py", t) for t in ("calls", "imports", "inherits")},
-    *{("chonks/index/rows.py", t) for t in ("calls", "imports", "inherits")},
-    *{("chonks/ops/report.py", t) for t in ("associated", "mentions", "xlang")},
-    *{("chonks/retrieval/graph_queries.py", t) for t in ("associated", "mentions", "xlang")},
-    *{("chonks/retrieval/trace.py", t) for t in ("associated", "mentions")},
-    ("chonks/storage/store.py", "mentions"),
 }
 
 

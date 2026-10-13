@@ -19,7 +19,9 @@ from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
 from chonks.resolve.members import MemberIndex, members_index, settled_targets
 
-from chonks.core.edges import CALLS, INHERITS, TYPED_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
+from chonks.core.edges import (
+    ASSOCIATED, CALLS, INHERITS, MENTIONS, TYPED_EDGE_TYPES, XLANG, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN,
+)
 from chonks.core.refresh import register_refresh
 from chonks.languages import table as _lang_table, union as _lang_union
 from chonks.languages._members import strip_template_args
@@ -277,12 +279,12 @@ def _source_edges(
     xlang, xlang supersedes associated, associated supersedes mentions."""
     out: dict[str, str] = {}
     for name in mentioned:
-        edge_type = "associated" if (cid, name) in associated else "mentions"
+        edge_type = ASSOCIATED if (cid, name) in associated else MENTIONS
         for target_id in name_to_ids[name]:
-            if target_id != cid and out.get(target_id) != "associated":
+            if target_id != cid and out.get(target_id) != ASSOCIATED:
                 out[target_id] = edge_type
     for target_id in xlang:
-        out[target_id] = "xlang"
+        out[target_id] = XLANG
     out.update(typed)
     return out
 
@@ -633,7 +635,7 @@ def _build_refs_incremental(
     for cid, names in relabelled.items():
         mention_types = _source_edges(cid, names, associated, name_to_ids, (), {})
         new_out[cid] = {
-            to_id: mention_types.get(to_id, t) if t in ("mentions", "associated") else t
+            to_id: mention_types.get(to_id, t) if t in (MENTIONS, ASSOCIATED) else t
             for to_id, t in stored.get(cid, {}).items()
         }
     removed: list[tuple[str, str]] = []
