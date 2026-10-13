@@ -292,7 +292,7 @@ def _use(text: str) -> dict[str, str]:
 @pytest.mark.parametrize("files, caller, mentioned", [
     (_MISSING, "poll", {"node.h", "timer.cpp"}),
     (_use("float wait(Server *s) {\n    return s->area();\n}\n"), "wait", {"shape.cpp", "circle.cpp", "label.cpp"}),
-    (_use("void run() {\n    label.area();\n}\n"), "run", {"shape.cpp", "circle.cpp", "label.cpp"}),
+    (_use("void run() {\n    label.area();\n}\n"), "run", {"shape.cpp", "circle.cpp"}),
     (_use("float both(scene::Circle *c, Server *s) {\n    return c->area() + s->area();\n}\n"), "both",
      {"shape.cpp", "label.cpp", "shapes.h"}),
 ])

@@ -1,6 +1,9 @@
 """Tests for the /symbol and /usages endpoint miss diagnostics."""
 import json
 
+import pytest
+
+from chonks.core.files import INCOMPLETE_FILE_HASH
 from chonks.index.segment import segment_file
 from chonks.retrieval.searcher import Searcher
 from chonks.storage.store import Store
@@ -396,3 +399,82 @@ def test_investigate_endpoint_stitches_real_chunker_split_without_duplication(mo
     assert source == expected
     assert "chunk boundary" not in source
     assert "truncated" not in source
+
+
+def test_investigate_endpoint_stitches_a_split_class_whose_members_have_comments(monkeypatch, tmp_path):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    store = project["store"]
+
+    methods = "\n".join(
+        f"// Folds step {i}.\nint method_{i}(int x) {{\n"
+        + "".join(f"    x += f{j}(x);\n" for j in range(60)) + "    return x;\n}"
+        for i in range(6))
+    src_lines = ("class Store {\n" + methods + "\n};\n").split("\n")
+    segments = segment_file("\n".join(src_lines).encode(), "cpp", path="store.h")
+    assert len(segments) > 1
+
+    chunks = [
+        {"id": f"c{i}", "path": "store.h", "language": "cpp",
+         "chunk_type": seg["chunk_type"], "name": seg["name"],
+         "start_line": seg["start_line"], "end_line": seg["end_line"],
+         "content": seg["content"]}
+        for i, seg in enumerate(segments)
+    ]
+    store.insert_chunks(chunks, [_fake_embedding() for _ in chunks])
+    store.insert_symbols([{
+        "path": "store.h", "name": "Store", "kind": "class_specifier", "language": "cpp",
+        "start_line": 1, "end_line": segments[-1]["end_line"], "chunk_id": "c0",
+    }])
+
+    req = serve_models.InvestigateRequest(name="Store", definition_source_max_chars=20000)
+    source = json.loads(serve_app.investigate(req).body)["definitions"][0]["source"]
+    assert source.rstrip("\n") == "\n".join(src_lines[:segments[-1]["end_line"]])
+
+
+def _seed_split_class_with_blank_lines(store, file_hash):
+    """A split class whose members are a blank line apart, so no chunk holds those lines."""
+    methods = "\n\n".join(
+        f"  int method_{i}(int x) {{\n" + "".join(f"    x += f{j}(x);\n" for j in range(60)) + "    return x;\n  }"
+        for i in range(6))
+    src_lines = ("class Store {\n" + methods + "\n};\n").split("\n")
+    segments = segment_file("\n".join(src_lines).encode(), "cpp", path="store.h")
+    assert len(segments) > 1
+    store.insert_chunks([
+        {"id": f"c{i}", "path": "store.h", "language": "cpp",
+         "chunk_type": seg["chunk_type"], "name": seg["name"],
+         "start_line": seg["start_line"], "end_line": seg["end_line"],
+         "content": seg["content"]}
+        for i, seg in enumerate(segments)
+    ], [_fake_embedding() for _ in segments])
+    store.insert_symbols([{
+        "path": "store.h", "name": "Store", "kind": "class_specifier", "language": "cpp",
+        "start_line": 1, "end_line": len(src_lines) - 1, "chunk_id": "c0",
+    }])
+    store.upsert_file("store.h", 1, 0.0, file_hash)
+    return src_lines, segments
+
+
+def test_investigate_endpoint_stitches_a_split_class_across_blank_lines(monkeypatch, tmp_path):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    src_lines, segments = _seed_split_class_with_blank_lines(project["store"], "0123abcd")
+
+    req = serve_models.InvestigateRequest(name="Store", definition_source_max_chars=20000)
+    source = json.loads(serve_app.investigate(req).body)["definitions"][0]["source"]
+    assert "chunk boundary" not in source
+    assert source.rstrip("\n") == "\n".join(src_lines[:segments[-1]["end_line"]])
+
+
+@pytest.mark.parametrize("file_hash", [INCOMPLETE_FILE_HASH, None], ids=["incomplete", "unstored"])
+def test_investigate_endpoint_stops_at_a_gap_in_a_file_that_may_lack_a_chunk(monkeypatch, tmp_path, file_hash):
+    project = _setup_default_project(monkeypatch, tmp_path)
+    store = project["store"]
+    src_lines, segments = _seed_split_class_with_blank_lines(store, file_hash or "0123abcd")
+    if file_hash is None:
+        store._conn.execute("DELETE FROM files")
+
+    req = serve_models.InvestigateRequest(name="Store", definition_source_max_chars=20000)
+    source = json.loads(serve_app.investigate(req).body)["definitions"][0]["source"]
+    gap = next(a["end_line"] for a, b in zip(segments, segments[1:]) if b["start_line"] > a["end_line"] + 1)
+    assert source.endswith(f"chunk boundary at line {gap} — definition continues to {len(src_lines) - 1}; "
+                           f"Read store.h:{gap + 1}-{len(src_lines) - 1}]")
+    assert source.startswith("\n".join(src_lines[:gap]))

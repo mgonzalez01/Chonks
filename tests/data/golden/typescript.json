@@ -16,7 +16,7 @@
       "segments": [
         {
           "chunk_type": "abstract_class_declaration",
-          "content": "abstract class Base {\n  abstract doIt(): void;\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n\n}",
+          "content": "export abstract class Base {\n  abstract doIt(): void;\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n\n}",
           "end_line": 10,
           "literals": [],
           "name": "Base",
@@ -60,7 +60,7 @@
       "segments": [
         {
           "chunk_type": "enum_declaration",
-          "content": "enum Color {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nRed, Green, Blue\n}",
+          "content": "export enum Color {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nRed, Green, Blue\n}",
           "end_line": 9,
           "literals": [],
           "name": "Color",
@@ -111,7 +111,7 @@
       "segments": [
         {
           "chunk_type": "class_declaration",
-          "content": "class Other {\n  m() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n}",
+          "content": "export default class Other {\n  m() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n}",
           "end_line": 10,
           "literals": [],
           "name": "Other",
@@ -162,7 +162,7 @@
       "segments": [
         {
           "chunk_type": "interface_declaration",
-          "content": "interface Foo {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  bar: string;\n}",
+          "content": "export interface Foo {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  bar: string;\n}",
           "end_line": 9,
           "literals": [],
           "name": "Foo",
@@ -206,7 +206,7 @@
       "segments": [
         {
           "chunk_type": "type_alias_declaration",
-          "content": "type Alias = \"variant_0\" | \"variant_1\" | \"variant_2\" | \"variant_3\" | \"variant_4\" | \"variant_5\" | \"variant_6\" | \"variant_7\" | \"variant_8\" | \"variant_9\" | \"variant_10\" | \"variant_11\" | \"variant_12\" | \"variant_13\" | \"variant_14\" | \"variant_15\" | \"variant_16\" | \"variant_17\" | \"variant_18\" | \"variant_19\" | \"variant_20\" | \"variant_21\" | \"variant_22\" | \"variant_23\" | \"variant_24\" | \"variant_25\" | \"variant_26\" | \"variant_27\" | \"variant_28\" | \"variant_29\" | \"variant_30\" | \"variant_31\" | \"variant_32\" | \"variant_33\" | \"variant_34\" | \"variant_35\" | \"variant_36\" | \"variant_37\" | \"variant_38\" | \"variant_39\" | \"variant_40\" | \"variant_41\" | \"variant_42\" | \"variant_43\" | \"variant_44\" | \"variant_45\" | \"variant_46\" | \"variant_47\" | \"variant_48\" | \"variant_49\" | \"variant_50\" | \"variant_51\" | \"variant_52\" | \"variant_53\" | \"variant_54\" | \"variant_55\" | \"variant_56\" | \"variant_57\" | \"variant_58\" | \"variant_59\";",
+          "content": "export type Alias = \"variant_0\" | \"variant_1\" | \"variant_2\" | \"variant_3\" | \"variant_4\" | \"variant_5\" | \"variant_6\" | \"variant_7\" | \"variant_8\" | \"variant_9\" | \"variant_10\" | \"variant_11\" | \"variant_12\" | \"variant_13\" | \"variant_14\" | \"variant_15\" | \"variant_16\" | \"variant_17\" | \"variant_18\" | \"variant_19\" | \"variant_20\" | \"variant_21\" | \"variant_22\" | \"variant_23\" | \"variant_24\" | \"variant_25\" | \"variant_26\" | \"variant_27\" | \"variant_28\" | \"variant_29\" | \"variant_30\" | \"variant_31\" | \"variant_32\" | \"variant_33\" | \"variant_34\" | \"variant_35\" | \"variant_36\" | \"variant_37\" | \"variant_38\" | \"variant_39\" | \"variant_40\" | \"variant_41\" | \"variant_42\" | \"variant_43\" | \"variant_44\" | \"variant_45\" | \"variant_46\" | \"variant_47\" | \"variant_48\" | \"variant_49\" | \"variant_50\" | \"variant_51\" | \"variant_52\" | \"variant_53\" | \"variant_54\" | \"variant_55\" | \"variant_56\" | \"variant_57\" | \"variant_58\" | \"variant_59\";",
           "end_line": 1,
           "literals": [
             [

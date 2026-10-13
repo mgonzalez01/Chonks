@@ -1,5 +1,6 @@
 """Source text of a definition, stitched from its chunks."""
 
+from chonks.core.files import INCOMPLETE_FILE_HASH
 from chonks.core.symbols import FORWARD_DECLARATION
 
 
@@ -17,8 +18,11 @@ def _canonical_chunk_content(chunk: dict) -> str:
 
 def _attach_definition_source(store, definitions: list[dict], max_chars: int) -> None:
     """Mutates `definitions` in place, adding "source". A definition split across
-    multiple chunks gets continuations stitched in; a missing continuation is marked
-    with an explicit boundary rather than silently truncated."""
+    multiple chunks gets continuations stitched in. A line between them that no
+    chunk holds is blank, a dropped divider or lone punctuation, and reads as a
+    blank line. In a file stored as incomplete, or not stored at all, it may be a
+    chunk that was never stored, so the stitch stops there with an explicit
+    boundary marker rather than silently truncating."""
     chunk_ids = [d["chunk_id"] for d in definitions if d.get("chunk_id")]
     if not chunk_ids:
         return
@@ -37,15 +41,18 @@ def _attach_definition_source(store, definitions: list[dict], max_chars: int) ->
         content = chunk.get("content") or ""
         chunk_end, def_end = chunk.get("end_line"), d.get("end_line")
         if chunk_end is not None and def_end is not None and def_end > chunk_end:
+            stored = store.get_file_hash(d["path"])
+            complete = stored is not None and stored != INCOMPLETE_FILE_HASH
             covered_to = chunk_end
             for cont in store.get_chunks_by_path_line_range(d["path"], chunk_end, def_end):
-                if cont["start_line"] > covered_to + 1:
+                gap = cont["start_line"] - covered_to - 1
+                if gap > 0 and not complete:
                     break
                 if content and not content.endswith("\n"):
                     content += "\n"
-                content += _canonical_chunk_content(cont)
+                content += "\n" * max(gap, 0) + _canonical_chunk_content(cont)
                 covered_to = max(covered_to, cont["end_line"])
-            if covered_to < def_end:
+            if covered_to < def_end and not complete:
                 content += (
                     f"\n… [chunk boundary at line {covered_to} — definition continues to "
                     f"{def_end}; Read {d['path']}:{covered_to + 1}-{def_end}]"

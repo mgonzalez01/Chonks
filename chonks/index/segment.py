@@ -51,7 +51,7 @@ logger = logging.getLogger("chunking")
 # Bump when a change here would alter chunk boundaries for already-indexed
 # content. Provenance only (meta table, doctor.py); nothing reads it back
 # to gate behavior.
-CHUNKER_VERSION = 7
+CHUNKER_VERSION = 8
 
 # Chunk-size constants: CHUNK_TARGET is UTF-8 characters; CHUNK_MIN/MAX are
 # UTF-8 bytes. Don't mix the two when comparing.
@@ -164,16 +164,23 @@ def _node_text(node: Node, src: bytes) -> str:
     return src[node.start_byte:node.end_byte].decode(errors="replace")
 
 
+def _end_line(node: Node) -> int:
+    """The line `node`'s last byte is on. A node that ends with its newline, such
+    as `#include` or `#define`, has its end point at column 0 of the next line."""
+    row, column = node.end_point
+    return row + 1 if column or node.end_byte == node.start_byte else row
+
+
 class _Segment:
     """A contiguous region of source code that will become one chunk."""
     __slots__ = ("start_byte", "end_byte", "start_line", "end_line",
                  "chunk_type", "name", "refs")
 
-    def __init__(self, node: Node, src: bytes, lang: str):
-        self.start_byte = node.start_byte
+    def __init__(self, node: Node, src: bytes, lang: str, start: int | None = None):
+        self.start_byte = node.start_byte if start is None else start
         self.end_byte   = node.end_byte
         self.start_line = node.start_point[0] + 1
-        self.end_line   = node.end_point[0] + 1
+        self.end_line   = _end_line(node)
         spec = _lang_spec(lang)
         synthetic = (spec.synthetic_chunk_type(node, src)
                      if spec is not None and spec.synthetic_chunk_type is not None else None)
@@ -218,9 +225,56 @@ def _collect_boundaries(node: Node, lang: str, src: bytes,
     return inner
 
 
-def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
+_BOM = b"\xef\xbb\xbf"
+
+
+def _held_end(node: Node, lang: str, src: bytes) -> int | None:
+    """Where the part of `node` that a chunk holds ends, or None when no chunk
+    holds any of it: the end of its last boundary, or of a top-level node that
+    module residue holds."""
+    inner = _collect_boundaries(node, lang, src)
+    if inner:
+        return max(b.end_byte for b in inner)
+    if node.is_named and node.parent is not None and node.parent.parent is None:
+        return node.end_byte
+    return None
+
+
+def _claimed_start(node: Node, lang: str, src: bytes, stop: Node | None = None,
+                   header: bool = False) -> int:
+    """The byte `node`'s chunk starts at. What comes before it on its line and no
+    other chunk holds joins it: indentation, a macro blanked for parsing, or the
+    syntax of a node around it, such as `typedef`, `extern "C"`, `namespace x`,
+    `template <...>`, or the `}` or `#endif` that closes a node above it. The
+    walk up ends at `stop`, a node being split. `header` is set for the split
+    node's first boundary, whose line prefix the header holds unless it is
+    only whitespace and blanked macros."""
+    line_start = src.rfind(b"\n", 0, node.start_byte) + 1
+    if line_start == 0 and src.startswith(_BOM):
+        line_start = len(_BOM)
+    n = node
+    while n is not stop and n.parent is not None and n.start_byte > line_start:
+        sib = n.prev_sibling
+        while sib is not None and sib.end_byte > line_start:
+            held = sib.end_byte if header else _held_end(sib, lang, src)
+            if held is not None:
+                if held <= line_start:
+                    return line_start
+                while held < node.start_byte and src[held] in b" \t":
+                    held += 1
+                return held
+            sib = sib.prev_sibling
+        n = n.parent
+    return line_start
+
+
+def _split_large_node(node: Node, lang: str, src: bytes,
+                      start: int | None = None) -> list[_Segment]:
     """Recursively splits an oversized node by its children's boundaries,
-    falling back to line-slicing if none exist."""
+    falling back to line-slicing if none exist. `start` is where its chunks
+    begin on its first line (see _claimed_start)."""
+    if start is None:
+        start = node.start_byte
     # node itself is already a boundary, so collect from its children instead
     # (_collect_boundaries(node) would just return [node]).
     children: list[Node] = []
@@ -230,9 +284,11 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
 
     if len(children) > 1:
         segs: list = []
+        starts = [_claimed_start(c, lang, src, stop=node, header=i == 0)
+                  for i, c in enumerate(children)]
         # Header chunk = parent's signature up to the first child boundary,
         # so the container itself stays retrievable and never overlaps members.
-        header_raw = src[node.start_byte:children[0].start_byte].decode(errors="replace")
+        header_raw = src[start:starts[0]].decode(errors="replace")
         # rstrip: a trailing whitespace-only fragment would make h_end land
         # on the child's start_line, so adjacent chunks wouldn't share a line.
         header = header_raw.rstrip()
@@ -253,10 +309,10 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
                     header, h_start, h_end,
                     chunk_type=node_seg.chunk_type, name=node_seg.name,
                     refs=header_refs(h_start, h_end)))
-        for c in children:
-            child_seg = _Segment(c, src, lang)
+        for c, c_start in zip(children, starts):
+            child_seg = _Segment(c, src, lang, start=c_start)
             if child_seg.size(src) > CHUNK_MAX:
-                segs.extend(_split_large_node(c, lang, src))
+                segs.extend(_split_large_node(c, lang, src, start=c_start))
             else:
                 segs.append(child_seg)
         # merge any still-tiny segments before returning
@@ -268,14 +324,17 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
         c = children[0]
         if (c.start_byte, c.end_byte) != (node.start_byte, node.end_byte) \
                 and _Segment(c, src, lang).size(src) > CHUNK_MAX:
-            return _split_large_node(c, lang, src)
+            c_start = _claimed_start(c, lang, src, stop=node)
+            if src.rfind(b"\n", 0, c.start_byte) < start:  # node starts on c's line
+                c_start = min(c_start, start)
+            return _split_large_node(c, lang, src, start=c_start)
 
     # No sub-boundaries: slice by CHUNK_TARGET chars, but pieces still inherit
     # the boundary's name/type so it stays findable, not an anonymous "block".
     node_seg  = _Segment(node, src, lang)   # source of the name/type to propagate
     node_name = node_seg.name
     node_type = node_seg.chunk_type
-    text = _node_text(node, src)
+    text = src[start:node.end_byte].decode(errors="replace")
     lines = text.splitlines(keepends=True)
     segments: list = []
     buf: list[str] = []
@@ -306,7 +365,7 @@ def _split_large_node(node: Node, lang: str, src: bytes) -> list[_Segment]:
             refs=_extract_refs(node, lang, src, (buf_start_line, end_line)),
         ))
 
-    return segments if segments else [_Segment(node, src, lang)]
+    return segments if segments else [_Segment(node, src, lang, start=start)]
 
 
 class _SyntheticSegment:
@@ -337,6 +396,39 @@ class _SyntheticSegment:
 _WORD_RE = re.compile(r"\w")
 
 
+def _last_line(seg, src: bytes) -> int:
+    """The line `seg`'s text ends on. A line-fallback slice has overlap lines above its start_line,
+    so its newline count runs past its end_line."""
+    text = seg.content(src)
+    return min(seg.end_line, seg.start_line + text.count("\n") - text.endswith("\n"))
+
+
+def _separator(first, second, src: bytes) -> str:
+    """What joins `first` to `second` so that `second`'s text stays on its source lines."""
+    ended = first.content(src).endswith("\n")
+    gap = second.start_line - _last_line(first, src)
+    if gap <= 0:  # `second` starts on the line `first` ends on, as in `} // namespace x`
+        return "" if ended else " "
+    return "\n" * (gap - ended)
+
+
+def _join(first, second, src: bytes) -> _SyntheticSegment:
+    """`first` then `second` as one segment with `second`'s identity."""
+    combined = first.content(src) + _separator(first, second, src) + second.content(src)
+    return _SyntheticSegment(combined, first.start_line, second.end_line,
+                             chunk_type=second.chunk_type, name=second.name, refs=second.refs)
+
+
+def _append(first, second, src: bytes) -> _SyntheticSegment | None:
+    """`first` then `second` as one segment with `first`'s identity; None over CHUNK_MAX."""
+    sep = _separator(first, second, src)
+    if first.size(src) + len(sep) + second.size(src) > CHUNK_MAX:
+        return None
+    return _SyntheticSegment(first.content(src) + sep + second.content(src), first.start_line,
+                             max(_last_line(first, src), _last_line(second, src)),
+                             chunk_type=first.chunk_type, name=first.name, refs=first.refs)
+
+
 def _merge_small(segs: list, src: bytes) -> list:
     """Coalesces consecutive sub-CHUNK_MIN segments with no line of words
     between them. BOTH sides must be trivia: absorbing a substantive boundary
@@ -358,8 +450,8 @@ def _merge_small(segs: list, src: bytes) -> list:
     for seg in segs[1:]:
         prev = merged[-1]
         prev_size = prev.size(src)
-        # +1 for the "\n" inserted between contents on merge.
-        merged_size = prev_size + 1 + seg.size(src)
+        sep = _separator(prev, seg, src)
+        merged_size = prev_size + len(sep) + seg.size(src)
         # seg.start_line > prev.end_line excludes salvage's deliberate
         # container/nested-boundary overlap; merging those would corrupt
         # the synthetic segment's line span. A merged span covers the lines
@@ -367,9 +459,7 @@ def _merge_small(segs: list, src: bytes) -> list:
         if (prev_size < CHUNK_MIN and seg.size(src) < CHUNK_MIN
                 and merged_size <= CHUNK_MAX and seg.start_line > prev.end_line
                 and not words_between(prev, seg)):
-            pc = prev.content(src)
-            # Only add a separator when prev's content doesn't already end in "\n".
-            combined = pc + ("" if pc.endswith("\n") else "\n") + seg.content(src)
+            combined = prev.content(src) + sep + seg.content(src)
             # "<module>" residue is filler; never let it override a real
             # boundary's name.
             if prev.chunk_type == "module" and seg.name and seg.chunk_type != "module":
@@ -395,16 +485,6 @@ _PREPROC_CONDITIONAL_RE = re.compile(r"^#\s*(if|ifdef|ifndef|elif|else|endif)\b"
 _CONTAINER_OPEN_RE = re.compile(r'^(namespace\s+[\w:]+\s*\{|extern\s+"C"\s*\{)\s*$')
 # Braces/parens/semicolons/commas only (a lone "}", "};", "} {", …).
 _PUNCT_ONLY_RE = re.compile(r"[{}();,\s]*$")
-
-
-def _span_end_line(start_line: int, content: str) -> int:
-    """end_line from `content`'s own newline count, not a neighbour's raw
-    tree-sitter end_line, since the latter can claim a blank-line gap that
-    isn't in `content` and overlap the following chunk's start_line."""
-    n = content.count("\n")
-    if content.endswith("\n"):
-        return start_line + n - 1 if n else start_line
-    return start_line + n
 
 
 def _is_identity_free(text: str, lang: str) -> bool:
@@ -474,26 +554,18 @@ def _absorb_identity_free_fragments(segs: list, src: bytes, lang: str) -> list:
         nxt = out[i + 1] if i + 1 < len(out) else None
 
         def absorb_backward() -> bool:
-            if prev is None or prev.size(src) + 1 + seg.size(src) > CHUNK_MAX:
+            joined = _append(prev, seg, src) if prev is not None else None
+            if joined is None:
                 return False
-            pc = prev.content(src)
-            combined = pc + ("" if pc.endswith("\n") else "\n") + text
-            end_line = _span_end_line(prev.start_line, combined)
-            out[i - 1] = _SyntheticSegment(combined, prev.start_line, end_line,
-                                           chunk_type=prev.chunk_type, name=prev.name,
-                                           refs=prev.refs)
+            out[i - 1] = joined
             del out[i]
             return True
 
         def absorb_forward() -> bool:
-            if nxt is None or seg.size(src) + 1 + nxt.size(src) > CHUNK_MAX:
+            joined = _join(seg, nxt, src) if nxt is not None else None
+            if joined is None or joined.size(src) > CHUNK_MAX:
                 return False
-            nc = nxt.content(src)
-            combined = text + ("" if text.endswith("\n") else "\n") + nc
-            end_line = max(nxt.end_line, _span_end_line(seg.start_line, combined))
-            out[i + 1] = _SyntheticSegment(combined, seg.start_line, end_line,
-                                           chunk_type=nxt.chunk_type, name=nxt.name,
-                                           refs=nxt.refs)
+            out[i + 1] = joined
             del out[i]
             return True
 
@@ -541,15 +613,28 @@ def _enforce_ceiling(segs: list, src: bytes, path: str | None = None,
         if s.size(src) <= CHUNK_MAX:
             out.append(s)
             continue
+        # A line-fallback slice carries overlap lines above its start_line. A
+        # byte window counts its lines from start_line, so it drops them first.
+        text = s.content(src)
+        lines = text.splitlines(keepends=True)
+        overlap = len(lines) - (s.end_line - s.start_line + 1)
+        if overlap > 0:
+            text = "".join(lines[overlap:])
+            if len(text.encode("utf-8")) <= CHUNK_MAX:
+                out.append(_SyntheticSegment(text, s.start_line, s.end_line,
+                                             name=s.name, chunk_type=s.chunk_type, refs=s.refs))
+                continue
         oversize += 1
-        pieces = _hardwrap_text(s.content(src))
+        pieces = _hardwrap_text(text)
         extra_pieces += len(pieces)
         # Apportion the line span per piece by newline count, or every piece
         # would inherit the parent's full span, breaking path:line citations.
         line = s.start_line
-        for p in pieces:
+        for i, p in enumerate(pieces):
             n = p.count("\n")
-            if n == 0:
+            if n == 0 and i == len(pieces) - 1:
+                end_line = next_line = line
+            elif n == 0:
                 # No newline at all: advance a virtual line by 1 anyway, or
                 # every zero-newline piece reports the same duplicate span.
                 next_line = line + 1
@@ -646,7 +731,7 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
     def flush() -> None:
         if not run:
             return
-        content = src[run[0].start_byte:run[-1].end_byte].decode(errors="replace")
+        content = src[_claimed_start(run[0], lang, src):run[-1].end_byte].decode(errors="replace")
         if content.strip():
             # Module-level residue is where imports live for most languages;
             # without extracting refs here, 'imports' never populates.
@@ -659,7 +744,7 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
                 return refs
 
             start_line = run[0].start_point[0] + 1
-            end_line = run[-1].end_point[0] + 1
+            end_line = _end_line(run[-1])
             # Line-sliced here, not deferred to _finalize's byte-window
             # fallback, which would stamp every piece with the same span.
             if len(content.encode("utf-8")) > CHUNK_MAX:
@@ -680,10 +765,10 @@ def _collect_module_residue(root: Node, lang: str, src: bytes) -> list:
         if spec is not None and spec.module_residue_split is not None \
                 and spec.module_residue_split(child, src):
             flush()
-            content = _node_text(child, src)
+            content = src[_claimed_start(child, lang, src):child.end_byte].decode(errors="replace")
             if content.strip():
                 m_start = child.start_point[0] + 1
-                m_end = child.end_point[0] + 1
+                m_end = _end_line(child)
                 # Same line-slicing as the generic residue run above.
                 if len(content.encode("utf-8")) > CHUNK_MAX:
                     segs.extend(_line_slice_oversized(
@@ -772,7 +857,7 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
                     "kind":       kind,
                     "language":   lang,
                     "start_line": node.start_point[0] + 1,
-                    "end_line":   node.end_point[0] + 1,
+                    "end_line":   _end_line(node),
                 })
         stack.extend(node.children)
     return out
@@ -869,21 +954,13 @@ def _split_trailing_doc(seg, src: bytes, lang: str) -> tuple | None:
         lead_lines.pop()
     if not lead_lines:
         return None, seg
-    # Counted from the end: a merged segment's text can hold fewer lines than its span.
+    # Counted from the end: a line-fallback slice's text has overlap lines above its start_line.
     doc_line = seg.end_line - (len(lines) - 1 - start) + text.endswith("\n")
     lead = _SyntheticSegment("\n".join(lead_lines) + "\n", seg.start_line,
                              doc_line - 1 - (start - len(lead_lines)),
                              chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
     doc = _SyntheticSegment("\n".join(lines[start:]), doc_line, seg.end_line)
     return lead, doc
-
-
-def _join(first, second, src: bytes) -> _SyntheticSegment:
-    """`first` then `second` as one segment with `second`'s identity."""
-    fc = first.content(src)
-    combined = fc + ("" if fc.endswith("\n") else "\n") + second.content(src)
-    return _SyntheticSegment(combined, first.start_line, second.end_line,
-                             chunk_type=second.chunk_type, name=second.name, refs=second.refs)
 
 
 def _attach_doc(seg, lead, doc, nxt, src: bytes) -> list | None:
@@ -937,13 +1014,12 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
                 pending = seg
             else:  # coalesce consecutive small comments
                 pending = _SyntheticSegment(
-                    pending.content(src) + "\n" + text, pending.start_line, seg.end_line,
+                    pending.content(src) + _separator(pending, seg, src) + text,
+                    pending.start_line, seg.end_line,
                     chunk_type=pending.chunk_type, name=pending.name)
             continue
         if pending is not None:  # attach held comment to this real boundary
-            seg = _SyntheticSegment(
-                pending.content(src) + "\n" + seg.content(src), pending.start_line, seg.end_line,
-                chunk_type=seg.chunk_type, name=seg.name, refs=seg.refs)
+            seg = _join(pending, seg, src)
             pending = None
         out.append(seg)
     if held is not None:
@@ -951,16 +1027,9 @@ def _attach_or_drop_comments(segs: list, src: bytes, lang: str) -> list:
     if pending is not None:
         # A trailing comment has no forward boundary to attach to; attach
         # it BACKWARD to the last segment instead, unless that breaks CHUNK_MAX.
-        if out and out[-1].size(src) + 1 + pending.size(src) <= CHUNK_MAX:
-            last = out[-1]
-            lc = last.content(src)
-            combined = lc + ("" if lc.endswith("\n") else "\n") + pending.content(src)
-            # _span_end_line, not pending's raw end_line: a blank-line gap
-            # between them isn't part of `combined` and would overstate the span.
-            end_line = _span_end_line(last.start_line, combined)
-            out[-1] = _SyntheticSegment(
-                combined, last.start_line, end_line,
-                chunk_type=last.chunk_type, name=last.name, refs=last.refs)
+        joined = _append(out[-1], pending, src) if out else None
+        if joined is not None:
+            out[-1] = joined
         else:
             out.append(pending)
     return out
@@ -1131,11 +1200,12 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
     # A salvaged container's nested boundaries can be re-derived again by
     # _split_large_node below; precompute their spans and skip the
     # top-level duplicate rather than double-emit the same _chunk_id.
+    starts = {id(node): _claimed_start(node, lang, src) for node in boundary_nodes}
     split_results: dict[int, list] = {}
     covered_spans: set[tuple[int, int]] = set()
     for node in boundary_nodes:
-        if _Segment(node, src, lang).size(src) > CHUNK_MAX:
-            split_results[id(node)] = _split_large_node(node, lang, src)
+        if _Segment(node, src, lang, start=starts[id(node)]).size(src) > CHUNK_MAX:
+            split_results[id(node)] = _split_large_node(node, lang, src, start=starts[id(node)])
             for child in node.children:
                 if child.is_named:
                     for b in _collect_boundaries(child, lang, src):
@@ -1148,7 +1218,7 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
         elif (node.start_byte, node.end_byte) in covered_spans:
             continue  # already represented via an oversize sibling's split
         else:
-            raw_segs.append(_Segment(node, src, lang))
+            raw_segs.append(_Segment(node, src, lang, start=starts[id(node)]))
 
     # Defense in depth for any collision the span-level filter above missed.
     raw_segs = _dedup_segments(raw_segs, src)

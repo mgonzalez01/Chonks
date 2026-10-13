@@ -200,7 +200,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "def only_pos(a, b, /, c):\n    return a + b + c\nonly_pos(1, 2, c=3)",
+          "content": "def only_pos(a, b, /, c):\n    return a + b + c\n\nonly_pos(1, 2, c=3)",
           "end_line": 4,
           "literals": [],
           "name": "only_pos",
@@ -290,7 +290,7 @@
       "segments": [
         {
           "chunk_type": "class_definition",
-          "content": "class C:\n    def method_name(self, x):\n        return x\n\n    @classmethod\n    def cls_method(cls, y):\n        return y\nmethod_name(1)\ncls_method(2)",
+          "content": "class C:\n    def method_name(self, x):\n        return x\n\n    @classmethod\n    def cls_method(cls, y):\n        return y\n\nmethod_name(1)\ncls_method(2)",
           "end_line": 10,
           "literals": [],
           "name": "C",
@@ -408,7 +408,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "def uses_args(a, *args):\n    return a\ndef uses_kwargs(a, **kwargs):\n    return a\ndef uses_bare_star(a, *, b):\n    return a + b\nuses_args(1, 2, 3)\nuses_kwargs(1, x=2)\nuses_bare_star(1, b=2)",
+          "content": "def uses_args(a, *args):\n    return a\n\ndef uses_kwargs(a, **kwargs):\n    return a\n\ndef uses_bare_star(a, *, b):\n    return a + b\n\nuses_args(1, 2, 3)\nuses_kwargs(1, x=2)\nuses_bare_star(1, b=2)",
           "end_line": 12,
           "literals": [],
           "name": "uses_args",
@@ -510,7 +510,7 @@
       "segments": [
         {
           "chunk_type": "class_definition",
-          "content": "import os\nimport os.path\nfrom collections import defaultdict\nfrom typing import Any, Optional\nimport xml.etree.ElementTree as ET\nfrom a.b import c as d, e as f\nclass Base:\n    pass\nclass Foo(Base):\n    def run(self):\n        helper()\n        helper()\n        self.other.call(x)\n        mod.sub.deep_call()",
+          "content": "import os\nimport os.path\nfrom collections import defaultdict\nfrom typing import Any, Optional\nimport xml.etree.ElementTree as ET\nfrom a.b import c as d, e as f\n\nclass Base:\n    pass\n\nclass Foo(Base):\n    def run(self):\n        helper()\n        helper()\n        self.other.call(x)\n        mod.sub.deep_call()",
           "end_line": 17,
           "literals": [],
           "name": "Base",
@@ -900,7 +900,7 @@
       "segments": [
         {
           "chunk_type": "class_definition",
-          "content": "import sys\nif __name__ == \"__main__\":\nclass _Fmt:\n        def emit(self):\n            return 1\n    SETUP_MARKER = configure(sys.argv)\n    run_cli(SETUP_MARKER)\n",
+          "content": "import sys\n\nif __name__ == \"__main__\":\n    class _Fmt:\n        def emit(self):\n            return 1\n    SETUP_MARKER = configure(sys.argv)\n    run_cli(SETUP_MARKER)\n",
           "end_line": 8,
           "literals": [],
           "name": "_Fmt",
@@ -960,7 +960,7 @@
       "segments": [
         {
           "chunk_type": "class_definition",
-          "content": "import os\nfrom collections import defaultdict\nclass Foo(Base):\n    def run(self):\n        helper()\n        self.other.call(x)",
+          "content": "import os\nfrom collections import defaultdict\n\nclass Foo(Base):\n    def run(self):\n        helper()\n        self.other.call(x)",
           "end_line": 8,
           "literals": [],
           "name": "Foo",
@@ -1154,7 +1154,7 @@
         },
         {
           "chunk_type": "function_definition",
-          "content": "def inner(c):\n        return c*2",
+          "content": "    def inner(c):\n        return c*2",
           "end_line": 4,
           "literals": [],
           "name": "inner",
@@ -1205,7 +1205,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "\"\"\"Module doc.\"\"\"\nimport os\nimport sys\ndef f(x):\n    return x + 1",
+          "content": "\"\"\"Module doc.\"\"\"\nimport os\nimport sys\n\ndef f(x):\n    return x + 1",
           "end_line": 6,
           "literals": [],
           "name": "f",
@@ -1310,7 +1310,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "\"\"\"module docstring long enough to pass the floor\"\"\"\ndef f():\n    \"\"\"function docstring long enough to pass the floor\"\"\"\n    print(\"hello world runtime message\")\nclass C:\n    \"\"\"class docstring long enough to pass the floor\"\"\"\n    pass",
+          "content": "\"\"\"module docstring long enough to pass the floor\"\"\"\n\ndef f():\n    \"\"\"function docstring long enough to pass the floor\"\"\"\n    print(\"hello world runtime message\")\n\n\nclass C:\n    \"\"\"class docstring long enough to pass the floor\"\"\"\n    pass",
           "end_line": 10,
           "literals": [
             [
@@ -2489,7 +2489,7 @@
       "segments": [
         {
           "chunk_type": "function_definition",
-          "content": "def a(x):\n    return x + 1\nclass B:\n    def m(self):\n        return 2\ndef c(y):\n    return y * 2",
+          "content": "def a(x):\n    return x + 1\n\nclass B:\n    def m(self):\n        return 2\n\ndef c(y):\n    return y * 2",
           "end_line": 9,
           "literals": [],
           "name": "a",

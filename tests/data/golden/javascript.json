@@ -67,7 +67,7 @@
       "segments": [
         {
           "chunk_type": "lexical_declaration",
-          "content": "const double = (x) => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * 2;\n};",
+          "content": "export const double = (x) => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn x * 2;\n};",
           "end_line": 9,
           "literals": [],
           "name": "double",
@@ -125,7 +125,7 @@
       "segments": [
         {
           "chunk_type": "class_declaration",
-          "content": "class Widget {\n  constructor() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n  render() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n    return 1;\n  }\n}",
+          "content": "export class Widget {\n  constructor() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  }\n  render() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n    return 1;\n  }\n}",
           "end_line": 19,
           "literals": [],
           "name": "Widget",
@@ -183,7 +183,7 @@
       "segments": [
         {
           "chunk_type": "function_declaration",
-          "content": "function add(a, b) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn a + b;\n}",
+          "content": "export function add(a, b) {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn a + b;\n}",
           "end_line": 9,
           "literals": [],
           "name": "add",
@@ -227,7 +227,7 @@
       "segments": [
         {
           "chunk_type": "generator_function_declaration",
-          "content": "function* gen() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nyield 1;\n}",
+          "content": "export function* gen() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nyield 1;\n}",
           "end_line": 9,
           "literals": [],
           "name": "gen",

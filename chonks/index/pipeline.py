@@ -23,6 +23,7 @@ from chonks.core.paths import (
     _dotdir_prefix,
     _stored_dirname,
 )
+from chonks.core.files import INCOMPLETE_FILE_HASH
 from chonks.core.refresh import register_refresh
 from chonks.index.embed_retry import (
     EMBED_BATCH,
@@ -156,11 +157,6 @@ class EmbedderDownError(RuntimeError):
 # the outer failure, not _embed_isolating's nested per-chunk ones (those are
 # normal). 5 balances tolerating a network blip against a fast abort.
 EMBEDDER_DOWN_THRESHOLD = 5
-
-# Stored as the content hash of a file that lost a chunk to a server error. No
-# file hashes to it, so the next run indexes the file again.
-INCOMPLETE_FILE_HASH = "incomplete"
-
 
 # ---------------------------------------------------------------------------
 # Incremental indexer

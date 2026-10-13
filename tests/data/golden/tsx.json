@@ -16,7 +16,7 @@
       "segments": [
         {
           "chunk_type": "lexical_declaration",
-          "content": "const Comp = () => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <span>hi</span>;\n};",
+          "content": "export const Comp = () => {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <span>hi</span>;\n};",
           "end_line": 9,
           "literals": [],
           "name": "Comp",
@@ -60,7 +60,7 @@
       "segments": [
         {
           "chunk_type": "function_declaration",
-          "content": "function App() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <div className=\"x\">Hi</div>;\n}",
+          "content": "export function App() {\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\n  // pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad pad\nreturn <div className=\"x\">Hi</div>;\n}",
           "end_line": 9,
           "literals": [],
           "name": "App",
