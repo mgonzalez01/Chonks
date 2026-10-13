@@ -95,14 +95,21 @@ def test_validate_missing_kind_label():
         languages.Registry((unlabeled,))
 
 
-def test_validate_inherits_needs_class_like_chunk_types():
-    from chonks.languages.spec import Field
-    rules = {"refs_spec": {"klass": Field("base", "inherits")}, "boundary_nodes": frozenset({"klass"}),
+@pytest.mark.parametrize("rule", ["inherits", "construction"])
+def test_validate_inherits_and_constructions_need_class_like_chunk_types(rule):
+    from chonks.languages.spec import ChildSpec, Children, Field
+    refs = ({"klass": Field("base", "inherits")} if rule == "inherits"
+            else {"new": Children((ChildSpec(("identifier",), "calls", construct=True),))})
+    rules = {"refs_spec": refs, "boundary_nodes": frozenset({"klass"}),
              "kind_labels": {"klass": "class"}, "extensions": frozenset({".kl"})}
     with pytest.raises(ValueError, match="no class_like_chunk_types"):
         languages.Registry((LanguageSpec(name="klasses", grammar="klasses", **rules),))
     languages.Registry((LanguageSpec(name="klasses", grammar="klasses",
                                      class_like_chunk_types=frozenset({"klass"}), **rules),))
+    with pytest.raises(ValueError, match="constructor_chunk_types must be a subset of boundary_nodes"):
+        languages.Registry((LanguageSpec(name="klasses", grammar="klasses",
+                                         class_like_chunk_types=frozenset({"klass"}),
+                                         constructor_chunk_types=frozenset({"ctor"}), **rules),))
 
 
 @pytest.mark.parametrize("spec", languages._discover(), ids=lambda spec: spec.name)

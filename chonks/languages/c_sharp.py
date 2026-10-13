@@ -83,8 +83,8 @@ C_SHARP = LanguageSpec(
         )),
         "invocation_expression": Field("function", "calls"),
         "object_creation_expression": Children((
-            ChildSpec(("identifier", "generic_name", "qualified_name"), "calls",
-                      name_fn=name_last_or_text, break_outer=True),
+            ChildSpec(("identifier", "generic_name", "qualified_name"), "calls", name_fn=base_name,
+                      break_outer=True, construct=True),
         )),
         "class_declaration": BASES,
         "struct_declaration": BASES,
@@ -97,6 +97,7 @@ C_SHARP = LanguageSpec(
     identifier_leaf_types=frozenset({"identifier"}),
     call_receiver=type_receiver,
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
+    constructor_chunk_types=frozenset({"constructor_declaration"}),
     scope_chunk_types=frozenset({"namespace_declaration"}),
     doc_comment_prefixes=("///", "/**"),
     signature_at=outside_bodies(frozenset({"class", "struct", "interface", "record", "enum", "namespace"})),

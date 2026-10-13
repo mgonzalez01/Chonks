@@ -40,6 +40,9 @@ _REFS_MAX_CALL_VARIANTS_PER_NAME = 8
 # Entries sharing one (name, receiver, arity) that differ only in call-site evidence.
 _REFS_MAX_EVIDENCE_PER_CALL = 4
 
+# Calls-entry key set on a construction (`new X()`), which reaches only X's class or constructors.
+CONSTRUCTS = "new"
+
 
 # Call-site fingerprint: receiver is the IMMEDIATE token adjacent to the
 # called name, not the chain's root ('a.b.c()' -> 'b'), matching repomap's
@@ -166,11 +169,14 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
         if name and name not in lst and len(lst) < _REFS_MAX_NAMES:
             lst.append(name)
 
-    def add_call(name: str | None, receiver: str | None, arity: int | None, callee: Node) -> None:
+    def add_call(name: str | None, receiver: str | None, arity: int | None, callee: Node,
+                 construct: bool = False) -> None:
         # New entries are fingerprint dicts, not bare strings (legacy shape).
         if not name:
             return
         entry = {"name": name, "receiver": receiver, "arity": arity}
+        if construct:
+            entry[CONSTRUCTS] = True
         if sites is not None:
             entry.update(_call_evidence(n, callee, sites))
         _add_call_entry(refs[CALLS], entry)
@@ -214,6 +220,7 @@ def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: byt
                         receiver,
                         _call_arity(n.child_by_field_name("arguments"), lang),
                         c,
+                        spec.construct,
                     )
                 else:
                     add(spec.bucket, spec.name_fn(c, src))

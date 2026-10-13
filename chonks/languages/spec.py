@@ -29,6 +29,7 @@ class ChildSpec:
     name_fn: NameFn = name_text
     nested: "NestedSpec | None" = None
     break_outer: bool = False
+    construct: bool = False  # calls: the child names a class being constructed (`new X()`)
 
 
 @dataclass(frozen=True)
@@ -207,6 +208,8 @@ class LanguageSpec:
     variadic_arg_types: frozenset[str] = frozenset()
     keyword_arg_types: frozenset[str] = frozenset()
     class_like_chunk_types: frozenset[str] = frozenset()
+    # Symbol kinds of constructors; a construction reaches these or the class itself.
+    constructor_chunk_types: frozenset[str] = frozenset()
     # Chunks that only scope other code: named, but never an edge target.
     scope_chunk_types: frozenset[str] = frozenset()
     # Other languages whose definitions this one's calls, imports and bases

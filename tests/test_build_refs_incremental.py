@@ -237,7 +237,7 @@ def test_incremental_modify_matches_full_rebuild():
 # Typed edges (calls/imports/inherits) reverse resolution
 # ---------------------------------------------------------------------------
 
-def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(caplog):
+def test_incremental_typed_edges_reach_new_targets_and_bases_and_constructions_reach_classes_and_constructors(caplog):
     store = _mk_store()
     initial = [
         _chunk("a", "a.cpp", name="driver", content="void driver() { helper(); }",
@@ -245,6 +245,12 @@ def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(c
         _chunk("d", "derived.h", name="Derived", chunk_type="class_specifier",
                content="class Derived : public Base, public Box<int> {};",
                metadata={"calls": [], "imports": [], "inherits": ["Base", "Box"]}),
+        _chunk("span", "Span.cs", name="Span", language="c_sharp", chunk_type="struct_declaration",
+               content="public readonly ref struct Span<T> {\n  public int Length;\n}"),
+        _chunk("span_ctor", "Span.Ctor.cs", name="Span", language="c_sharp", chunk_type="constructor_declaration",
+               content="public Span(T[] array) {}"),
+        _chunk("span_prop", "Memory.cs", name="Span", language="c_sharp", chunk_type="property_declaration",
+               content="public Span<T> Span => new Span<T>(_array);"),
     ] + _chained_fillers()
     _insert(store, initial)
     build_refs(store)
@@ -257,6 +263,12 @@ def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(c
         _chunk("ctor", "base.cpp", name="Base::Base", content="Base::Base() {}"),
         _chunk("box", "box.h", name="Box", chunk_type="template_declaration",
                content="template <class T>\nclass Box {};"),
+        _chunk("make", "Make.cs", name="Make", language="c_sharp", chunk_type="method_declaration",
+               content="Span<int> Make(int[] a) => new Span<int>(a);",
+               metadata={"calls": [{"name": "Span", "receiver": None, "arity": 1, "new": True}]}),
+        _chunk("use", "Use.cs", name="Use", language="c_sharp", chunk_type="method_declaration",
+               content="int Use(Memory<int> m) => Span(m);",
+               metadata={"calls": [{"name": "Span", "receiver": None, "arity": None}]}),
     ]
     symbol_rows = [
         {"path": "base.h", "name": "Base", "kind": "class_specifier", "language": "cpp",
@@ -265,6 +277,12 @@ def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(c
          "start_line": 1, "end_line": 1, "chunk_id": "ctor"},
         {"path": "box.h", "name": "Box", "kind": "class_specifier", "language": "cpp",
          "start_line": 2, "end_line": 2, "chunk_id": "box"},
+        {"path": "Span.cs", "name": "Span", "kind": "struct_declaration", "language": "c_sharp",
+         "start_line": 1, "end_line": 3, "chunk_id": "span"},
+        {"path": "Span.Ctor.cs", "name": "Span", "kind": "constructor_declaration", "language": "c_sharp",
+         "start_line": 1, "end_line": 1, "chunk_id": "span_ctor"},
+        {"path": "Memory.cs", "name": "Span", "kind": "property_declaration", "language": "c_sharp",
+         "start_line": 1, "end_line": 1, "chunk_id": "span_prop"},
     ]
     _insert(store, new)
     store.insert_symbols(symbol_rows)
@@ -285,6 +303,8 @@ def test_incremental_typed_edges_reach_new_targets_and_bases_skip_constructors(c
     assert got == want
     assert ("a", "b", "calls") in got
     assert {t for (f, t, e) in got if f == "d" and e == "inherits"} == {"base", "box"}
+    assert {t for (f, t, e) in got if f == "make" and e == "calls"} == {"span", "span_ctor"}
+    assert "span_prop" in {t for (f, t, e) in got if f == "use" and e == "calls"}
 
 
 # ---------------------------------------------------------------------------

@@ -41,20 +41,23 @@ class Registry:
                             f"{spec.name}: {attr} entry {entry!r} must be dotless lower-case")
             if spec.refs_spec is not None:
                 buckets: set[str] = set()
+                constructs = False
                 for rule in spec.refs_spec.values():
                     children = rule.specs if isinstance(rule, Children) else (rule,)
                     buckets |= {child.bucket for child in children}
+                    constructs |= any(getattr(child, "construct", False) for child in children)
                 bad = buckets - _REFS_BUCKETS
                 if bad:
                     raise ValueError(
                         f"{spec.name}: refs_spec bucket {sorted(bad)!r} "
                         f"not in {sorted(_REFS_BUCKETS)!r}")
-                # inherits edges reach only chunks holding a symbol of these kinds.
-                if "inherits" in buckets and not spec.class_like_chunk_types:
-                    raise ValueError(f"{spec.name}: refs_spec has inherits but no class_like_chunk_types")
-            if not spec.class_like_chunk_types <= spec.boundary_nodes:
-                raise ValueError(
-                    f"{spec.name}: class_like_chunk_types must be a subset of boundary_nodes")
+                # inherits edges and constructions reach only chunks holding a symbol of these kinds.
+                if ("inherits" in buckets or constructs) and not spec.class_like_chunk_types:
+                    raise ValueError(
+                        f"{spec.name}: refs_spec has inherits or a construction but no class_like_chunk_types")
+            for attr in ("class_like_chunk_types", "constructor_chunk_types"):
+                if not getattr(spec, attr) <= spec.boundary_nodes:
+                    raise ValueError(f"{spec.name}: {attr} must be a subset of boundary_nodes")
             if not spec.scope_chunk_types <= spec.container_nodes:
                 raise ValueError(
                     f"{spec.name}: scope_chunk_types must be a subset of container_nodes")

@@ -1435,7 +1435,7 @@ class Bar(int size) : Node(size), IThing, IList<Node>, Godot.IExtra, global::God
     assert refs["inherits"] == ["Node", "IThing", "IList"]
     assert _call_entry(refs, "Helper") == {"name": "Helper", "receiver": None, "arity": 0}
     assert _call_entry(refs, "Call") == {"name": "Call", "receiver": "other", "arity": 1}
-    assert _call_entry(refs, "Widget") == {"name": "Widget", "receiver": None, "arity": 0}
+    assert _call_entry(refs, "Widget") == {"name": "Widget", "receiver": None, "arity": 0, "new": True}
 
 
 def test_extract_refs_gdscript():
@@ -1579,10 +1579,14 @@ void driver(Node *p) {
     refs = _refs(segment_file(cpp, "cpp", path="t.cpp"), "driver")
     assert _call_names(refs) >= {"cast_to", "make_ref"}
     assert not _call_names(refs) & {"GraphFrame", "Texture"}
-    cs = b"class A { void Driver() { var r = GetComponent<Rigidbody>(); Foo.Bar<Baz>(1); } }\n"
+    cs = b"""class A { void Driver() {
+    var r = GetComponent<Rigidbody>(); Foo.Bar<Baz>(1);
+    new List<PropertyInfo>(); new Godot.Collections.Array<Node>();
+} }
+"""
     refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
-    assert _call_names(refs) >= {"GetComponent", "Bar"}
-    assert not _call_names(refs) & {"Rigidbody", "Baz"}
+    assert _call_names(refs) >= {"GetComponent", "Bar", "List", "Array"}
+    assert not _call_names(refs) & {"Rigidbody", "Baz", "PropertyInfo", "Node"}
     cs = b'''class A { async void Driver() {
     Array<Node>.Make();
     Godot.Array<Dictionary<Node>>.Build();
