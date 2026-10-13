@@ -9,6 +9,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "after",
+            "start_col": 0,
             "start_line": 26
           },
           {
@@ -16,6 +17,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "before",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -71,6 +73,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "after",
+          "start_col": 0,
           "start_line": 26
         },
         {
@@ -78,6 +81,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "before",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -96,6 +100,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "after",
+            "start_col": 0,
             "start_line": 27
           },
           {
@@ -103,6 +108,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "before",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -158,6 +164,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "after",
+          "start_col": 0,
           "start_line": 27
         },
         {
@@ -165,6 +172,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "before",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -182,6 +190,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "only_pos",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -225,6 +234,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "only_pos",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -242,6 +252,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "C",
+            "start_col": 0,
             "start_line": 1
           },
           {
@@ -249,6 +260,7 @@
             "kind": "decorated_definition",
             "language": "python",
             "name": "cls_method",
+            "start_col": 4,
             "start_line": 5
           },
           {
@@ -256,6 +268,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "cls_method",
+            "start_col": 4,
             "start_line": 6
           },
           {
@@ -263,6 +276,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "method_name",
+            "start_col": 4,
             "start_line": 2
           }
         ]
@@ -320,6 +334,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "C",
+          "start_col": 0,
           "start_line": 1
         },
         {
@@ -327,6 +342,7 @@
           "kind": "decorated_definition",
           "language": "python",
           "name": "cls_method",
+          "start_col": 4,
           "start_line": 5
         },
         {
@@ -334,6 +350,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "cls_method",
+          "start_col": 4,
           "start_line": 6
         },
         {
@@ -341,6 +358,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "method_name",
+          "start_col": 4,
           "start_line": 2
         }
       ]
@@ -358,6 +376,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "uses_bare_star",
+            "start_col": 0,
             "start_line": 7
           },
           {
@@ -365,6 +384,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "uses_kwargs",
+            "start_col": 0,
             "start_line": 4
           },
           {
@@ -372,6 +392,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "uses_args",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -443,6 +464,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "uses_bare_star",
+          "start_col": 0,
           "start_line": 7
         },
         {
@@ -450,6 +472,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "uses_kwargs",
+          "start_col": 0,
           "start_line": 4
         },
         {
@@ -457,6 +480,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "uses_args",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -474,6 +498,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "Bar",
+            "start_col": 0,
             "start_line": 19
           },
           {
@@ -481,6 +506,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "go",
+            "start_col": 4,
             "start_line": 20
           },
           {
@@ -488,6 +514,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "Foo",
+            "start_col": 0,
             "start_line": 12
           },
           {
@@ -495,6 +522,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "run",
+            "start_col": 4,
             "start_line": 13
           },
           {
@@ -502,6 +530,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "Base",
+            "start_col": 0,
             "start_line": 9
           }
         ]
@@ -581,6 +610,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "Bar",
+          "start_col": 0,
           "start_line": 19
         },
         {
@@ -588,6 +618,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "go",
+          "start_col": 4,
           "start_line": 20
         },
         {
@@ -595,6 +626,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "Foo",
+          "start_col": 0,
           "start_line": 12
         },
         {
@@ -602,6 +634,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "run",
+          "start_col": 4,
           "start_line": 13
         },
         {
@@ -609,6 +642,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "Base",
+          "start_col": 0,
           "start_line": 9
         }
       ]
@@ -626,6 +660,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "driver",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -659,6 +694,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "driver",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -676,6 +712,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "driver",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -724,6 +761,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "driver",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -741,6 +779,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "driver",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -774,6 +813,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "driver",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -791,6 +831,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "driver",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -824,6 +865,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "driver",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -841,6 +883,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -868,6 +911,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -885,6 +929,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "_Fmt",
+            "start_col": 4,
             "start_line": 4
           },
           {
@@ -892,6 +937,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "emit",
+            "start_col": 8,
             "start_line": 5
           }
         ]
@@ -921,6 +967,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "_Fmt",
+          "start_col": 4,
           "start_line": 4
         },
         {
@@ -928,6 +975,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "emit",
+          "start_col": 8,
           "start_line": 5
         }
       ]
@@ -945,6 +993,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "Foo",
+            "start_col": 0,
             "start_line": 5
           },
           {
@@ -952,6 +1001,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "run",
+            "start_col": 4,
             "start_line": 6
           }
         ]
@@ -996,6 +1046,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "Foo",
+          "start_col": 0,
           "start_line": 5
         },
         {
@@ -1003,6 +1054,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "run",
+          "start_col": 4,
           "start_line": 6
         }
       ]
@@ -1020,6 +1072,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1054,6 +1107,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1071,6 +1125,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1105,6 +1160,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1125,6 +1181,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "outer",
+            "start_col": 0,
             "start_line": 1
           },
           {
@@ -1132,6 +1189,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "inner",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -1173,6 +1231,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "outer",
+          "start_col": 0,
           "start_line": 1
         },
         {
@@ -1180,6 +1239,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "inner",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -1197,6 +1257,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 5
           }
         ]
@@ -1227,6 +1288,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 5
         }
       ]
@@ -1244,6 +1306,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1278,6 +1341,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1295,6 +1359,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "C",
+            "start_col": 0,
             "start_line": 8
           },
           {
@@ -1302,6 +1367,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 3
           }
         ]
@@ -1342,6 +1408,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "C",
+          "start_col": 0,
           "start_line": 8
         },
         {
@@ -1349,6 +1416,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 3
         }
       ]
@@ -1366,6 +1434,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1406,6 +1475,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1423,6 +1493,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1457,6 +1528,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1474,6 +1546,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "func_A",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -1612,6 +1685,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "func_A",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -1629,6 +1703,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "helper",
+            "start_col": 0,
             "start_line": 11
           }
         ]
@@ -2142,6 +2217,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "helper",
+          "start_col": 0,
           "start_line": 11
         }
       ]
@@ -2159,6 +2235,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2193,6 +2270,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -2210,6 +2288,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2244,6 +2323,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -2261,6 +2341,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "impure",
+            "start_col": 0,
             "start_line": 24
           },
           {
@@ -2268,6 +2349,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "pure",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -2329,6 +2411,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "impure",
+          "start_col": 0,
           "start_line": 24
         },
         {
@@ -2336,6 +2419,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "pure",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -2353,6 +2437,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2392,6 +2477,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -2409,6 +2495,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2443,6 +2530,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -2460,6 +2548,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "c",
+            "start_col": 0,
             "start_line": 8
           },
           {
@@ -2467,6 +2556,7 @@
             "kind": "class_definition",
             "language": "python",
             "name": "B",
+            "start_col": 0,
             "start_line": 4
           },
           {
@@ -2474,6 +2564,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "m",
+            "start_col": 4,
             "start_line": 5
           },
           {
@@ -2481,6 +2572,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "a",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -2508,6 +2600,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "c",
+          "start_col": 0,
           "start_line": 8
         },
         {
@@ -2515,6 +2608,7 @@
           "kind": "class_definition",
           "language": "python",
           "name": "B",
+          "start_col": 0,
           "start_line": 4
         },
         {
@@ -2522,6 +2616,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "m",
+          "start_col": 4,
           "start_line": 5
         },
         {
@@ -2529,6 +2624,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "a",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -2546,6 +2642,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2580,6 +2677,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -2597,6 +2695,7 @@
             "kind": "function_definition",
             "language": "python",
             "name": "f",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -2631,6 +2730,7 @@
           "kind": "function_definition",
           "language": "python",
           "name": "f",
+          "start_col": 0,
           "start_line": 2
         }
       ]

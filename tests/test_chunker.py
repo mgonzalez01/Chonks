@@ -67,7 +67,8 @@ def test_ext_filter_is_case_insensitive(tmp_path):
 
 def test_index_populates_decoupled_symbols(tmp_path):
     """End-to-end: indexing a small class (folded into ONE chunk) still populates
-    the symbols table with the class and each method, mapped to the owning chunk."""
+    the symbols table with the class and each method, mapped to the owning chunk.
+    Where chunks share a line or nest, a symbol maps to the chunk its node starts in."""
     from chonks.index.pipeline import index_paths
 
     (tmp_path / "widget.cpp").write_text(
@@ -75,6 +76,24 @@ def test_index_populates_decoupled_symbols(tmp_path):
         "  int get_x() const { return x_; }\n"
         "  void set_x(int v) { x_ = v; }\n"
         "private:\n  int x_ = 0;\n};\n"
+    )
+    (tmp_path / "icon.cpp").write_text(
+        "Error ExportPlatform::_process_icon(const String &p_path) {\n"
+        "\tstruct IconData {\n\t\tVector<uint8_t> data;\n\t\tuint16_t planes = 0;\n\t};\n"
+        "\tHashMap<uint8_t, IconData> images;\n"
+        "\timages[0] = IconData(;\n"
+        "\treturn OK;\n}\n"
+    )
+    (tmp_path / "view.mm").write_text(
+        "static const int max_touches = 32;\n\n"
+        "@interface GDTView () {\n\tUITouch *godot_touches[max_touches];\n}\n"
+    )
+    (tmp_path / "webxr.js").write_text(
+        "function XRSpace() {};\nXRSpace.prototype.name;\n"
+        "function XRPose() {};\nXRPose.prototype.space;\n"
+    )
+    (tmp_path / "latin1.c").write_bytes(
+        b"int width(void) { return 0; } int height(void) { return 0xe9; /* caf\xe9 */ }\n"
     )
 
     class _FakeEmbedder:
@@ -92,6 +111,13 @@ def test_index_populates_decoupled_symbols(tmp_path):
     assert {"Widget", "get_x", "set_x"} <= names, f"symbols not populated end-to-end: {names}"
     hits = store.find_symbols("get_x")
     assert hits and hits[0]["chunk_id"], "symbol not mapped to its owning chunk_id"
+    held = {}
+    for name in ("IconData", "GDTView", "XRSpace", "XRPose", "width"):
+        (sym,) = store.find_symbols(name)
+        (chunk,) = store.get_chunks_by_ids([sym["chunk_id"]])
+        held[name] = chunk["name"]
+    assert held == {"IconData": "IconData", "GDTView": "GDTView", "XRSpace": "XRSpace",
+                    "XRPose": "XRPose", "width": "width"}
     store.close()
 
 

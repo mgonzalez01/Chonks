@@ -8,6 +8,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "_ready",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -35,6 +36,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "_ready",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -52,6 +54,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "run_pipeline",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -157,6 +160,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "run_pipeline",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -174,6 +178,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "_process",
+            "start_col": 0,
             "start_line": 10
           },
           {
@@ -181,6 +186,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "_ready",
+            "start_col": 0,
             "start_line": 4
           }
         ]
@@ -231,6 +237,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "_process",
+          "start_col": 0,
           "start_line": 10
         },
         {
@@ -238,6 +245,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "_ready",
+          "start_col": 0,
           "start_line": 4
         }
       ]
@@ -255,6 +263,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "driver",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -288,6 +297,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "driver",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -305,6 +315,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "driver",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -338,6 +349,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "driver",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -355,6 +367,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "_ready",
+            "start_col": 0,
             "start_line": 4
           }
         ]
@@ -395,6 +408,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "_ready",
+          "start_col": 0,
           "start_line": 4
         }
       ]
@@ -412,6 +426,7 @@
             "kind": "function_definition",
             "language": "gdscript",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -446,6 +461,7 @@
           "kind": "function_definition",
           "language": "gdscript",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]

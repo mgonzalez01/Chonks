@@ -8,6 +8,7 @@
             "kind": "lexical_declaration",
             "language": "tsx",
             "name": "Comp",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -35,6 +36,7 @@
           "kind": "lexical_declaration",
           "language": "tsx",
           "name": "Comp",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -52,6 +54,7 @@
             "kind": "function_declaration",
             "language": "tsx",
             "name": "App",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -79,6 +82,7 @@
           "kind": "function_declaration",
           "language": "tsx",
           "name": "App",
+          "start_col": 7,
           "start_line": 1
         }
       ]
