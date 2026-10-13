@@ -2,6 +2,7 @@
 import os
 import re
 import sys
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
@@ -21,6 +22,54 @@ def _to_stored_path(fpath: Path, root: Path | None) -> str:
         except ValueError:
             pass  # fpath outside root, fall through to absolute
     return fpath.as_posix()
+
+
+def _spelling_key(name: str) -> str:
+    return unicodedata.normalize("NFC", name).casefold()
+
+
+def _same_entry(a: Path, b: Path) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _is_under(path: Path, root: Path) -> bool:
+    """Whether `path` is `root` or lies under it, counting another case or
+    Unicode form of root that the file system opens as root."""
+    head = Path(*path.parts[:len(root.parts)])
+    return head == root or (_spelling_key(str(head)) == _spelling_key(str(root)) and _same_entry(head, root))
+
+
+def _spelled_as_listed(paths: list[Path], root: Path | None) -> list[Path]:
+    """Each resolved path with every name as its directory lists it, after root's
+    own spelling for a path under root, so a walk would spell it the same."""
+    listings: dict[Path, set[str]] = {}
+    folded: dict[Path, dict[str, list[str]]] = {}
+
+    def listed(parent: Path, name: str) -> str:
+        if parent not in listings:
+            try:
+                listings[parent] = set(os.listdir(parent))
+            except OSError:
+                listings[parent] = set()
+        if name in listings[parent]:
+            return name
+        if parent not in folded:
+            folded[parent] = {}
+            for n in listings[parent]:
+                folded[parent].setdefault(_spelling_key(n), []).append(n)
+        candidates = folded[parent].get(_spelling_key(name), ())
+        return next((n for n in candidates if _same_entry(parent / n, parent / name)), name)
+
+    out = []
+    for path in paths:
+        spelled = root if root is not None and _is_under(path, root) else Path(path.anchor)
+        for name in path.parts[len(spelled.parts):]:
+            spelled = spelled / listed(spelled, name)
+        out.append(spelled)
+    return out
 
 
 def _normalize_prefixes(prefixes: list[str] | None) -> list[str]:
