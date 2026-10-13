@@ -5,8 +5,8 @@ import re
 from typing import TYPE_CHECKING
 
 from ._ast import (
-    has_body, is_forward_declaration, is_opaque_typedef, name_last_or_text,
-    name_strip_angle_brackets, name_text, terminal_identifier,
+    has_body, is_forward_declaration, is_opaque_typedef, name_strip_angle_brackets, name_text,
+    terminal_identifier,
 )
 from ._braces import outside_bodies
 from ._naming import (
@@ -47,6 +47,11 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
     if scope is not None and scope.type == "namespace_identifier":
         return name_text(scope, src)
     return terminal_identifier(scope, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
+
+
+def base_name(node: Node, src: bytes) -> str | None:
+    """`public ns::Vector<Node>` -> 'Vector'."""
+    return terminal_identifier(node, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
 
 
 _CLASS_TYPES = ("class_specifier", "struct_specifier")
@@ -191,7 +196,7 @@ INCLUDE = Children((
 ))
 BASES = Children((
     ChildSpec(("base_class_clause",), "inherits",
-              nested=NestedSpec(("type_identifier", "qualified_identifier"), name_last_or_text)),
+              nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"), base_name)),
 ))
 
 CLASS_MODEL = ClassModelSpec(

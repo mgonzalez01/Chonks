@@ -1390,7 +1390,7 @@ def test_extract_refs_cpp():
 #include <foo.h>
 #include "bar.h"
 
-class Foo : public Base, protected IOther {
+class Foo : public Base, protected IOther, public ns::Vector<Node>, Ref<Resource> {
 public:
     void run() { helper(); this->other->call(x); Bar::Static(); }
 };
@@ -1399,7 +1399,7 @@ public:
     refs = _refs(segs, "Foo")
     assert _call_names(refs) == {"helper", "call", "Static"}
     assert set(refs["imports"]) == {"foo.h", "bar.h"}
-    assert set(refs["inherits"]) == {"Base", "IOther"}
+    assert set(refs["inherits"]) == {"Base", "IOther", "Vector", "Ref"}
     assert _call_entry(refs, "helper") == {"name": "helper", "receiver": None, "arity": 0, "cls": "Foo"}
     assert _call_entry(refs, "call") == {
         "name": "call", "receiver": "other", "arity": 1, "racc": "->",
