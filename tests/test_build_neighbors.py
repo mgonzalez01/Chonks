@@ -265,8 +265,8 @@ def test_incremental_survives_dangling_worst_neighbor():
 # int8-quantized cosine distance ties at the k-th (worst-kept) slot often at
 # small `dim`; without a deterministic tie-break applied consistently at
 # every site that picks/keeps a row's top-k (the bulk rebuild's argpartition
-# sort, `_topk_for_rows`, and the incremental displacement/trim_neighbors
-# path), the incremental result can pick a different one of the tied
+# sort, `_topk_for_rows`, and the incremental displacement merge), the
+# incremental result can pick a different one of the tied
 # candidates than a from-scratch rebuild, breaking the "incremental exactly
 # equals a full rebuild" contract.
 
@@ -1093,11 +1093,11 @@ def test_cuda_incremental_matches_full_rebuild_real_gpu(monkeypatch):
 
 # --- incremental progress logging ------------------------------------------
 #
-# The incremental path (changed-rows matmul + damaged-row repair, plus the
-# per-cid displaced-neighbour trim) can run for minutes with zero output on a
-# large batch at 350k-chunk scale. Force the progress interval to 0 so every loop
-# iteration logs, then assert the entry line and each phase's periodic line
-# fire, without waiting on a real wall-clock interval.
+# The incremental path (changed-rows matmul + damaged-row repair) can run for
+# minutes with zero output on a large batch at 350k-chunk scale. Force the
+# progress interval to 0 so every loop iteration logs, then assert the entry
+# line and each phase's periodic line fire, without waiting on a real
+# wall-clock interval.
 
 def test_incremental_progress_logs_entry_and_phase_lines(monkeypatch, caplog):
     import logging
@@ -1135,9 +1135,8 @@ def test_incremental_progress_logs_entry_and_phase_lines(monkeypatch, caplog):
 # --- backend-aware incremental gate -----------------------------------------
 #
 # On a device backend the full rebuild's matmul is fast enough that the
-# incremental path's SQL-bound per-row bookkeeping loses far sooner than the
-# numpy-tuned 20% fraction, so the gate must use a much lower churn threshold
-# when a device backend is armed.
+# incremental path loses far sooner than the numpy-tuned 20% fraction, so the
+# gate must use a much lower churn threshold when a device backend is armed.
 
 def test_device_backend_armed_false_without_env(monkeypatch):
     import chonks.index.graph.knn as repomap

@@ -11,6 +11,7 @@ import re
 import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Collection, Iterable
+from contextlib import closing
 from typing import TYPE_CHECKING, Iterator
 
 from chonks.index.progress import PassLog
@@ -566,15 +567,27 @@ def _build_refs_incremental(
         logger.info("chunk_refs incremental update aborted: class bases or using-directives "
                     "changed — falling back to full rebuild.")
         return None
-    rows = {c["id"]: c for c in store.find_named_chunks_referencing(sorted(touched)) if _spelled(c) & touched}
-    sources = rows.keys() | changed_ids | _xlang_endpoints(touched, chunks, sym_map, changed_ids)
-    if len(sources) > _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * max(total, 1):
+    base = changed_ids | _xlang_endpoints(touched, chunks, sym_map, changed_ids)
+    limit = _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * max(total, 1)
+    rows: dict[str, dict] = {}
+    n_sources = len(base)
+    if n_sources <= limit:
+        with closing(store.iter_named_chunks_referencing(sorted(touched))) as referencers:
+            for c in referencers:
+                if _spelled(c) & touched:
+                    rows[c["id"]] = c
+                    if c["id"] not in base:
+                        n_sources += 1
+                        if n_sources > limit:
+                            break
+    if n_sources > limit:
         logger.info(
-            "chunk_refs incremental update aborted: %d of %d chunks to recompute "
-            "(touched_names=%d) exceeds %.0f%% — falling back to full rebuild.",
-            len(sources), total, len(touched), _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * 100,
+            "chunk_refs incremental update aborted: over %d of %d chunks to recompute "
+            "(touched_names=%d), past %.0f%% — falling back to full rebuild.",
+            limit, total, len(touched), _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * 100,
         )
         return None
+    sources = rows.keys() | base
     rows.update((c["id"], c) for c in store.get_chunks_by_ids([i for i in sources if i not in rows]))
     named = [c for c in rows.values() if c["name"] is not None]
 
