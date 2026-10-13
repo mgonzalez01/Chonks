@@ -15,7 +15,7 @@ from contextlib import closing
 from typing import TYPE_CHECKING, Iterator
 
 from chonks.index.progress import PassLog
-from chonks.index.refs_extract import _call_entry_name
+from chonks.index.refs_extract import CONSTRUCTS, _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
 from chonks.resolve.members import MemberIndex, members_index, settled_targets
 
@@ -32,13 +32,15 @@ if TYPE_CHECKING:
 _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
 _TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
 _CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
+_CONSTRUCTOR_KINDS = _lang_union("constructor_chunk_types")
 
 
 def _refresh_from_registry() -> None:
-    global _SCOPE_CHUNK_TYPES, _TYPED_REF_LANGUAGES, _CLASS_LIKE_KINDS
+    global _SCOPE_CHUNK_TYPES, _TYPED_REF_LANGUAGES, _CLASS_LIKE_KINDS, _CONSTRUCTOR_KINDS
     _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
     _TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
     _CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
+    _CONSTRUCTOR_KINDS = _lang_union("constructor_chunk_types")
 
 
 def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> list[str]:
@@ -51,12 +53,13 @@ def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> l
 def _typed_refs(
     c: dict, name_to_ids: dict[str, list[str]], id_to_chunk: dict[str, dict], arity_cache: dict,
     owner_decls: "Callable[[str], Iterable[dict]] | None", members: MemberIndex | None, cap_mentions: bool,
-    class_holders: "Callable[[str, list[str]], list[str]] | None" = None,
+    class_holders: "Callable[..., list[str]] | None" = None,
 ) -> tuple[dict[str, str], set[str]]:
     """The chunk's typed edges as {to_id: edge_type}, and the names every call
     of which the class model settles. A base links only the chunks
-    `class_holders` keeps. A target reached under several types keeps the
-    first in TYPED_EDGE_TYPES, so a call into a base's chunk stays a call."""
+    `class_holders` keeps, a construction those and the class's constructors.
+    A target reached under several types keeps the first in TYPED_EDGE_TYPES,
+    so a call into a base's chunk stays a call."""
     cid = c["id"]
     md = c.get("metadata") or {}
     lang = c.get("language") or ""
@@ -77,8 +80,9 @@ def _typed_refs(
                 targets = resolution.targets
             else:
                 ids = _typed_targets(name_to_ids.get(name) or [], lang, id_to_chunk)
-                if edge_type == INHERITS and class_holders is not None:
-                    ids = class_holders(name, ids)
+                constructs = isinstance(raw, dict) and bool(raw.get(CONSTRUCTS))
+                if class_holders is not None and (edge_type == INHERITS or constructs):
+                    ids = class_holders(name, ids, constructors=constructs)
                 # The mentions pass's cap, so a typed fact is never dropped in favor of a noisier one.
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
@@ -296,7 +300,7 @@ def _graph(
     extra_definers: list[dict] | None = None, log: PassLog | None = None,
     owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
     members: MemberIndex | None = None,
-    class_holders: "Callable[[str, list[str]], list[str]] | None" = None,
+    class_holders: "Callable[..., list[str]] | None" = None,
 ) -> tuple[dict[tuple[str, str], str], dict[str, set[str]]]:
     """{(from_id, to_id): edge_type} from mentions, xlang pairing and typed
     AST facts, and each chunk's mentioned names. A name every call of which
@@ -380,18 +384,20 @@ def _class_name(name: str) -> str:
     return re.split(r"::|\.", strip_template_args(name))[-1]
 
 
-def _class_holders(store: "Store") -> "Callable[[str, list[str]], list[str]]":
-    """The chunks among `ids` holding a class-like symbol named `name`."""
-    held: dict[str, set[str]] = {}
+def _class_holders(store: "Store") -> "Callable[..., list[str]]":
+    """The chunks among `ids` holding a class-like symbol named `name`, or with
+    `constructors`, a constructor of it."""
+    held: dict[str, set[tuple[str, bool]]] = {}
 
-    def holders(name: str, ids: list[str]) -> list[str]:
+    def holders(name: str, ids: list[str], constructors: bool = False) -> list[str]:
         todo = [i for i in ids if i not in held]
         held.update((i, set()) for i in todo)
         for row in store.get_symbols_by_chunk_ids(todo) if todo else ():
-            if row["kind"] in _CLASS_LIKE_KINDS:
-                held[row["chunk_id"]].add(_class_name(row["name"]))
+            if row["kind"] in _CLASS_LIKE_KINDS or row["kind"] in _CONSTRUCTOR_KINDS:
+                held[row["chunk_id"]].add((_class_name(row["name"]), row["kind"] in _CONSTRUCTOR_KINDS))
         bare = _class_name(name)
-        return [i for i in ids if bare in held[i]]
+        wanted = {(bare, False), (bare, True)} if constructors else {(bare, False)}
+        return [i for i in ids if held[i] & wanted]
 
     return holders
 

@@ -246,16 +246,19 @@
               {
                 "arity": 0,
                 "name": "Widget",
+                "new": true,
                 "receiver": null
               },
               {
                 "arity": 0,
                 "name": "List",
+                "new": true,
                 "receiver": null
               },
               {
                 "arity": 0,
                 "name": "Type",
+                "new": true,
                 "receiver": "Qualified"
               }
             ],
@@ -742,6 +745,7 @@
               {
                 "arity": 0,
                 "name": "Widget",
+                "new": true,
                 "receiver": null
               }
             ],
