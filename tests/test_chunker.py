@@ -329,6 +329,25 @@ def test_indexing_one_folder_still_sees_macros_defined_elsewhere(tmp_path, tmp_p
     store.close()
 
 
+def test_indexing_a_folder_keeps_a_sibling_spelled_in_another_case(tmp_path):
+    from chonks.index.pipeline import index_paths
+
+    store = Store(tmp_path / "test.db")
+    store.upsert_file("Foo/b.c", 1, 0.0, "h")
+    assert store.get_paths_under("foo/") == []
+    (tmp_path / "foo").mkdir()
+    if (tmp_path / "FOO").exists():
+        pytest.skip("the file system ignores case")
+    (tmp_path / "Foo").mkdir()
+    (tmp_path / "foo" / "a.c").write_text("int a(void) { return 1; }\n")
+    (tmp_path / "Foo" / "b.c").write_text("int b(void) { return 2; }\n")
+    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
+    stats = index_paths([str(tmp_path / "foo")], store, _FakeEmbedder(), root=tmp_path)
+    assert stats["pruned"] == 0
+    assert set(store.get_paths_under("")) == set(store.get_macro_definitions()) == {"Foo/b.c", "foo/a.c"}
+    store.close()
+
+
 def test_each_path_is_stored_as_its_directories_list_it(tmp_path):
     from chonks.index.pipeline import index_paths
 
