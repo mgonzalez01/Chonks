@@ -599,16 +599,21 @@ def test_unsupported_extension_counted_regardless_of_config(tmp_path):
     from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
-    src_dir.mkdir()
+    (src_dir / "fx").mkdir(parents=True)
     (src_dir / "image.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (src_dir / "blur.glsl").write_text("void main() {}\n")
+    (src_dir / "fx" / "tonemap.GLSL").write_text("void main() {}\n")
     (src_dir / "real.py").write_text("def f():\n    return 1\n")
 
     store = Store(tmp_path / "test.db")
     result = index_paths([str(src_dir)], store, _FakeEmbedder(), root=src_dir)
+    index_paths([str(src_dir / "fx")], store, _FakeEmbedder(), root=src_dir)
+    recorded = json.loads(store.get_meta("unsupported_exts"))
     store.close()
 
     assert result["indexed"] == 1  # only real.py
-    assert result["unsupported_ext_skipped"] == 1  # image.png
+    assert result["unsupported_ext_skipped"] == 3
+    assert result["unsupported_exts"] == recorded["by_ext"] == {".glsl": 2, ".png": 1}
 
 
 def test_oversize_json_skipped_and_counted(tmp_path):

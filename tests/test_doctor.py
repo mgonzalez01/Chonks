@@ -116,7 +116,7 @@ def test_edges_section(tmp_path):
     assert "chunk_neighbors: 2" in report
 
 
-def test_parse_health_not_recorded(tmp_path):
+def test_parse_health_prints_what_the_db_records(tmp_path):
     store = _build_synthetic_store(tmp_path)
     store.close()
 
@@ -124,6 +124,14 @@ def test_parse_health_not_recorded(tmp_path):
     assert "not recorded in this DB" in report
     assert "unsupported-extension histogram: not recorded in this DB" in report
     assert "oversize chunk count: not recorded in this DB" in report
+
+    store = Store(tmp_path / "test.db")
+    store.set_meta("unsupported_exts", json.dumps(
+        {"files": 31, "by_ext": {".glsl": 9, ".inc": 7, "": 5, ".java": 4, ".kt": 3, ".gradle": 2}}))
+    store.close()
+    report = _report_for(tmp_path / "test.db")
+    assert ("unsupported extensions (last run over the whole root): .glsl 9, .inc 7, (no extension) 5, "
+            ".java 4, .kt 3, 3 in other extensions") in report
 
 
 def test_table_sizes_section(tmp_path):
