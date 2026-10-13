@@ -1558,6 +1558,8 @@ def test_call_receiver_cpp_scoped_qualified_chain():
 void driver() {
     A::B::C::method(1, 2);
     Vector<Node>::make();
+    ::free_function();
+    ::Foo().run();
 }
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
@@ -1567,6 +1569,11 @@ void driver() {
         "rhead": {"name": "A::B::C", "via": "type", "type": "A::B::C"},
     }
     assert _call_entry(refs, "make")["receiver"] == "Vector"
+    assert _call_entry(refs, "free_function") == {
+        "name": "free_function", "receiver": None, "arity": 0, "racc": "::",
+        "rhead": {"name": "", "via": "type", "type": ""},
+    }
+    assert _call_entry(refs, "run")["rhead"] == {"name": "Foo()", "via": "unknown", "type": None}
 
 
 def test_type_arguments_name_no_call_and_no_receiver_outside_call_results():

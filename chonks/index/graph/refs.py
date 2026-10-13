@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Iterator
 from chonks.index.progress import PassLog
 from chonks.index.refs_extract import CONSTRUCTS, _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
-from chonks.resolve.members import MemberIndex, members_index, model_only, settled_targets
+from chonks.resolve.members import GLOBAL, MemberIndex, members_index, model_only, settled_targets
 
 from chonks.core.edges import (
     ASSOCIATED, CALLS, INHERITS, MENTIONS, TYPED_EDGE_TYPES, XLANG, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN,
@@ -85,6 +85,8 @@ def _typed_refs(
                 constructs = isinstance(raw, dict) and bool(raw.get(CONSTRUCTS))
                 if class_holders is not None and (edge_type == INHERITS or constructs):
                     ids = class_holders(name, ids, constructors=constructs)
+                elif members is not None and resolution is not None and resolution.outcome == GLOBAL:
+                    ids = members.outside_classes(name, ids, lang)
                 # The mentions pass's cap, so a typed fact is never dropped in favor of a noisier one.
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue

@@ -44,14 +44,15 @@ NO_CLASS = "no_class"
 UNTYPED = "untyped"
 NOT_A_CLASS = "static_not_class"
 BARE_NOT_IN_CLASS = "bare_not_in_class"
+GLOBAL = "global"
 
 # Targets of a call whose evidence finds its class without the method, or
 # names a class the model does not have: [] links nothing, None takes the name index.
 UNRESOLVED_TARGETS: dict[str, "list[str] | None"] = {NOT_IN_CLASS: [], NO_CLASS: []}
 
 # Outcomes whose evidence places a call outside every class the model has:
-# `X::f()` where X is no class, or a bare call its calling class lacks.
-OUTSIDE_CLASSES = frozenset({NOT_A_CLASS, BARE_NOT_IN_CLASS})
+# `X::f()` where X is no class, a bare call its calling class lacks, or `::f()`.
+OUTSIDE_CLASSES = frozenset({NOT_A_CLASS, BARE_NOT_IN_CLASS, GLOBAL})
 
 
 class Resolution(NamedTuple):
@@ -220,6 +221,17 @@ class MemberIndex:
                 got[owner.rsplit(sep, 1)[-1]].append(owner)
             self._by_last[sep] = got
         return got
+
+    def outside_classes(self, name: str, ids: list[str], language: str) -> list[str]:
+        """The chunks in `ids` holding no member `name` of a class: what `::name()` can reach.
+        A member defined outside its class may be owned by a shorter spelling of the class."""
+        spec: ClassModelSpec | None = _CLASS_MODELS.get(language)  # type: ignore[assignment]
+        sep = spec.separator if spec is not None else "::"
+        last = self._last(sep)
+        held = {r["chunk_id"] for r in self._store.get_members_by_chunk_ids(ids, name)
+                if r["owner"] in self.known
+                or any(k.endswith(sep + r["owner"]) for k in last.get(r["owner"].rsplit(sep, 1)[-1], ()))}
+        return [i for i in ids if i not in held]
 
     def usings(self, path: str) -> list[dict]:
         got = self._usings.get(path)
@@ -554,7 +566,11 @@ class MemberIndex:
         if not isinstance(head, dict):
             return None
         if racc == sep:
-            ref = spec.type_ref(head.get("type") or "")
+            if not head.get("type"):
+                # `::X(...)` constructs the global class X.
+                hits = self.find([name], name, sep) if name in self.known else []
+                return _targets(hits, arity, STATIC) if hits else Resolution(None, GLOBAL)
+            ref = spec.type_ref(head["type"])
             classes = self.qualify(ref.name, at, sep) if ref is not None else []
             if not classes:
                 return Resolution(None, NOT_A_CLASS)

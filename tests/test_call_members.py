@@ -210,6 +210,21 @@ public:
     assert _files(store, "Node::queue_redraw") == {"node.cpp"}
 
 
+def test_a_global_call_links_only_free_functions(tmp_path):
+    store = _index(tmp_path, {
+        "file.h": "class File {\npublic:\n    void flush();\n    void close();\n    void sync();\n};\n"
+                  "class Pipe {\npublic:\n    void flush();\n    void close();\n};\n"
+                  "class Buffer {\npublic:\n    Buffer(int p_size);\n};\n",
+        "file_flush.cpp": '#include "file.h"\nvoid File::flush() {}\n',
+        "file_close.cpp": '#include "file.h"\nvoid File::close() {}\n',
+        "pipe.cpp": '#include "file.h"\nvoid Pipe::flush() {}\nvoid Pipe::close() {}\n',
+        "buffer.cpp": '#include "file.h"\nBuffer::Buffer(int p_size) {}\n',
+        "global.cpp": "void flush() {}\n",
+        "sync.cpp": '#include "file.h"\nvoid File::sync() { ::flush(); ::close(3); ::Buffer(4); }\n',
+    })
+    assert _files(store, "File::sync") == {"global.cpp", "buffer.cpp"}
+
+
 def test_a_method_only_declared_links_the_chunk_holding_the_declaration(tmp_path):
     store = _index(tmp_path, {
         "shape.h": "class Shape {\npublic:\n    virtual void draw() = 0;\n};\n"
