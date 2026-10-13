@@ -12,6 +12,7 @@
             "kind": "function_definition",
             "language": "hlsl",
             "name": "MainPS",
+            "start_col": 0,
             "start_line": 6
           },
           {
@@ -19,6 +20,7 @@
             "kind": "declaration",
             "language": "hlsl",
             "name": "PerFrame",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -121,6 +123,7 @@
           "kind": "function_definition",
           "language": "hlsl",
           "name": "MainPS",
+          "start_col": 0,
           "start_line": 6
         },
         {
@@ -128,6 +131,7 @@
           "kind": "declaration",
           "language": "hlsl",
           "name": "PerFrame",
+          "start_col": 0,
           "start_line": 1
         }
       ]
@@ -145,6 +149,7 @@
             "kind": "function_definition",
             "language": "hlsl",
             "name": "main",
+            "start_col": 0,
             "start_line": 3
           },
           {
@@ -152,6 +157,7 @@
             "kind": "struct_specifier",
             "language": "hlsl",
             "name": "VSOut",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -185,6 +191,7 @@
           "kind": "function_definition",
           "language": "hlsl",
           "name": "main",
+          "start_col": 0,
           "start_line": 3
         },
         {
@@ -192,6 +199,7 @@
           "kind": "struct_specifier",
           "language": "hlsl",
           "name": "VSOut",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -213,6 +221,7 @@
             "kind": "function_definition",
             "language": "hlsl",
             "name": "MainPS",
+            "start_col": 0,
             "start_line": 31
           },
           {
@@ -220,6 +229,7 @@
             "kind": "struct_specifier",
             "language": "hlsl",
             "name": "VSInput",
+            "start_col": 0,
             "start_line": 18
           },
           {
@@ -227,6 +237,7 @@
             "kind": "declaration",
             "language": "hlsl",
             "name": "PerFrame",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -507,6 +518,7 @@
           "kind": "function_definition",
           "language": "hlsl",
           "name": "MainPS",
+          "start_col": 0,
           "start_line": 31
         },
         {
@@ -514,6 +526,7 @@
           "kind": "struct_specifier",
           "language": "hlsl",
           "name": "VSInput",
+          "start_col": 0,
           "start_line": 18
         },
         {
@@ -521,6 +534,7 @@
           "kind": "declaration",
           "language": "hlsl",
           "name": "PerFrame",
+          "start_col": 0,
           "start_line": 1
         }
       ]

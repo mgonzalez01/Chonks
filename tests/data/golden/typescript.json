@@ -8,6 +8,7 @@
             "kind": "abstract_class_declaration",
             "language": "typescript",
             "name": "Base",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -35,6 +36,7 @@
           "kind": "abstract_class_declaration",
           "language": "typescript",
           "name": "Base",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -52,6 +54,7 @@
             "kind": "enum_declaration",
             "language": "typescript",
             "name": "Color",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -79,6 +82,7 @@
           "kind": "enum_declaration",
           "language": "typescript",
           "name": "Color",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -96,6 +100,7 @@
             "kind": "class_declaration",
             "language": "typescript",
             "name": "Other",
+            "start_col": 15,
             "start_line": 1
           },
           {
@@ -103,6 +108,7 @@
             "kind": "method_definition",
             "language": "typescript",
             "name": "m",
+            "start_col": 2,
             "start_line": 2
           }
         ]
@@ -130,6 +136,7 @@
           "kind": "class_declaration",
           "language": "typescript",
           "name": "Other",
+          "start_col": 15,
           "start_line": 1
         },
         {
@@ -137,6 +144,7 @@
           "kind": "method_definition",
           "language": "typescript",
           "name": "m",
+          "start_col": 2,
           "start_line": 2
         }
       ]
@@ -154,6 +162,7 @@
             "kind": "interface_declaration",
             "language": "typescript",
             "name": "Foo",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -181,6 +190,7 @@
           "kind": "interface_declaration",
           "language": "typescript",
           "name": "Foo",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -198,6 +208,7 @@
             "kind": "type_alias_declaration",
             "language": "typescript",
             "name": "Alias",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -527,6 +538,7 @@
           "kind": "type_alias_declaration",
           "language": "typescript",
           "name": "Alias",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -544,6 +556,7 @@
             "kind": "function_declaration",
             "language": "typescript",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -578,6 +591,7 @@
           "kind": "function_declaration",
           "language": "typescript",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -595,6 +609,7 @@
             "kind": "lexical_declaration",
             "language": "typescript",
             "name": "double",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -622,6 +637,7 @@
           "kind": "lexical_declaration",
           "language": "typescript",
           "name": "double",
+          "start_col": 0,
           "start_line": 1
         }
       ]

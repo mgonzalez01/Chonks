@@ -53,6 +53,7 @@ from chonks.index.postindex import run_post_index_passes
 from chonks.index.progress import tqdm_reporter
 from chonks.index.rows import (
     _chunk_id,
+    _chunk_locator,
     _chunk_metadata,
     _file_metadata,
 )
@@ -250,7 +251,7 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                 for seg in segs:
                     cid = _chunk_id(stored_path, seg["start_line"], seg["content"])
                     text = _compress_for_embed(seg["content"], name=seg["name"], path=stored_path)
-                    chunk_ranges.append((seg["start_line"], seg["end_line"], cid))
+                    chunk_ranges.append((seg["start_line"], seg["end_line"], seg["content"], cid))
                     chunk_dicts.append({
                         "id":           cid,
                         "path":         stored_path,
@@ -270,8 +271,9 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                         "_text":         text,
                         "_vec":          old_vecs.get(text),
                     })
-                # Map each symbol to its containing chunk (ranges tile the
-                # file). Handed to the embedder thread to write on commit.
+                # Handed to the embedder thread to write on commit. A member
+                # has no column, so it is placed at the start of its line.
+                chunk_at = _chunk_locator(src, chunk_ranges)
                 sym_rows = [
                     {
                         "path":       stored_path,
@@ -280,15 +282,12 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                         "language":   sym["language"],
                         "start_line": sym["start_line"],
                         "end_line":   sym["end_line"],
-                        "chunk_id":   next((cc for cs, ce, cc in chunk_ranges
-                                            if cs <= sym["start_line"] <= ce), None),
+                        "chunk_id":   chunk_at(sym["start_line"], sym["start_col"]),
                     }
                     for sym in (_oc.get("symbols") or [])
                 ]
                 member_rows = [
-                    {**m, "path": stored_path,
-                     "chunk_id": next((cc for cs, ce, cc in chunk_ranges
-                                       if cs <= m["line"] <= ce), None)}
+                    {**m, "path": stored_path, "chunk_id": chunk_at(m["line"], 0)}
                     for m in (_oc.get("members") or [])
                 ]
                 base_rows = [{**b, "path": stored_path} for b in (_oc.get("bases") or [])]

@@ -8,6 +8,7 @@
             "kind": "function_declaration",
             "language": "javascript",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -42,6 +43,7 @@
           "kind": "function_declaration",
           "language": "javascript",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -59,6 +61,7 @@
             "kind": "lexical_declaration",
             "language": "javascript",
             "name": "double",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -86,6 +89,7 @@
           "kind": "lexical_declaration",
           "language": "javascript",
           "name": "double",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -103,6 +107,7 @@
             "kind": "class_declaration",
             "language": "javascript",
             "name": "Widget",
+            "start_col": 7,
             "start_line": 1
           },
           {
@@ -110,6 +115,7 @@
             "kind": "method_definition",
             "language": "javascript",
             "name": "render",
+            "start_col": 2,
             "start_line": 10
           },
           {
@@ -117,6 +123,7 @@
             "kind": "method_definition",
             "language": "javascript",
             "name": "constructor",
+            "start_col": 2,
             "start_line": 2
           }
         ]
@@ -144,6 +151,7 @@
           "kind": "class_declaration",
           "language": "javascript",
           "name": "Widget",
+          "start_col": 7,
           "start_line": 1
         },
         {
@@ -151,6 +159,7 @@
           "kind": "method_definition",
           "language": "javascript",
           "name": "render",
+          "start_col": 2,
           "start_line": 10
         },
         {
@@ -158,6 +167,7 @@
           "kind": "method_definition",
           "language": "javascript",
           "name": "constructor",
+          "start_col": 2,
           "start_line": 2
         }
       ]
@@ -175,6 +185,7 @@
             "kind": "function_declaration",
             "language": "javascript",
             "name": "add",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -202,6 +213,7 @@
           "kind": "function_declaration",
           "language": "javascript",
           "name": "add",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -219,6 +231,7 @@
             "kind": "generator_function_declaration",
             "language": "javascript",
             "name": "gen",
+            "start_col": 7,
             "start_line": 1
           }
         ]
@@ -246,6 +259,7 @@
           "kind": "generator_function_declaration",
           "language": "javascript",
           "name": "gen",
+          "start_col": 7,
           "start_line": 1
         }
       ]
@@ -263,6 +277,7 @@
             "kind": "variable_declaration",
             "language": "javascript",
             "name": "square",
+            "start_col": 0,
             "start_line": 1
           }
         ]
@@ -290,6 +305,7 @@
           "kind": "variable_declaration",
           "language": "javascript",
           "name": "square",
+          "start_col": 0,
           "start_line": 1
         }
       ]

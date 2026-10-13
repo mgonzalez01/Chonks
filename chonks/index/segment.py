@@ -857,6 +857,7 @@ def _collect_symbols_from_root(root: Node, lang: str, src: bytes) -> list[dict[s
                     "kind":       kind,
                     "language":   lang,
                     "start_line": node.start_point[0] + 1,
+                    "start_col":  node.start_point[1],
                     "end_line":   _end_line(node),
                 })
         stack.extend(node.children)

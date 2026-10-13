@@ -8,6 +8,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "C",
+            "start_col": 0,
             "start_line": 1
           },
           {
@@ -15,6 +16,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Driver",
+            "start_col": 4,
             "start_line": 2
           }
         ]
@@ -48,6 +50,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "C",
+          "start_col": 0,
           "start_line": 1
         },
         {
@@ -55,6 +58,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Driver",
+          "start_col": 4,
           "start_line": 2
         }
       ]
@@ -72,6 +76,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "C",
+            "start_col": 0,
             "start_line": 1
           },
           {
@@ -79,6 +84,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Driver",
+            "start_col": 4,
             "start_line": 3
           },
           {
@@ -86,6 +92,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Sum",
+            "start_col": 4,
             "start_line": 2
           }
         ]
@@ -129,6 +136,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "C",
+          "start_col": 0,
           "start_line": 1
         },
         {
@@ -136,6 +144,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Driver",
+          "start_col": 4,
           "start_line": 3
         },
         {
@@ -143,6 +152,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Sum",
+          "start_col": 4,
           "start_line": 2
         }
       ]
@@ -160,6 +170,7 @@
             "kind": "interface_declaration",
             "language": "c_sharp",
             "name": "IExtra",
+            "start_col": 0,
             "start_line": 25
           },
           {
@@ -167,6 +178,7 @@
             "kind": "struct_declaration",
             "language": "c_sharp",
             "name": "SDerived",
+            "start_col": 0,
             "start_line": 23
           },
           {
@@ -174,6 +186,7 @@
             "kind": "struct_declaration",
             "language": "c_sharp",
             "name": "SBase",
+            "start_col": 0,
             "start_line": 22
           },
           {
@@ -181,6 +194,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "Bar",
+            "start_col": 0,
             "start_line": 11
           },
           {
@@ -188,6 +202,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Run",
+            "start_col": 4,
             "start_line": 12
           },
           {
@@ -195,6 +210,7 @@
             "kind": "interface_declaration",
             "language": "c_sharp",
             "name": "IThing",
+            "start_col": 0,
             "start_line": 9
           },
           {
@@ -202,6 +218,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "Base",
+            "start_col": 0,
             "start_line": 8
           }
         ]
@@ -279,6 +296,7 @@
           "kind": "interface_declaration",
           "language": "c_sharp",
           "name": "IExtra",
+          "start_col": 0,
           "start_line": 25
         },
         {
@@ -286,6 +304,7 @@
           "kind": "struct_declaration",
           "language": "c_sharp",
           "name": "SDerived",
+          "start_col": 0,
           "start_line": 23
         },
         {
@@ -293,6 +312,7 @@
           "kind": "struct_declaration",
           "language": "c_sharp",
           "name": "SBase",
+          "start_col": 0,
           "start_line": 22
         },
         {
@@ -300,6 +320,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "Bar",
+          "start_col": 0,
           "start_line": 11
         },
         {
@@ -307,6 +328,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Run",
+          "start_col": 4,
           "start_line": 12
         },
         {
@@ -314,6 +336,7 @@
           "kind": "interface_declaration",
           "language": "c_sharp",
           "name": "IThing",
+          "start_col": 0,
           "start_line": 9
         },
         {
@@ -321,6 +344,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "Base",
+          "start_col": 0,
           "start_line": 8
         }
       ]
@@ -338,6 +362,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "X",
+            "start_col": 0,
             "start_line": 2
           },
           {
@@ -345,6 +370,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Load",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -379,6 +405,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "X",
+          "start_col": 0,
           "start_line": 2
         },
         {
@@ -386,6 +413,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Load",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -403,6 +431,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "X",
+            "start_col": 0,
             "start_line": 2
           },
           {
@@ -410,6 +439,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Load",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -444,6 +474,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "X",
+          "start_col": 0,
           "start_line": 2
         },
         {
@@ -451,6 +482,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Load",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -468,6 +500,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "B",
+            "start_col": 0,
             "start_line": 2
           },
           {
@@ -475,6 +508,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Driver",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -508,6 +542,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "B",
+          "start_col": 0,
           "start_line": 2
         },
         {
@@ -515,6 +550,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Driver",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -532,6 +568,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "C",
+            "start_col": 0,
             "start_line": 2
           },
           {
@@ -539,6 +576,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "F",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -573,6 +611,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "C",
+          "start_col": 0,
           "start_line": 2
         },
         {
@@ -580,6 +619,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "F",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -597,6 +637,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "C",
+            "start_col": 0,
             "start_line": 2
           },
           {
@@ -604,6 +645,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "F",
+            "start_col": 4,
             "start_line": 3
           }
         ]
@@ -638,6 +680,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "C",
+          "start_col": 0,
           "start_line": 2
         },
         {
@@ -645,6 +688,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "F",
+          "start_col": 4,
           "start_line": 3
         }
       ]
@@ -662,6 +706,7 @@
             "kind": "class_declaration",
             "language": "c_sharp",
             "name": "Bar",
+            "start_col": 0,
             "start_line": 6
           },
           {
@@ -669,6 +714,7 @@
             "kind": "method_declaration",
             "language": "c_sharp",
             "name": "Run",
+            "start_col": 4,
             "start_line": 7
           }
         ]
@@ -718,6 +764,7 @@
           "kind": "class_declaration",
           "language": "c_sharp",
           "name": "Bar",
+          "start_col": 0,
           "start_line": 6
         },
         {
@@ -725,6 +772,7 @@
           "kind": "method_declaration",
           "language": "c_sharp",
           "name": "Run",
+          "start_col": 4,
           "start_line": 7
         }
       ]

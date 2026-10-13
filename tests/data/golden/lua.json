@@ -8,6 +8,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "greet",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -35,6 +36,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "greet",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -52,6 +54,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "run_pipeline",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -151,6 +154,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "run_pipeline",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -168,6 +172,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -202,6 +207,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -219,6 +225,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "baz",
+            "start_col": 0,
             "start_line": 132
           },
           {
@@ -226,6 +233,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "bar",
+            "start_col": 0,
             "start_line": 68
           },
           {
@@ -233,6 +241,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "M.foo",
+            "start_col": 0,
             "start_line": 4
           }
         ]
@@ -316,6 +325,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "baz",
+          "start_col": 0,
           "start_line": 132
         },
         {
@@ -323,6 +333,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "bar",
+          "start_col": 0,
           "start_line": 68
         },
         {
@@ -330,6 +341,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "M.foo",
+          "start_col": 0,
           "start_line": 4
         }
       ]
@@ -347,6 +359,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "greet",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -381,6 +394,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "greet",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -398,6 +412,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -432,6 +447,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -449,6 +465,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "load",
+            "start_col": 0,
             "start_line": 2
           }
         ]
@@ -483,6 +500,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "load",
+          "start_col": 0,
           "start_line": 2
         }
       ]
@@ -500,6 +518,7 @@
             "kind": "function_declaration",
             "language": "lua",
             "name": "Methods.greet",
+            "start_col": 0,
             "start_line": 4
           }
         ]
@@ -527,6 +546,7 @@
           "kind": "function_declaration",
           "language": "lua",
           "name": "Methods.greet",
+          "start_col": 0,
           "start_line": 4
         }
       ]
