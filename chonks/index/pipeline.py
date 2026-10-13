@@ -7,7 +7,7 @@ import os
 import queue
 import threading
 import time
-from collections import deque
+from collections import Counter, deque
 from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
@@ -157,6 +157,10 @@ class EmbedderDownError(RuntimeError):
 # the outer failure, not _embed_isolating's nested per-chunk ones (those are
 # normal). 5 balances tolerating a network blip against a fast abort.
 EMBEDDER_DOWN_THRESHOLD = 5
+
+# Extensions kept in the run stats and meta.unsupported_exts, most files first.
+SKIPPED_EXTS_KEPT = 50
+
 
 # ---------------------------------------------------------------------------
 # Incremental indexer
@@ -567,6 +571,22 @@ def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: l
                         yield fpath, stored
 
 
+def _root_scope_covers(stored: str, root: Path) -> bool:
+    """Whether a run on the root prunes `stored` when its walk misses it. A file
+    indexed from outside the root is stored absolute and kept unless it is gone
+    from disk; an absolute path under the root is left from a run without one."""
+    p = Path(stored)
+    if not p.is_absolute() or p.is_relative_to(root):
+        return True
+    try:
+        p.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return True
+    except OSError:
+        return False
+    return False
+
+
 def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str],
                       includes: list[str], data_limit: int) -> DefinitionTable:
     """The definition table over every C, C++ and HLSL file the index holds. Files
@@ -610,7 +630,8 @@ def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str
     for stored, (key, rec_json) in cached.items():
         if stored in seen:
             continue
-        if stored in scope_files or any(stored.startswith(d) for d in scope_dirs):
+        if stored in scope_files or any(stored.startswith(d) if d else _root_scope_covers(stored, root)
+                                        for d in scope_dirs):
             gone.append(stored)
             continue
         if key.startswith(f"{SCAN_VERSION}:"):
@@ -732,6 +753,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                 else:
                     with lock:
                         state["unsupported_ext_skipped"] += 1
+                        state["unsupported_exts"][ext] += 1
             elif p.is_dir():
                 # Single os.walk per top-level path replaces the original
                 # rglob-per-extension loop, which traversed the whole tree
@@ -772,6 +794,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                             # signal, not an opt-in diagnostic.
                             with lock:
                                 state["unsupported_ext_skipped"] += 1
+                                state["unsupported_exts"][ext] += 1
                             if dotdir_repo_prefixes:
                                 dd_prefix = _dotdir_prefix(_to_stored_path(dir_path, root))
                                 if dd_prefix in dotdir_repo_prefixes:
@@ -820,7 +843,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
             # "pruning steadily" from "frozen".
             if resolved.is_dir():
                 for db_path in store.get_paths_under(prefix + "/" if prefix else ""):
-                    if db_path not in scanned_stored:
+                    if db_path not in scanned_stored and (prefix or _root_scope_covers(db_path, root)):
                         removed_defs = store.get_definitions([db_path])
                         removed_ids = store.delete_file(db_path)
                         with lock:
@@ -973,6 +996,7 @@ def index_paths(
         "to_index":        0,       # files producer pushed (known only after scan finishes)
         "unsupported_ext_skipped": 0,  # files never even queued: extension has no grammar
                                        # and isn't in fallback_extensions (visibility)
+        "unsupported_exts": Counter(),  # the same files by extension
         "data_blob_skipped": 0,  # oversize machine-generated data file, guard hit
         "pruned":          0,
         "dirs_pruned":     0,  # excluded directories skipped without descending
@@ -1117,6 +1141,9 @@ def index_paths(
         pruned = state["pruned"]
         skipped = state["skipped"]
         indexed = state["indexed"]
+        unsupported_exts = dict(sorted(state["unsupported_exts"].items(),
+                                       key=lambda kv: (-kv[1], kv[0]))[:SKIPPED_EXTS_KEPT])
+        unsupported_files = state["unsupported_ext_skipped"]
     chunks_per_s = chunks_embedded_total / embed_elapsed if embed_elapsed > 0 else 0.0
     logger.info(
         "Embedded %d chunks (%d reused a stored vector) in %.1fs (%.1f chunks/s).",
@@ -1156,6 +1183,10 @@ def index_paths(
             f"mixed: {oldest_recorded(_prev_language_set)}+{_cur_language_set} "
             f"({skipped} unchanged file(s) retain old chunk boundaries)",
         )
+
+    # Only a run over the whole root counts every skipped file.
+    if root is not None and any(Path(p).resolve() == root.resolve() for p in paths):
+        store.set_meta("unsupported_exts", json.dumps({"files": unsupported_files, "by_ext": unsupported_exts}))
 
     # skipped==0 alone isn't sufficient here (a --force on a path subset also
     # yields it): also require indexed == tracked_file_count, so this run
@@ -1205,6 +1236,7 @@ def index_paths(
             "worst_coverage":      round(state["worst_coverage"], 2),
             "worst_coverage_file": state["worst_coverage_file"],
             "unsupported_ext_skipped": state["unsupported_ext_skipped"],
+            "unsupported_exts": unsupported_exts,
             "data_blob_skipped": state["data_blob_skipped"],
             "embed_elapsed_s":      round(embed_elapsed, 1),
             "fts_elapsed_s":        round(fts_elapsed, 1),

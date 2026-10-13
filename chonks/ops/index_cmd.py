@@ -14,7 +14,7 @@ from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
 from chonks.index.pipeline import index_options, index_paths, reembed_all
 from chonks.index.plugins import load_plugins
-from chonks.ops.diagnostics import dominance_warning, family_breakdown
+from chonks.ops.diagnostics import dominance_warning, family_breakdown, skipped_exts_line
 from chonks.retrieval.scope_notes import config_warnings
 from chonks.index.graph.hierarchy import rebuild_hierarchy
 from chonks.index.graph.knn import build_neighbors, validate_knn_backend
@@ -368,6 +368,9 @@ def main(argv=None) -> None:
                 f"literals_dropped {result['literals_dropped']} "
                 f"(in {result['literals_capped_chunks']} chunks)"
             )
+            if result["unsupported_ext_skipped"]:
+                print("unsupported extensions: "
+                      + skipped_exts_line(result["unsupported_exts"], result["unsupported_ext_skipped"]))
             print(json.dumps(store.stats(), indent=2))
 
             # Same rule as doctor.py's breakdown; run here so it surfaces

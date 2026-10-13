@@ -1,6 +1,7 @@
 """Tests for chunker.py correctness fixes."""
 import json
 import logging
+import os
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -265,18 +266,41 @@ def _api_repo(tmp_path):
     (tmp_path / "src" / "a.c").write_text("API_EXPORT int area(int w, int h) { return w * h; }\n")
 
 
-def test_indexing_one_folder_still_sees_macros_defined_elsewhere(tmp_path):
+@pytest.mark.parametrize("root", ["", "src"], ids=["inc-inside-root", "inc-outside-root"])
+def test_indexing_one_folder_still_sees_macros_defined_elsewhere(tmp_path, tmp_path_factory, root):
     from chonks.index.pipeline import index_paths
 
     _api_repo(tmp_path)
+    src, inc, root = tmp_path / "src", tmp_path / "inc", tmp_path / root
     store = Store(tmp_path / "test.db")
-    index_paths([str(tmp_path)], store, _FakeEmbedder(), root=tmp_path)
-    (tmp_path / "src" / "a.c").write_text("API_EXPORT int volume(int w, int h, int d) { return w * h * d; }\n")
-    stats = index_paths([str(tmp_path / "src")], store, _FakeEmbedder(), root=tmp_path)
-    store.close()
+    index_paths([str(src), str(inc)], store, _FakeEmbedder(), root=root)
+    (src / "a.c").write_text("API_EXPORT int volume(int w, int h, int d) { return w * h * d; }\n")
+    stats = index_paths([str(src)], store, _FakeEmbedder(), root=root)
     # API_EXPORT is defined in inc/, outside this run's paths: without the
     # stored records self-heal would have to guess it.
     assert stats["indexed"] == 1 and stats["macro_healed_files"] == 0 and stats["parse_error_files"] == 0
+    assert stats["pruned"] == 0
+    (inc / "api.h").unlink()
+    stats = index_paths([str(root)], store, _FakeEmbedder(), root=root)
+    assert stats["pruned"] == 1 and len(store.get_macro_definitions()) == 1
+    index_paths([str(src)], store, _FakeEmbedder())
+    stats = index_paths([str(root)], store, _FakeEmbedder(), root=root)
+    assert stats["pruned"] == 1 and len(store.get_macro_definitions()) == 1, "the run without a root left absolute copies"
+
+    if os.name == "nt" or os.geteuid() == 0:
+        pytest.skip("chmod cannot make a directory unreadable here")
+    sdk = tmp_path_factory.mktemp("locked") / "sdk"
+    sdk.mkdir()
+    (sdk / "x.h").write_text("#define SDK_API\n")
+    (sdk / "y.py").write_text("def y():\n    return 1\n")
+    index_paths([str(root), str(sdk)], store, _FakeEmbedder(), root=root)
+    sdk.parent.chmod(0)
+    try:
+        stats = index_paths([str(root)], store, _FakeEmbedder(), root=root)
+    finally:
+        sdk.parent.chmod(0o755)
+    assert stats["pruned"] == 0 and len(store.get_macro_definitions()) == 2, "an unreadable directory is not a deleted one"
+    store.close()
 
 
 def test_definition_records_are_reused_and_dropped_with_their_file(tmp_path, monkeypatch):
@@ -575,16 +599,21 @@ def test_unsupported_extension_counted_regardless_of_config(tmp_path):
     from chonks.index.pipeline import index_paths
 
     src_dir = tmp_path / "src"
-    src_dir.mkdir()
+    (src_dir / "fx").mkdir(parents=True)
     (src_dir / "image.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (src_dir / "blur.glsl").write_text("void main() {}\n")
+    (src_dir / "fx" / "tonemap.GLSL").write_text("void main() {}\n")
     (src_dir / "real.py").write_text("def f():\n    return 1\n")
 
     store = Store(tmp_path / "test.db")
     result = index_paths([str(src_dir)], store, _FakeEmbedder(), root=src_dir)
+    index_paths([str(src_dir / "fx")], store, _FakeEmbedder(), root=src_dir)
+    recorded = json.loads(store.get_meta("unsupported_exts"))
     store.close()
 
     assert result["indexed"] == 1  # only real.py
-    assert result["unsupported_ext_skipped"] == 1  # image.png
+    assert result["unsupported_ext_skipped"] == 3
+    assert result["unsupported_exts"] == recorded["by_ext"] == {".glsl": 2, ".png": 1}
 
 
 def test_oversize_json_skipped_and_counted(tmp_path):

@@ -25,6 +25,7 @@ from chonks.ops.diagnostics import (
     dotdir_breakdown,
     dotdir_total_share,
     family_breakdown,
+    skipped_exts_line,
 )
 from chonks.retrieval.scope_notes import config_warnings
 from chonks.storage.readonly import _connect_readonly, set_embedding_model
@@ -331,9 +332,9 @@ def _edges_section(conn: sqlite3.Connection) -> str:
 
 
 def _parse_health_section(conn: sqlite3.Connection) -> str:
-    """Parse-health diagnostics are computed per-run in chonks/index/pipeline.py but not
-    persisted in the DB, so this reports what actually exists rather than
-    inventing columns."""
+    """Parse-health diagnostics are computed per-run in chonks/index/pipeline.py, and
+    only the skipped-extension histogram is persisted (in meta), so this reports
+    what actually exists rather than inventing columns."""
     files_cols  = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}
     chunks_cols = {r["name"] for r in conn.execute("PRAGMA table_info(chunks)").fetchall()}
     diag_cols = {"parse_error", "coverage", "low_coverage", "oversize", "unsupported_ext"}
@@ -352,9 +353,15 @@ def _parse_health_section(conn: sqlite3.Connection) -> str:
             "(the indexer, chonks/index/pipeline.py, computes them per run but only reports them in the run "
             "summary printed at index time — nothing persists them to the DB)"
         )
-    lines.append(
-        "unsupported-extension histogram: not recorded in this DB (run-summary only)"
-    )
+    skipped_exts = _get_meta(conn, "unsupported_exts")
+    if skipped_exts is None:
+        lines.append(
+            "unsupported-extension histogram: not recorded in this DB (run-summary only)"
+        )
+    else:
+        recorded = json.loads(skipped_exts)
+        lines.append("unsupported extensions (last run over the whole root): "
+                     + (skipped_exts_line(recorded["by_ext"], recorded["files"]) or "none"))
     lines.append(
         "oversize chunk count: not recorded in this DB (run-summary only)"
     )

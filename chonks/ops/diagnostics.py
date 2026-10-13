@@ -1,4 +1,4 @@
-"""Path-family and dot-directory chunk-share diagnostics for the index report and doctor."""
+"""Path-family, dot-directory and skipped-extension diagnostics for the index report and doctor."""
 
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -142,3 +142,18 @@ def dotdir_total_share(stats: list[DotDirStats], total_chunks: int) -> float:
     if total_chunks == 0:
         return 0.0
     return sum(s.chunks for s in stats) / total_chunks
+
+
+# Extensions the index summary and doctor name, most files first.
+SKIPPED_EXTS_SHOWN = 5
+
+
+def skipped_exts_line(counts: dict[str, int], total: int, shown: int = SKIPPED_EXTS_SHOWN) -> str:
+    """".glsl 144, .inc 91, (no extension) 12, 40 in other extensions" for
+    `total` skipped files, `counts` holding some of them by extension."""
+    named = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:shown]
+    parts = [f"{ext or '(no extension)'} {n}" for ext, n in named]
+    rest = total - sum(n for _, n in named)
+    if rest:
+        parts.append(f"{rest} in other extensions")
+    return ", ".join(parts)
