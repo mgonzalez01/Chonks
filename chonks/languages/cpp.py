@@ -27,10 +27,13 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
+_TEMPLATE_ARGUMENTS = ("template_argument_list",)
+
+
 def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None | object":
-    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls'. Right-recursive
-    grammar: follow 'name' down to the deepest qualified_identifier, then
-    read its 'scope'."""
+    """Immediate qualifier of 'Ns::Cls::method' -> 'Cls', of 'Vector<Node>::make'
+    -> 'Vector'. Right-recursive grammar: follow 'name' down to the deepest
+    qualified_identifier, then read its 'scope'."""
     if callee.type != "qualified_identifier":
         return NOT_HANDLED
     cur = callee
@@ -43,7 +46,7 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
     scope = cur.child_by_field_name("scope")
     if scope is not None and scope.type == "namespace_identifier":
         return name_text(scope, src)
-    return terminal_identifier(scope, src, CPP.identifier_leaf_types)
+    return terminal_identifier(scope, src, CPP.identifier_leaf_types, _TEMPLATE_ARGUMENTS)
 
 
 _CLASS_TYPES = ("class_specifier", "struct_specifier")

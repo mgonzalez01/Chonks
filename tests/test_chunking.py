@@ -1557,6 +1557,7 @@ def test_call_receiver_cpp_scoped_qualified_chain():
     src = b'''
 void driver() {
     A::B::C::method(1, 2);
+    Vector<Node>::make();
 }
 '''
     segs = segment_file(src, "cpp", path="t.cpp")
@@ -1565,6 +1566,7 @@ void driver() {
         "name": "method", "receiver": "C", "arity": 2, "racc": "::",
         "rhead": {"name": "A::B::C", "via": "type", "type": "A::B::C"},
     }
+    assert _call_entry(refs, "make")["receiver"] == "Vector"
 
 
 def test_templated_call_names_the_function_not_its_type_argument():
