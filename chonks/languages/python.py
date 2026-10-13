@@ -72,6 +72,13 @@ def is_python_docstring_position(n: Node) -> bool:
         parent.parent.type in ("function_definition", "class_definition")
 
 
+def base_name(node: Node, src: bytes) -> str | None:
+    """`Generic[T]` -> 'Generic'; `mod.Mixin` and `mod.Mixin[T]` -> None."""
+    if node.type == "subscript":
+        node = node.child_by_field_name("value")
+    return name_text(node, src) if node is not None and node.type == "identifier" else None
+
+
 IMPORT = Children((
     ChildSpec(("dotted_name",), "imports"),
     ChildSpec(("aliased_import",), "imports",
@@ -96,7 +103,7 @@ PYTHON = LanguageSpec(
         "import_statement": IMPORT,
         "import_from_statement": IMPORT,
         "call": Field("function", "calls"),
-        "class_definition": FieldChildren("superclasses", ("identifier",), "inherits"),
+        "class_definition": FieldChildren("superclasses", ("identifier", "subscript"), "inherits", base_name),
     },
     line_comment_prefixes=("#",),
     block_comments=False,

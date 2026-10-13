@@ -1,13 +1,38 @@
 """C# language plugin data."""
 from __future__ import annotations
 
-from ._ast import name_last_or_text, name_text
+from ._ast import name_last_or_text, name_text, terminal_identifier
 from ._braces import outside_bodies
 from ._naming import name_field
 from .spec import ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED
 
+_TYPE_ARGUMENTS = frozenset({"type_argument_list"})
+
+
+def base_name(node, src: bytes) -> str | None:
+    """`IList<T>` -> 'IList', `Ns.Foo<Bar>` -> 'Foo'."""
+    return terminal_identifier(node, src, C_SHARP.identifier_leaf_types, _TYPE_ARGUMENTS)
+
+
+# `(x)`, `x!`, `await x`, `(T)x`: the operand is the last named child.
+_OPERAND_WRAPPERS = frozenset({"parenthesized_expression", "postfix_unary_expression", "await_expression",
+                               "cast_expression"})
+
+
+def type_receiver(call_node, callee, src: bytes) -> "str | None | object":
+    """`Ns.Foo<Bar>.Make()` -> 'Foo'. A call result as the base, as in
+    `GetNode<Player>("p")!.Hide()`, is left to the generic receiver."""
+    field = C_SHARP.chain_base_fields.get(callee.type)
+    base = inner = callee.child_by_field_name(field) if field else None
+    while inner is not None and inner.type in _OPERAND_WRAPPERS and inner.named_children:
+        inner = inner.named_children[-1]
+    if inner is None or inner.type == "invocation_expression":
+        return NOT_HANDLED
+    return base_name(base, src)
+
+
 BASES = Children((
-    ChildSpec(("base_list",), "inherits", nested=NestedSpec(("identifier",), name_text)),
+    ChildSpec(("base_list",), "inherits", nested=NestedSpec(("identifier", "generic_name"), base_name)),
 ))
 
 
@@ -70,6 +95,7 @@ C_SHARP = LanguageSpec(
         "qualified_name": "qualifier",
     },
     identifier_leaf_types=frozenset({"identifier"}),
+    call_receiver=type_receiver,
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
     scope_chunk_types=frozenset({"namespace_declaration"}),
     doc_comment_prefixes=("///", "/**"),

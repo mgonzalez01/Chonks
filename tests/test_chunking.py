@@ -1366,16 +1366,16 @@ def test_extract_refs_python():
 import os
 from collections import defaultdict
 
-class Foo(Base):
+class Foo(Base, mod.Mixin, Generic[T], typing.Protocol[T], make_base(Other), metaclass=ABCMeta):
     def run(self):
         helper()
         self.other.call(x)
 '''
     segs = segment_file(src, "python", path="t.py")
     refs = _refs(segs, "Foo")
-    assert _call_names(refs) == {"helper", "call"}
+    assert _call_names(refs) == {"make_base", "helper", "call"}
     assert "os" in refs["imports"] and "collections" in refs["imports"]
-    assert refs["inherits"] == ["Base"]
+    assert refs["inherits"] == ["Base", "Generic"]
     # imports/inherits stay plain strings; only 'calls' gains the fingerprint.
     assert all(isinstance(x, str) for x in refs["imports"])
     assert all(isinstance(x, str) for x in refs["inherits"])
@@ -1419,7 +1419,7 @@ using System;
 using Godot;
 
 namespace Foo {
-class Bar : Node, IThing {
+class Bar(int size) : Node(size), IThing, IList<Node>, Godot.IExtra, global::Godot.Outer.IInner<Node> {
     void Run() {
         Helper();
         this.other.Call(x);
@@ -1432,7 +1432,7 @@ class Bar : Node, IThing {
     refs = _refs(segs, "Bar")
     assert _call_names(refs) >= {"Helper", "Call", "Widget"}
     assert set(refs["imports"]) == {"System", "Godot"}
-    assert set(refs["inherits"]) == {"Node", "IThing"}
+    assert refs["inherits"] == ["Node", "IThing", "IList"]
     assert _call_entry(refs, "Helper") == {"name": "Helper", "receiver": None, "arity": 0}
     assert _call_entry(refs, "Call") == {"name": "Call", "receiver": "other", "arity": 1}
     assert _call_entry(refs, "Widget") == {"name": "Widget", "receiver": None, "arity": 0}
@@ -1569,7 +1569,7 @@ void driver() {
     assert _call_entry(refs, "make")["receiver"] == "Vector"
 
 
-def test_templated_call_names_the_function_not_its_type_argument():
+def test_type_arguments_name_no_call_and_no_receiver_outside_call_results():
     cpp = b'''
 void driver(Node *p) {
     Object::cast_to<GraphFrame>(p);
@@ -1583,6 +1583,18 @@ void driver(Node *p) {
     refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
     assert _call_names(refs) >= {"GetComponent", "Bar"}
     assert not _call_names(refs) & {"Rigidbody", "Baz"}
+    cs = b'''class A { async void Driver() {
+    Array<Node>.Make();
+    Godot.Array<Dictionary<Node>>.Build();
+    Array<Node>.Inner<Node>.Create();
+    ((IList<Node>)this).Clear();
+    GetNode<Player>("p")!.Hide();
+    (await GetAsync<Foo>()).Run();
+} }
+'''
+    refs = segment_file(cs, "c_sharp", path="t.cs")[0]["refs"]
+    assert [_call_entry(refs, n)["receiver"] for n in ("Make", "Build", "Create", "Clear", "Hide", "Run")] == [
+        "Array", "Array", "Inner", "IList", "Player", "Foo"]
 
 
 def test_call_arity_varargs_and_defaults_wildcard_python():
