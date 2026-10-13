@@ -116,11 +116,21 @@ def test_arity_compatible_anchors_on_called_name_not_chunk_own_name():
     assert set(cache) == {("id1", "strip"), ("id1", "__init__")}
 
 
-def test_arity_scan_does_not_read_a_longer_name_as_the_called_one():
-    chunk = {"name": "Vector", "language": "cpp",
-             "content": "class Vector {\n  void resize(int p_size);\n  int size() const;\n};"}
-    assert _arity_compatible("v", chunk, "size", 0, {}) is True
-    assert _arity_compatible("v", chunk, "size", 1, {}) is False
+def test_arity_scan_reads_declarations_of_the_called_name_only():
+    cases = [
+        ("cpp", "class Vector {\n  void resize(int p_size);\n  int size() const;\n};", "size", {0}),
+        ("cpp", "/// size(a, b) is gone.\nclass API(x) Vector : Base<int> {\n  int size() const;\n"
+                "  void clear() { size(1); }\n  Vector() : data{0} { size(1, 2, 3); }\n};", "size", {0}),
+        ("cpp", "template <class T>\nint sum(T a, T b) {\n  return sum(a, b, 0);\n}", "sum", {2}),
+        ("cpp", "REFLECT()\nclass Gun : public Node {\n  void fire(int count = 1);\n};", "fire", {0, 1}),
+        ("c", "int sum_all(int count, ...) { return 0; }\nvoid driver() { sum_all(3, 1, 2, 3); }", "sum_all",
+         set(range(1, 6))),
+        ("c_sharp", "class Box {\n  int Count { get { return Size(1); } }\n  int Size() => 0;\n}", "Size", {0}),
+        ("cpp", "struct Box {\n  int area() { return get(1, 2); }\n};", "get", set(range(6))),
+    ]
+    for lang, content, name, compatible in cases:
+        chunk = {"name": "x", "language": lang, "content": content}
+        assert {n for n in range(6) if _arity_compatible("x", chunk, name, n, {})} == compatible, content
 
 
 _THREAD_START = {"name": "Thread::start", "chunk_type": "function_definition", "language": "cpp",

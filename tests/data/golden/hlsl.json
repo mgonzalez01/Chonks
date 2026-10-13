@@ -26,66 +26,12 @@
       "definer_param_arity": [
         {
           "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "CompileShader"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "MainVS"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "SetVertexShader"
-        },
-        {
-          "arity": [
-            4,
-            4,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "float4"
-        },
-        {
-          "arity": [
             1,
             1,
             false
           ],
           "chunk_index": 0,
           "name": "register"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 1,
-          "name": "CompileShader"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 1,
-          "name": "MainVS"
         },
         {
           "arity": [
@@ -210,17 +156,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "float4"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "struct_specifier",
@@ -307,165 +243,12 @@
         },
         {
           "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "CompileShader"
-        },
-        {
-          "arity": [
-            0,
+            1,
             1,
             false
           ],
           "chunk_index": 3,
           "name": "MainPS"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "MainVS"
-        },
-        {
-          "arity": [
-            3,
-            3,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "SetBlendState"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "SetDepthStencilState"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "SetPixelShader"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "SetRasterizerState"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "SetVertexShader"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "dot"
-        },
-        {
-          "arity": [
-            3,
-            3,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "float3"
-        },
-        {
-          "arity": [
-            2,
-            4,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "float4"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "max"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "normalize"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "pow"
-        },
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 3,
-          "name": "saturate"
-        },
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 4,
-          "name": "CompileShader"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 4,
-          "name": "MainPS"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 4,
-          "name": "MainVS"
         },
         {
           "arity": [
@@ -511,15 +294,6 @@
           ],
           "chunk_index": 4,
           "name": "SetVertexShader"
-        },
-        {
-          "arity": [
-            4,
-            4,
-            false
-          ],
-          "chunk_index": 4,
-          "name": "float4"
         }
       ],
       "segments": [

@@ -8,6 +8,7 @@ from ._ast import (
     has_body, is_forward_declaration, is_opaque_typedef, name_last_or_text,
     name_strip_angle_brackets, name_text, terminal_identifier,
 )
+from ._braces import outside_bodies
 from ._naming import (
     cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
     template_inner_name, typedef_name,
@@ -267,6 +268,7 @@ CPP = LanguageSpec(
     variadic_arg_types=frozenset({"parameter_pack_expansion"}),
     class_like_chunk_types=frozenset({"class_specifier", "struct_specifier"}),
     scope_chunk_types=frozenset({"namespace_definition", "declaration_list"}),
+    signature_at=outside_bodies(frozenset({"class", "struct", "union", "enum", "namespace"})),
     classify_param=classify_param,
     empty_param_spellings=frozenset({"void"}),
     member_declaration_at=member_declaration_at,

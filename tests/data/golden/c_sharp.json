@@ -19,17 +19,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Foo"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "class_declaration",
@@ -104,7 +94,7 @@
         {
           "arity": [
             0,
-            3,
+            0,
             true
           ],
           "chunk_index": 0,
@@ -216,44 +206,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Call"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Helper"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Type"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Widget"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "class_declaration",
@@ -526,17 +479,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            2,
-            2,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Foo"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "class_declaration",
@@ -730,35 +673,7 @@
           }
         ]
       },
-      "definer_param_arity": [
-        {
-          "arity": [
-            1,
-            1,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Call"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Helper"
-        },
-        {
-          "arity": [
-            0,
-            0,
-            false
-          ],
-          "chunk_index": 0,
-          "name": "Widget"
-        }
-      ],
+      "definer_param_arity": [],
       "segments": [
         {
           "chunk_type": "class_declaration",

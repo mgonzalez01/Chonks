@@ -154,13 +154,15 @@ def _discriminate_definers(
 # Keyword right before a definition's name (skippable past an unrelated
 # same-named call); empty string for languages without one.
 _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
+_SIGNATURE_AT = _lang_table("signature_at")
 
 
 def _refresh_from_registry() -> None:
-    global _CLASS_LIKE_CHUNK_TYPES, _DEF_SIGNATURE_KEYWORD, _MEMBER_DECLARATION_AT
+    global _CLASS_LIKE_CHUNK_TYPES, _DEF_SIGNATURE_KEYWORD, _MEMBER_DECLARATION_AT, _SIGNATURE_AT
     _CLASS_LIKE_CHUNK_TYPES = _lang_union("class_like_chunk_types")
     _DEF_SIGNATURE_KEYWORD = _lang_table("def_signature_keyword")
     _MEMBER_DECLARATION_AT = _lang_table("member_declaration_at")
+    _SIGNATURE_AT = _lang_table("signature_at")
 
 
 register_refresh(_refresh_from_registry)
@@ -177,13 +179,15 @@ def _find_signature_param_texts(
     # Without a keyword, `size(` must not match inside `resize(`.
     lead = _DEF_SIGNATURE_KEYWORD.get(lang) or r"(?<![\w$])"
     pattern = re.compile(lead + "(" + re.escape(name) + r")\s*\(")
+    signature_at = _SIGNATURE_AT.get(lang)
     out: list[str] = []
     pos = 0
     while True:
         m = pattern.search(content, pos)
         if m is None:
             break
-        if accept is not None and not accept(content, m.start(1)):
+        if ((signature_at is not None and not signature_at(content, m.start(1)))
+                or (accept is not None and not accept(content, m.start(1)))):
             pos = m.end()
             continue
         start = m.end() - 1  # index of the anchor '('

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from ._ast import name_last_or_text, name_text
+from ._braces import outside_bodies
 from ._naming import name_field
 from .spec import ChildSpec, Children, Field, LanguageSpec, LiteralSpec, NameRule, NestedSpec, NOT_HANDLED
 
@@ -72,6 +73,7 @@ C_SHARP = LanguageSpec(
     class_like_chunk_types=frozenset({"class_declaration", "struct_declaration", "interface_declaration"}),
     scope_chunk_types=frozenset({"namespace_declaration"}),
     doc_comment_prefixes=("///", "/**"),
+    signature_at=outside_bodies(frozenset({"class", "struct", "interface", "record", "enum", "namespace"})),
     classify_param=classify_param,
     kind_labels={
         "class_declaration": "class",

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ._ast import has_body, is_forward_declaration, name_text
+from ._braces import outside_bodies
 from ._naming import cpp_function_declarator_name, tag_specifier_name
 from .cpp import INCLUDE
 from .spec import Field, LanguageSpec, LiteralSpec, NameRule
@@ -68,6 +69,9 @@ HLSL = LanguageSpec(
         "preproc_include": INCLUDE,
         "call_expression": Field("function", "calls"),
     },
+    signature_at=outside_bodies(frozenset({
+        "struct", "class", "interface", "enum", "namespace", "cbuffer", "tbuffer",
+    })),
     # Shader code is macro-dense (Unity's UNITY_VERTEX_INPUT_INSTANCE_ID,
     # CBUFFER_START): same preprocessor, same handling as C and C++.
     doc_comment_prefixes=("///", "//!", "/**", "/*!"),

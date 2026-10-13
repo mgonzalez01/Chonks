@@ -109,7 +109,7 @@ _REFS_PARAMS_META_KEY = "refs_params"
 
 # Bumped when a full rebuild writes different edges for the same chunks, so a
 # graph built under older rules is rebuilt rather than patched.
-_REFS_RULES = 1
+_REFS_RULES = 2
 
 
 # ---------------------------------------------------------------------------
