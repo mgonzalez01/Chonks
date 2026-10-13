@@ -75,11 +75,19 @@ def test_arity_compatible_exact_and_default_range():
 
 
 def test_arity_compatible_variadic_only_bounds_the_minimum():
-    chunk = {"name": "f", "content": "def f(self, a, *args):\n    pass", "language": "python"}
-    cache: dict = {}
-    assert _arity_compatible("id1", chunk, "f", 1, cache) is True
-    assert _arity_compatible("id1", chunk, "f", 50, cache) is True
-    assert _arity_compatible("id1", chunk, "f", 0, cache) is False
+    cases = [
+        ("python", "def f(self, a, *args):\n    pass"),
+        ("cpp", "template <typename... Args>\nT *f(int a, Args &&...p_args) { return nullptr; }"),
+        ("cpp", "void f(int a, Args... args);"),
+        ("cpp", "void f(int a, const Args &...args);"),
+        ("cpp", "void f(int a, Ts&&... ts);"),
+        ("cpp", "void f(int a, Args...);"),
+        ("c", "int f(int a, ...);"),
+        ("c_sharp", "class K {\n  int f(int a, params int[] rest) { return 0; }\n}"),
+    ]
+    for lang, content in cases:
+        chunk = {"name": "f", "content": content, "language": lang}
+        assert [_arity_compatible("id1", chunk, "f", n, {}) for n in (0, 1, 50)] == [False, True, True], content
 
 
 def test_arity_compatible_missing_signature_always_compatible():

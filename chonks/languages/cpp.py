@@ -88,8 +88,12 @@ def is_function_definition(node: Node, src: bytes) -> bool:
     return src[name.start_byte:name.end_byte].decode(errors="replace") not in _STATEMENT_KEYWORDS
 
 
+_VARIADIC_PARAM = re.compile(r"\.\.\.\s*(?:[A-Za-z_]\w*)?$")
+
+
 def classify_param(part: str) -> "str | object":
-    if part == "..." or part.endswith("..."):
+    """`...`, `Args...` and `Args &&...p_args` are variadic."""
+    if _VARIADIC_PARAM.search(part):
         return "variadic"
     return NOT_HANDLED
 
