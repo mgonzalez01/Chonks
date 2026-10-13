@@ -1,6 +1,7 @@
 """C++ class-model readers: the members a declaration names, with type, arity and flags."""
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from chonks.core.symbols import FIELD, METHOD_DECLARATION, METHOD_DEFINITION
@@ -13,8 +14,12 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
+_SCOPE_KEYWORDS = frozenset({"template"})
+
+
 def strip_template_args(text: str) -> str:
-    """`Foo<Bar<int>>::Inner` -> `Foo::Inner`, whitespace removed."""
+    """`Foo<Bar<int>>::Inner` -> `Foo::Inner`, `Base<T>::template Inner<U>` -> `Base::Inner`;
+    '' when a part is not a name."""
     out: list[str] = []
     depth = 0
     for ch in text:
@@ -22,9 +27,18 @@ def strip_template_args(text: str) -> str:
             depth += 1
         elif ch == ">":
             depth = max(0, depth - 1)
-        elif depth == 0 and not ch.isspace():
+        elif depth == 0:
             out.append(ch)
-    return "".join(out)
+    parts = []
+    for i, part in enumerate("".join(out).split("::")):
+        words = [w for w in part.split() if w not in _SCOPE_KEYWORDS]
+        if not words and i == 0:
+            parts.append("")
+        elif len(words) == 1 and words[0].isidentifier():
+            parts.append(words[0])
+        else:
+            return ""
+    return "::".join(parts)
 
 
 _TYPE_WORDS = frozenset({"const", "volatile", "class", "struct", "union", "enum", "typename"})
@@ -135,18 +149,29 @@ def _unwrap(decl: Node | None) -> tuple[Node | None, str, Node | None, bool]:
     return None, marks, func, fn_pointer
 
 
-def _member_name(n: Node, src: bytes) -> str | None:
-    """`operator ==` -> `operator==`; `operator new` keeps its space."""
+_OPERATOR = re.compile(r"operator\b")
+_TIGHT = re.compile(r"\s*([*&<>,\[\]])\s*")
+
+
+def operator_spelling(name: str) -> str:
+    """The one spelling of an operator that members, calls and queries share: `operator ==` ->
+    `operator==`, `operator int *` -> `operator int*`; `operator new` keeps its space."""
+    text = " ".join(name.split())
+    if not _OPERATOR.match(text):
+        return text
+    symbol = text.removeprefix("operator").lstrip()
+    if symbol[:1] == '"' or not any(ch.isalnum() or ch == "_" for ch in symbol):
+        return "operator" + symbol.replace(" ", "")
+    return _TIGHT.sub(r"\1", text)
+
+
+def member_name(n: Node, src: bytes) -> str | None:
     if n.type == _CAST:
-        return _operator_cast_name(n, src)
+        return operator_spelling(_operator_cast_name(n, src))
     if n.type not in _NAMES:
         return None
     text = " ".join(name_text(n, src).split())
-    if n.type == "operator_name":
-        symbol = text.removeprefix("operator").lstrip()
-        if symbol and not (symbol[0].isalnum() or symbol[0] == "_"):
-            return "operator" + symbol.replace(" ", "")
-    return text
+    return operator_spelling(text) if n.type == "operator_name" else text
 
 
 def _qualifier(n: Node, src: bytes) -> tuple[tuple[str, ...], Node | None]:
@@ -253,7 +278,7 @@ def read_member(node: Node, src: bytes, owner_name: str) -> list[Member]:
         name_node, marks, func, fn_pointer = _unwrap(decl)
         if name_node is None:
             continue
-        name = _member_name(name_node, src)
+        name = member_name(name_node, src)
         if name is None:
             continue
         if not typed and name_node.type not in (_CAST, "destructor_name") and name != owner_name:
@@ -274,7 +299,7 @@ def read_definition(node: Node, src: bytes, owner_name: str) -> list[Member]:
     scope, last = _qualifier(name_node, src)
     if not scope or last is None or not all(scope):
         return []
-    name = _member_name(last, src)
+    name = member_name(last, src)
     if name is None or (func is None and last.type != _CAST):
         return []
     return [_method(node, name, last, marks, func, src, scope)]

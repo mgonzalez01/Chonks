@@ -111,6 +111,22 @@ class _Receiver(NamedTuple):
     args_through: "_Receiver | None" = None  # what their own template parameters stand for
 
 
+def spelled(name: str) -> str:
+    """`name` with its last part spelled as members are: `X::operator &=` -> `X::operator&=`."""
+    for spec in _CLASS_MODELS.values():
+        if spec.member_spelling is not None:
+            owner, sep, member = name.rpartition(spec.separator)
+            name = owner + sep + spec.member_spelling(member)
+    return name
+
+
+def model_only(name: str | None, language: str) -> bool:
+    """Whether only the class model may link a `language` call of `name` (`operator=`)."""
+    spec: ClassModelSpec | None = _CLASS_MODELS.get(language)  # type: ignore[assignment]
+    pattern = spec.model_only_calls if spec is not None else None
+    return bool(name) and pattern is not None and pattern.match(name) is not None
+
+
 def has_evidence(entry: object) -> bool:
     return isinstance(entry, dict) and any(k in entry for k in _EVIDENCE_KEYS)
 

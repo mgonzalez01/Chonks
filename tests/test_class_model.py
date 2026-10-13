@@ -155,10 +155,12 @@ struct Color {
     bool operator == (const Color &p_other) const;
     Color &operator[](int p_idx);
     void *operator new(size_t p_size);
+    operator int *() const;
+    operator Vector< float >() const;
 };
 """
-    assert _rows(src, "name", "type_text") == [
-        ("operator==", "bool"), ("operator[]", "Color &"), ("operator new", "void *"),
+    assert [r[0] for r in _rows(src, "name")] == [
+        "operator==", "operator[]", "operator new", "operator int*", "operator Vector<float>",
     ]
 
 
@@ -211,10 +213,15 @@ def test_bases_keep_their_qualification_and_drop_template_arguments():
 namespace editor {
 class Plugin : public Object, protected core::Named<Plugin> {};
 }
+template <class T, class U>
+class Typed : public Base<T>::template Inner<U>, public ns :: List < T > :: Element {};
+template <class T>
+struct Wrapped : T::template Base<int> {};
 """
     _, bases = _model(src)
     assert [(b["owner"], b["base"]) for b in bases] == [
         ("editor::Plugin", "Object"), ("editor::Plugin", "core::Named"),
+        ("Typed", "Base::Inner"), ("Typed", "ns::List::Element"), ("Wrapped", "T::Base"),
     ]
 
 

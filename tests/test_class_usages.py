@@ -164,6 +164,17 @@ def test_find_symbol_answers_a_method_defined_inside_or_outside_its_class(tmp_pa
     assert find_symbol(store, "Vector::size")["note"] is None
 
 
+def test_a_spaced_operator_answers_to_either_spelling(tmp_path):
+    store = _index(tmp_path, {
+        "color.h": "class Color {\npublic:\n    Color &operator +=(const Color &p_c);\n};\n",
+        "color.cpp": '#include "color.h"\n\nColor &Color::operator +=(const Color &p_c) { return *this; }\n',
+        "blend.cpp": '#include "color.h"\nvoid blend(Color &a, const Color &b) { a.operator+=(b); }\n',
+    })
+    for name in ("Color::operator+=", "Color::operator +="):
+        assert _sites(find_symbol(store, name)) == [("Color::operator +=", "color.cpp", 3)]
+        assert _names(find_usages(store, name)) == {"blend"}
+
+
 def test_find_symbol_answers_an_inherited_method_and_names_the_base(tmp_path):
     store = _index(tmp_path, _SHAPES)
     result = find_symbol(store, "Circle::fill")

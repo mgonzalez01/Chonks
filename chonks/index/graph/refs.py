@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Iterator
 from chonks.index.progress import PassLog
 from chonks.index.refs_extract import CONSTRUCTS, _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
-from chonks.resolve.members import MemberIndex, members_index, settled_targets
+from chonks.resolve.members import MemberIndex, members_index, model_only, settled_targets
 
 from chonks.core.edges import (
     ASSOCIATED, CALLS, INHERITS, MENTIONS, TYPED_EDGE_TYPES, XLANG, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN,
@@ -78,6 +78,8 @@ def _typed_refs(
                 name, receiver, arity = raw, None, None
             if resolution is not None and resolution.targets is not None:
                 targets = resolution.targets
+            elif edge_type == CALLS and model_only(name, lang):
+                continue
             else:
                 ids = _typed_targets(name_to_ids.get(name) or [], lang, id_to_chunk)
                 constructs = isinstance(raw, dict) and bool(raw.get(CONSTRUCTS))
@@ -114,7 +116,7 @@ _REFS_PARAMS_META_KEY = "refs_params"
 
 # Bumped when a full rebuild writes different edges for the same chunks, so a
 # graph built under older rules is rebuilt rather than patched.
-_REFS_RULES = 3
+_REFS_RULES = 4
 
 
 # ---------------------------------------------------------------------------
