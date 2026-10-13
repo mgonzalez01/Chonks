@@ -1898,11 +1898,14 @@ class Store:
             ).fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
 
-    def iter_refs_typed(self, batch_size: int = 100_000) -> Iterator[tuple[str, str, str]]:
-        """Every (from_id, to_id, edge_type) edge, fetched a batch at a time.
-        Holds the store lock until exhausted or closed."""
+    def iter_refs_typed(self, batch_size: int = 100_000,
+                        exclude_types: tuple[str, ...] = ()) -> Iterator[tuple[str, str, str]]:
+        """Every (from_id, to_id, edge_type) edge not of `exclude_types`, fetched a
+        batch at a time. Holds the store lock until exhausted or closed."""
+        where = f" WHERE edge_type NOT IN ({','.join('?' * len(exclude_types))})" if exclude_types else ""
         with self._lock:
-            cursor = self._conn.execute("SELECT from_id, to_id, edge_type FROM chunk_refs")
+            cursor = self._conn.execute(
+                f"SELECT from_id, to_id, edge_type FROM chunk_refs{where}", exclude_types)
             while rows := cursor.fetchmany(batch_size):
                 for r in rows:
                     yield r[0], r[1], r[2]
