@@ -18,21 +18,24 @@ from chonks.index.refs_extract import _call_entry_name
 from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_definers, _owner_class_kinds
 from chonks.resolve.members import MemberIndex, members_index, settled_targets
 
-from chonks.core.edges import CALLS, TYPED_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
+from chonks.core.edges import CALLS, INHERITS, TYPED_EDGE_TYPES, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN
 from chonks.core.refresh import register_refresh
 from chonks.languages import table as _lang_table, union as _lang_union
+from chonks.languages._members import strip_template_args
 
 if TYPE_CHECKING:
     from chonks.storage.store import Store
 
 _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
 _TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
+_CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
 
 
 def _refresh_from_registry() -> None:
-    global _SCOPE_CHUNK_TYPES, _TYPED_REF_LANGUAGES
+    global _SCOPE_CHUNK_TYPES, _TYPED_REF_LANGUAGES, _CLASS_LIKE_KINDS
     _SCOPE_CHUNK_TYPES = _lang_union("scope_chunk_types")
     _TYPED_REF_LANGUAGES = _lang_table("typed_ref_languages")
+    _CLASS_LIKE_KINDS = _lang_union("class_like_chunk_types")
 
 
 def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> list[str]:
@@ -45,9 +48,11 @@ def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> l
 def _typed_refs(
     c: dict, name_to_ids: dict[str, list[str]], id_to_chunk: dict[str, dict], arity_cache: dict,
     owner_decls: "Callable[[str], Iterable[dict]] | None", members: MemberIndex | None, cap_mentions: bool,
+    class_holders: "Callable[[str, list[str]], list[str]] | None" = None,
 ) -> tuple[dict[str, str], set[str]]:
     """The chunk's typed edges as {to_id: edge_type}, and the names every call
-    of which the class model settles."""
+    of which the class model settles. A base links only the chunks
+    `class_holders` keeps."""
     cid = c["id"]
     md = c.get("metadata") or {}
     lang = c.get("language") or ""
@@ -68,6 +73,8 @@ def _typed_refs(
                 targets = resolution.targets
             else:
                 ids = _typed_targets(name_to_ids.get(name) or [], lang, id_to_chunk)
+                if edge_type == INHERITS and class_holders is not None:
+                    ids = class_holders(name, ids)
                 # The mentions pass's cap, so a typed fact is never dropped in favor of a noisier one.
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
@@ -96,6 +103,10 @@ _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION = 0.25
 # The parameters chunk_refs and chunk_mention_names were built with; the
 # incremental path applies only under the same ones.
 _REFS_PARAMS_META_KEY = "refs_params"
+
+# Bumped when a full rebuild writes different edges for the same chunks, so a
+# graph built under older rules is rebuilt rather than patched.
+_REFS_RULES = 1
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +292,7 @@ def _graph(
     extra_definers: list[dict] | None = None, log: PassLog | None = None,
     owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
     members: MemberIndex | None = None,
+    class_holders: "Callable[[str, list[str]], list[str]] | None" = None,
 ) -> tuple[dict[tuple[str, str], str], dict[str, set[str]]]:
     """{(from_id, to_id): edge_type} from mentions, xlang pairing and typed
     AST facts, and each chunk's mentioned names. A name every call of which
@@ -299,7 +311,8 @@ def _graph(
     for i, c in enumerate(chunks):
         if log:
             log.progress("typed edges", i, len(chunks))
-        got, names = _typed_refs(c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions)
+        got, names = _typed_refs(c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions,
+                                 class_holders)
         if got:
             typed[c["id"]] = got
         if names:
@@ -358,8 +371,29 @@ def _owner_decls(store: "Store") -> "Callable[[str], list[dict]]":
     return lookup
 
 
+def _class_name(name: str) -> str:
+    """`ns::Vector<T>` -> `Vector`."""
+    return re.split(r"::|\.", strip_template_args(name))[-1]
+
+
+def _class_holders(store: "Store") -> "Callable[[str, list[str]], list[str]]":
+    """The chunks among `ids` holding a class-like symbol named `name`."""
+    held: dict[str, set[str]] = {}
+
+    def holders(name: str, ids: list[str]) -> list[str]:
+        todo = [i for i in ids if i not in held]
+        held.update((i, set()) for i in todo)
+        for row in store.get_symbols_by_chunk_ids(todo) if todo else ():
+            if row["kind"] in _CLASS_LIKE_KINDS:
+                held[row["chunk_id"]].add(_class_name(row["name"]))
+        bare = _class_name(name)
+        return [i for i in ids if bare in held[i]]
+
+    return holders
+
+
 def _refs_params(cap_mentions: bool, associated_top_frac: float) -> str:
-    return json.dumps([bool(cap_mentions), float(associated_top_frac)])
+    return json.dumps([_REFS_RULES, bool(cap_mentions), float(associated_top_frac)])
 
 
 def build_refs(
@@ -421,6 +455,7 @@ def build_refs(
         cap_mentions=cap_mentions, associated_top_frac=associated_top_frac,
         extra_definers=store.get_chunks_by_ids(unnamed_definer_ids) if unnamed_definer_ids else None,
         log=log, owner_decls=_owner_decls(store), members=members_index(store),
+        class_holders=_class_holders(store),
     )
     refs = [(u, v, t) for (u, v), t in edges.items()]
     log.info("writing %d edges", len(refs))
@@ -552,11 +587,12 @@ def _build_refs_incremental(
     id_to_chunk = {c["id"]: c for c in store.get_chunks_by_ids(list(typed_ids))}
     arity_cache: dict[tuple[str, str], "tuple[int, int, bool] | None"] = {}
     owner_decls = _owner_decls(store)
+    class_holders = _class_holders(store)
     typed: dict[str, dict[str, str]] = {}
     mentions: dict[str, set[str]] = {}
     for c in named:
         typed[c["id"]], settled = _typed_refs(
-            c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions)
+            c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions, class_holders)
         mentions[c["id"]] = _mentioned_names(c, name_to_ids, settled, cap_mentions)
     xlang = _xlang_targets(name_to_ids, name_to_langs, id_to_lang,
                            [name for name, ids in name_to_ids.items() if not sources.isdisjoint(ids)])

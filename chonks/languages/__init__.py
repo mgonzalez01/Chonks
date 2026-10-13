@@ -40,13 +40,18 @@ class Registry:
                         raise ValueError(
                             f"{spec.name}: {attr} entry {entry!r} must be dotless lower-case")
             if spec.refs_spec is not None:
+                buckets: set[str] = set()
                 for rule in spec.refs_spec.values():
                     children = rule.specs if isinstance(rule, Children) else (rule,)
-                    bad = {child.bucket for child in children} - _REFS_BUCKETS
-                    if bad:
-                        raise ValueError(
-                            f"{spec.name}: refs_spec bucket {sorted(bad)!r} "
-                            f"not in {sorted(_REFS_BUCKETS)!r}")
+                    buckets |= {child.bucket for child in children}
+                bad = buckets - _REFS_BUCKETS
+                if bad:
+                    raise ValueError(
+                        f"{spec.name}: refs_spec bucket {sorted(bad)!r} "
+                        f"not in {sorted(_REFS_BUCKETS)!r}")
+                # inherits edges reach only chunks holding a symbol of these kinds.
+                if "inherits" in buckets and not spec.class_like_chunk_types:
+                    raise ValueError(f"{spec.name}: refs_spec has inherits but no class_like_chunk_types")
             if not spec.class_like_chunk_types <= spec.boundary_nodes:
                 raise ValueError(
                     f"{spec.name}: class_like_chunk_types must be a subset of boundary_nodes")
