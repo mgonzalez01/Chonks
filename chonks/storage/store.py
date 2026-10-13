@@ -1850,32 +1850,31 @@ class Store:
             self.refresh_indegree(list(affected_to_ids))
         return removed
 
-    def find_named_chunks_referencing(self, names: list[str]) -> list[dict[str, Any]]:
+    def iter_named_chunks_referencing(self, names: list[str]) -> Iterator[dict[str, Any]]:
         """Named chunks whose content likely contains any of `names`, via
-        chunks_fts. A fast pre-filter, not the final match: false positives
-        are possible, so callers must re-verify with a word-boundary regex."""
-        if not names:
-            return []
-        results: dict[str, dict[str, Any]] = {}
+        chunks_fts, each once. A fast pre-filter, not the final match: false
+        positives are possible, so callers must re-verify with a word-boundary
+        regex. Holds the store lock until exhausted or closed."""
+        seen: set[str] = set()
         with self._lock:
             for batch in batched(names, 200):
                 phrase_query = " OR ".join(
                     '"' + n.replace('"', '""') + '"' for n in batch
                 )
-                rows = self._conn.execute(
+                cursor = self._conn.execute(
                     """
                     SELECT c.id, c.path, c.language, c.name, c.chunk_type,
                            c.start_line, c.end_line, c.content, c.metadata
                     FROM chunks_fts f
-                    JOIN chunks c ON c.id = f.id
+                    JOIN chunks c ON c.rowid = f.rowid
                     WHERE chunks_fts MATCH ? AND c.name IS NOT NULL
                     """,
                     (phrase_query,),
-                ).fetchall()
-                for r in rows:
-                    d = _row_to_dict(r)
-                    results[d["id"]] = d
-        return list(results.values())
+                )
+                for r in cursor:
+                    if r["id"] not in seen:
+                        seen.add(r["id"])
+                        yield _row_to_dict(r)
 
     def get_all_refs(self) -> list[tuple[str, str]]:
         """Every (from_id, to_id) edge, type-agnostic; see get_all_refs_typed

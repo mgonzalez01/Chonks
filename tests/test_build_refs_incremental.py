@@ -959,9 +959,13 @@ def test_incremental_falls_back_to_full_rebuild_over_threshold(monkeypatch):
 
 def test_incremental_gate_counts_the_chunks_a_batch_reaches(monkeypatch):
     """Changing a hub fans out to its 19 referencers, past the 25% gate, and
-    falls through to a full rebuild. Changing a sibling in the hub's file, or
-    one link of a chain of chunks that share names pairwise, stays incremental."""
+    falls through to a full rebuild before checking them all. Changing a
+    sibling in the hub's file, or one link of a chain of chunks that share
+    names pairwise, stays incremental."""
     monkeypatch.setattr(repomap, "_REFS_INCREMENTAL_MAX_REFERENCER_FRACTION", 0.25)
+    checked = []
+    spelled = repomap._spelled
+    monkeypatch.setattr(repomap, "_spelled", lambda c: checked.append(c["id"]) or spelled(c))
     store = _mk_store()
     hub = [_chunk("hub", "hub.cpp", name="hubfn", content="void hubfn() {}"),
            _chunk("leaf", "hub.cpp", name="leaf", content="void leaf() {}", start_line=3)]
@@ -984,6 +988,7 @@ def test_incremental_gate_counts_the_chunks_a_batch_reaches(monkeypatch):
     repomap._build_refs_incremental = _spy
     try:
         build_refs(store, changed_ids={"hub"}, deleted_ids=set(), deleted_defs={})
+        hub_checked = len(checked)
         deleted_ids: set[str] = set()
         deleted_defs: dict = {}
         _delete_tracked(store, "hub.cpp", deleted_ids, deleted_defs)
@@ -1000,6 +1005,7 @@ def test_incremental_gate_counts_the_chunks_a_batch_reaches(monkeypatch):
         repomap._build_refs_incremental = original
 
     assert results[0] is None
+    assert hub_checked < len(spokes)
     assert None not in results[1:]
     ref = _mk_store()
     _insert(ref, [hub[0], leaf2] + spokes + [l0b] + links[1:])
