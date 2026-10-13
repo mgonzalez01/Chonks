@@ -123,12 +123,15 @@ def main(argv=None) -> None:
     )
     parser.add_argument(
         "--exclude", action="append", default=None, metavar="PREFIX",
-        help="Path prefix (relative to root) to skip during scan. Repeat for multiple.",
+        help="Path prefix (relative to root) to skip during scan. A * matches within "
+             "one path segment; quote such a pattern so the shell leaves it alone. "
+             "Repeat for multiple.",
     )
     parser.add_argument(
         "--include", action="append", default=None, metavar="PREFIX",
         help="Path prefix that overrides matching excludes when strictly more "
-             "specific (e.g. --exclude tmp/ --include tmp/git/a/). Repeat for multiple.",
+             "specific (e.g. --exclude tmp/ --include tmp/git/a/). A * matches as "
+             "in --exclude. Repeat for multiple.",
     )
     parser.add_argument(
         "--log-level", default="info",

@@ -35,11 +35,18 @@ def test_excluded_scope_note(path_prefix, include, excluded):
 def test_config_warnings_name_missing_entries_and_excluded_scopes(tmp_path):
     (tmp_path / "src").mkdir()
     (tmp_path / "build").mkdir()
-    warnings = config_warnings(tmp_path, ["build/", "gone"], ["pkg@1.2.3/"], ["build/", "src/", "build/"])
+    (tmp_path / "packages" / "com.example.lib@1.3.0").mkdir(parents=True)
+    warnings = config_warnings(
+        tmp_path, ["build/", "gone", "packages/com.example.lib@*/"], ["pkg@1.2.3/", "packages/org.example.*/"],
+        ["build/", "src/", "build/", "packages/com.example.lib@1.3.0/"],
+    )
     assert warnings == [
         f"exclude entry gone/ matches nothing under {tmp_path}",
         f"include entry pkg@1.2.3/ matches nothing under {tmp_path}",
+        f"include entry packages/org.example.*/ matches nothing under {tmp_path}",
         _BUILD_NOTE,
+        "packages/com.example.lib@1.3.0/ is excluded from the index by config "
+        "(exclude: packages/com.example.lib@*/), so nothing under it can match.",
     ]
     assert config_warnings(None, ["gone/"], [], []) == []
 

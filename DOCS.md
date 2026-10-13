@@ -207,11 +207,12 @@ A block comment just before a directive's line continuation (`do { /* note */ \`
 
 #### Include / exclude paths
 
-The scan producer skips files whose portable path starts with a configured exclude prefix, from `exclude` in `config.json` or `--exclude`. The optional `include` list (peer to `exclude`, also `--include`) overrides a matching exclude when strictly more specific. Both lists are normalised to forward-slash form with a trailing slash, and matching is by longest prefix, ignoring case on Windows and macOS, whose file systems ignore it by default:
+The scan producer skips files whose portable path starts with a configured exclude prefix, from `exclude` in `config.json` or `--exclude`. The optional `include` list (peer to `exclude`, also `--include`) overrides a matching exclude when strictly more specific. Both lists are normalised to forward-slash form with a trailing slash, and an entry matches the path it names and everything under it, ignoring case on Windows and macOS, whose file systems ignore it by default. A `*` matches any run of characters within one path segment, so `packages/com.example.lib@*/` keeps matching after the package is upgraded. Entries are anchored at the codebase root and there is no `**`, so `*.min.js` matches only top-level files. Of the entries matching a path, the deeper one is more specific, then the one with more characters other than `*`:
 
 - `exclude: ["tmp/"]`, `include: ["tmp/git/a/"]` → everything under `tmp/` is skipped except files under `tmp/git/a/`.
 - `exclude: ["thirdparty/"]`, `include: ["thirdparty/embree/"]` → only that vendored library gets indexed.
-- Ties favour exclude, so an include must be strictly longer than the matching exclude to rescue a path.
+- `exclude: ["packages/*/"]`, `include: ["packages/com.example.lib@*/"]` → only that package gets indexed, whatever its version.
+- Ties favour exclude, so an include must be strictly more specific than the matching exclude to rescue a path.
 - An `include` with no matching exclude is a no-op. The list is an exception mechanism, never an allowlist.
 
 Excluded directories are pruned from the walk, include-aware, so a directory is skipped only when no `include` reaches into it. The count is logged at scan completion and returned from `index_paths` as `dirs_pruned`, separate from the orphan-prune `pruned` counter.
@@ -1099,8 +1100,8 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 |---|---|---|
 | `db` | — | Path to the sqlite-vec DB file |
 | `codebase` | — | Codebase root (used as `--root` for indexing) |
-| `exclude` | `[]` | List of path prefixes (relative to codebase root) to skip during indexing |
-| `include` | `[]` | List of path prefixes that override matching excludes when strictly more specific. A pure exception mechanism, not an allowlist; see [Include / exclude paths](#include--exclude-paths). |
+| `exclude` | `[]` | List of path prefixes (relative to codebase root) to skip during indexing; `*` matches within one segment |
+| `include` | `[]` | List of path prefixes that override matching excludes when strictly more specific; `*` matches within one segment. A pure exception mechanism, not an allowlist; see [Include / exclude paths](#include--exclude-paths). |
 | `subsystems` | `{}` | Named path sets referenced by `@subsystem` prefixes in the MCP server |
 | `macros` | `[]` | Seed C++ engine macro names to pre-blank before parsing (unioned with the auto-discovered, persisted vocabulary) |
 | `fallback_extensions` | `[".html", ".vue", ".svelte", ".md", ".markdown", ".yaml", ".yml", ".toml", ".json"]` | Text extensions with no tree-sitter grammar that still get indexed via a line-based slicer (chunk_type `"text"`, no name) instead of being dropped. Pass `[]` to disable the fallback path. Extensions outside both this list and the AST-supported set (see `chonks/languages/`'s `EXT_TO_LANG`) are skipped and counted in `unsupported_ext_skipped`, logged at the end of every indexing run regardless of this setting. The five extensions with the most skipped files are printed after the `chonks index` summary. `POST /index` returns the count per extension as `unsupported_exts`, at most 50 extensions, most files first, and a run over the whole root keeps it in `meta.unsupported_exts` for `chonks doctor` to print. |

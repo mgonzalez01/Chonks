@@ -808,6 +808,34 @@ def test_dir_should_prune_helper():
     assert _dir_should_prune("src", excludes, includes) is False
 
 
+def test_wildcard_entry_matches_within_one_segment():
+    from chonks.core.paths import _dir_should_prune, _path_allowed, _scope_exclusion
+
+    excludes = ["packages/*/"]
+    includes = ["packages/com.example.lib@*/"]
+    assert _path_allowed("packages/com.example.lib@1.3.0/Runtime/a.cs", excludes, includes) is True
+    assert _path_allowed("packages/com.example.lib/a.cs", excludes, includes) is False
+    assert _path_allowed("packages/comXexample.lib@1/a.cs", excludes, includes) is False
+    assert _path_allowed("packages/com.example.other@1.0.0/a.cs", excludes, includes) is False
+    assert _dir_should_prune("packages", excludes, includes) is False
+    assert _dir_should_prune("packages/com.example.lib@1.3.0", excludes, includes) is False
+    assert _dir_should_prune("packages/com.example.other@1.0.0", excludes, includes) is True
+    assert _scope_exclusion("packages/com.example.other@1.0.0/", excludes, includes) == "packages/*/"
+
+    assert _path_allowed("src/a/gen/x.cpp", ["src/*/gen/"], []) is False
+    assert _path_allowed("src/a/b/gen/x.cpp", ["src/*/gen/"], []) is True
+
+    excludes = ["thirdparty/"]
+    includes = ["thirdparty/*/include/"]
+    assert _dir_should_prune("thirdparty", excludes, includes) is False
+    assert _dir_should_prune("thirdparty/embree", excludes, includes) is False
+    assert _dir_should_prune("thirdparty/embree/src", excludes, includes) is True
+    assert _path_allowed("thirdparty/embree/include/embree.h", excludes, includes) is True
+
+    assert _path_allowed("packages/com.example.longername/tests/a.cs",
+                         ["packages/*/tests/"], ["packages/com.example.longername/"]) is False
+
+
 def test_path_filters_ignore_case_where_the_file_system_does(monkeypatch):
     from chonks.core import paths
     from chonks.core.paths import _dir_should_prune, _path_allowed, _scope_exclusion
@@ -820,10 +848,12 @@ def test_path_filters_ignore_case_where_the_file_system_does(monkeypatch):
     assert _dir_should_prune("Vendor/junk", excludes, includes) is True
     assert _dir_should_prune("Vendor", excludes, includes) is False
     assert _scope_exclusion("Vendor/junk", excludes, includes) == "vendor/"
+    assert _path_allowed("Packages/Com.Example.Lib@2.0.0/a.cs", ["packages/com.example.lib@*/"], []) is False
 
     monkeypatch.setattr(paths, "_IGNORE_CASE", False)
     assert _path_allowed("Vendor/junk/a.py", excludes, includes) is True
     assert _dir_should_prune("Vendor/junk", excludes, includes) is False
+    assert _path_allowed("Packages/Com.Example.Lib@2.0.0/a.cs", ["packages/com.example.lib@*/"], []) is True
 
 
 def test_include_rescues_subtree_nested_below_include_prefix(tmp_path):
