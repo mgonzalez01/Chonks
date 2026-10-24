@@ -17,6 +17,10 @@ jobs:
   test:
     name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      # A runner's own Python can lack SQLite extension loading, which
+      # sqlite-vec needs; uv's builds have it.
+      UV_PYTHON_PREFERENCE: only-managed
     strategy:
       fail-fast: false
       matrix:
@@ -30,8 +34,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      # uv sync provisions its own Python matching pyproject's
-      # requires-python, so no separate setup-python step is needed.
+      # uv sync provisions the Python named in .python-version, so no
+      # separate setup-python step is needed.
       - name: Install dependencies
         run: uv sync --locked
 
