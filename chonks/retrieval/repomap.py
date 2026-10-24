@@ -65,7 +65,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
             return 0
         if not _in_scope(path, prefix):
             return None
-        rel = path[len(prefix) + 1:]
+        rel = path[len(prefix) + 1 :]
         return len(rel.split("/"))
 
     candidates: list[tuple[int, str, int]] = []
@@ -89,10 +89,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
     def _render(cands: list[tuple[int, str, int]]) -> str:
         total = len(cands)
         shown = cands[:_DIR_OVERVIEW_MAX_LINES]
-        lines = [
-            f"{'  ' * (depth - 1)}{path}/ ({n} file{'s' if n != 1 else ''})"
-            for depth, path, n in shown
-        ]
+        lines = [f"{'  ' * (depth - 1)}{path}/ ({n} file{'s' if n != 1 else ''})" for depth, path, n in shown]
         if total > _DIR_OVERVIEW_MAX_LINES:
             lines.append(f"... +{total - _DIR_OVERVIEW_MAX_LINES} more directories")
         return "# Directory overview\n" + "\n".join(lines) + "\n\n"
@@ -118,6 +115,7 @@ def _dir_overview(store: "Store", path_prefix: str | None, budget_chars: int | N
 # Formatting
 # ---------------------------------------------------------------------------
 
+
 def _format_map(
     chunks: list[dict],
     scores: dict[str, float],
@@ -130,8 +128,7 @@ def _format_map(
         by_file[c["path"]].append(c)
 
     file_scores = {
-        path: sum(scores.get(c["id"], 0.0) for c in file_chunks)
-        for path, file_chunks in by_file.items()
+        path: sum(scores.get(c["id"], 0.0) for c in file_chunks) for path, file_chunks in by_file.items()
     }
 
     budget_chars = token_budget * _CHARS_PER_TOKEN if token_budget else None
@@ -167,10 +164,7 @@ def _format_map(
         # distinguish "the whole codebase" from "the top slice that fit".
         included = set(included_paths)
         omitted_paths = [p for p in by_file if p not in included]
-        marker = (
-            f"[truncated: showing {len(blocks)} of {len(by_file)} files "
-            "by importance"
-        )
+        marker = f"[truncated: showing {len(blocks)} of {len(by_file)} files by importance"
         subtree_note = _summarize_omitted_subtrees(omitted_paths, list(by_file))
         if subtree_note:
             marker += f" — omitted subtrees: {subtree_note}"
@@ -180,7 +174,9 @@ def _format_map(
 
 
 def _summarize_omitted_subtrees(
-    omitted_paths: list[str], all_paths: list[str], top_n: int = 5,
+    omitted_paths: list[str],
+    all_paths: list[str],
+    top_n: int = 5,
 ) -> str:
     """Groups omitted paths by directory level below the map's scope (the
     common prefix of all_paths, not the literal first segment, or a scoped
@@ -201,7 +197,7 @@ def _summarize_omitted_subtrees(
 
     group_counts: Counter[str] = Counter()
     for path in omitted_paths:
-        rel = path.split("/")[len(scope):]
+        rel = path.split("/")[len(scope) :]
         if len(rel) > 1:
             key = "/".join(scope + [rel[0]])
         else:
@@ -209,14 +205,13 @@ def _summarize_omitted_subtrees(
         group_counts[key] += 1
 
     top_groups = sorted(group_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
-    return ", ".join(
-        f"{name} ({n} file{'s' if n != 1 else ''})" for name, n in top_groups
-    )
+    return ", ".join(f"{name} ({n} file{'s' if n != 1 else ''})" for name, n in top_groups)
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def build_repomap(
     store: "Store",
@@ -236,6 +231,7 @@ def build_repomap(
         return f"No named symbols found {scope}."
 
     from chonks.index.graph.pagerank import compute_pagerank_global
+
     pr = compute_pagerank_global(store)
 
     # Per-file mean of known (covered-by-a-chunk) symbol scores, used as the
@@ -262,13 +258,15 @@ def build_repomap(
         else:
             score = file_fallback.get(s["path"], global_fallback)
         scores[i] = score
-        display.append({
-            "id": i,
-            "path": s["path"],
-            "name": s["name"],
-            "chunk_type": s["kind"],
-            "start_line": s["start_line"],
-        })
+        display.append(
+            {
+                "id": i,
+                "path": s["path"],
+                "name": s["name"],
+                "chunk_type": s["kind"],
+                "start_line": s["start_line"],
+            }
+        )
 
     budget_chars = token_budget * _CHARS_PER_TOKEN if token_budget else None
     overview = _dir_overview(store, path_prefix, budget_chars)
@@ -301,6 +299,7 @@ def _build_repomap_from_chunks(
         edges = store.get_refs_for_chunks([c["id"] for c in chunks])
 
     from chonks.index.graph.pagerank import pagerank_scores
+
     untyped = ((f, t, "") for f, t in edges if f in chunk_id_set and t in chunk_id_set)
     pr = pagerank_scores((c["id"] for c in chunks), untyped, {})
     if pr is None:

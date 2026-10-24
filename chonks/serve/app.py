@@ -42,9 +42,11 @@ from chonks.serve.projects import (
     lifespan,
 )
 
+
 def _refresh_from_registry() -> None:
     global CODE_LANGUAGES
     import chonks.index.segment as _segment
+
     CODE_LANGUAGES = _segment.CODE_LANGUAGES
 
 
@@ -56,7 +58,9 @@ app = FastAPI(title="Chonks", lifespan=lifespan)
 
 
 def _scope(project: dict, path_prefix: str | None) -> tuple[str | None, str | None]:
-    return resolve_scope(project["store"], path_prefix, project["root"], project["exclude"], project["include"])
+    return resolve_scope(
+        project["store"], path_prefix, project["root"], project["exclude"], project["include"]
+    )
 
 
 def _notes(*notes: str | None) -> str | None:
@@ -67,15 +71,14 @@ def _notes(*notes: str | None) -> str | None:
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.post("/search")
 def search(req: SearchRequest) -> JSONResponse:
     project = _get_project(req.project)
     searcher = project["searcher"]
 
     # Reject these outside semantic mode.
-    if req.mode != "semantic" and (
-        req.min_score is not None or req.folder_blend or req.file_cap is not None
-    ):
+    if req.mode != "semantic" and (req.min_score is not None or req.folder_blend or req.file_cap is not None):
         raise HTTPException(
             422,
             "min_score, folder_blend, and file_cap are only valid with mode='semantic'.",
@@ -89,7 +92,7 @@ def search(req: SearchRequest) -> JSONResponse:
         scfg = project["search_cfg"]
         if req.folder_blend:
             alpha = float(scfg.get("blend_alpha", DEFAULT_BLEND_ALPHA))
-            beta  = float(scfg.get("blend_beta",  DEFAULT_BLEND_BETA))
+            beta = float(scfg.get("blend_beta", DEFAULT_BLEND_BETA))
             blend = (alpha, beta)
         file_cap = req.file_cap if req.file_cap is not None else int(scfg.get("file_cap", DEFAULT_FILE_CAP))
 
@@ -108,8 +111,12 @@ def search(req: SearchRequest) -> JSONResponse:
             )
         try:
             chunks = searcher.semantic(
-                req.query, req.top_k, scope,
-                min_score=req.min_score, folder_blend=blend, chunk_kind=req.chunk_kind,
+                req.query,
+                req.top_k,
+                scope,
+                min_score=req.min_score,
+                folder_blend=blend,
+                chunk_kind=req.chunk_kind,
                 file_cap=file_cap,
             )
         # Narrow catch: a broader except would also swallow a real store bug as "embedder down".
@@ -135,7 +142,11 @@ def search(req: SearchRequest) -> JSONResponse:
         try:
             if project["reranker"] is not None:
                 chunks, rerank_note = reranked_hybrid(
-                    searcher, project["reranker"], req.query, req.top_k, scope,
+                    searcher,
+                    project["reranker"],
+                    req.query,
+                    req.top_k,
+                    scope,
                     chunk_kind=req.chunk_kind,
                 )
             else:
@@ -154,19 +165,26 @@ def search(req: SearchRequest) -> JSONResponse:
 
     # None means too few vector chunks to evaluate; see retrieval.results.
     near_dup = detect_near_dup_wall(searcher.store, chunks)
-    logger.info("search  project=%r  mode=%s  hits=%d  widened=%s",
-                req.project or DEFAULT_PROJECT, req.mode, len(chunks), mode_note is not None)
+    logger.info(
+        "search  project=%r  mode=%s  hits=%d  widened=%s",
+        req.project or DEFAULT_PROJECT,
+        req.mode,
+        len(chunks),
+        mode_note is not None,
+    )
 
-    return JSONResponse({
-        "chunks":           chunks,
-        "formatted":        format_results(chunks),
-        "count":            len(chunks),
-        "docs_in_results":  docs_in_results,
-        "near_dup":         near_dup,
-        "files":            rank_files(chunks),
-        "query_truncated":  query_truncated,
-        "note":             _notes(scope_note, mode_note, rerank_note),
-    })
+    return JSONResponse(
+        {
+            "chunks": chunks,
+            "formatted": format_results(chunks),
+            "count": len(chunks),
+            "docs_in_results": docs_in_results,
+            "near_dup": near_dup,
+            "files": rank_files(chunks),
+            "query_truncated": query_truncated,
+            "note": _notes(scope_note, mode_note, rerank_note),
+        }
+    )
 
 
 @app.post("/research")
@@ -199,7 +217,10 @@ def repomap(req: RepomapRequest) -> JSONResponse:
     scope = req.path_prefix or "(whole index)"
     logger.info(
         "codebase_map  project=%r  scope=%r  query=%r  budget=%s",
-        req.project or DEFAULT_PROJECT, scope, req.query, req.token_budget,
+        req.project or DEFAULT_PROJECT,
+        scope,
+        req.query,
+        req.token_budget,
     )
 
     # Applies even to scoped calls: one subtree can still be too large for the caller's context.
@@ -225,8 +246,13 @@ def symbol(req: SymbolRequest) -> JSONResponse:
     scope, scope_note = _scope(project, req.path_prefix)
     result = graph_queries.find_symbol(project["store"], req.name, scope, prefix=req.prefix)
     rows = result["symbols"]
-    logger.info("symbol  project=%r  name=%r  prefix=%s  hits=%d",
-                req.project or DEFAULT_PROJECT, req.name, req.prefix, len(rows))
+    logger.info(
+        "symbol  project=%r  name=%r  prefix=%s  hits=%d",
+        req.project or DEFAULT_PROJECT,
+        req.name,
+        req.prefix,
+        len(rows),
+    )
     return JSONResponse({"symbols": rows, "count": len(rows), "note": _notes(scope_note, result["note"])})
 
 
@@ -238,12 +264,16 @@ def usages(req: UsagesRequest) -> JSONResponse:
     scope, scope_note = _scope(project, req.path_prefix)
     result = graph_queries.find_usages(project["store"], req.name, scope, limit=req.limit)
     rows = result["results"]
-    logger.info("usages  project=%r  name=%r  hits=%d",
-                req.project or DEFAULT_PROJECT, req.name, len(rows))
-    return JSONResponse({
-        "usages": rows, "count": len(rows), "note": _notes(scope_note, result["note"]),
-        "by_class": result["by_class"], "content_matches": result["content_matches"],
-    })
+    logger.info("usages  project=%r  name=%r  hits=%d", req.project or DEFAULT_PROJECT, req.name, len(rows))
+    return JSONResponse(
+        {
+            "usages": rows,
+            "count": len(rows),
+            "note": _notes(scope_note, result["note"]),
+            "by_class": result["by_class"],
+            "content_matches": result["content_matches"],
+        }
+    )
 
 
 @app.post("/impact")
@@ -254,8 +284,11 @@ def impact(req: ImpactRequest) -> JSONResponse:
     project = _get_project(req.project)
     scope, scope_note = _scope(project, req.path_prefix)
     try:
-        result = graph_queries.get_impact(project["store"],
-            req.name, scope, limit=req.limit or 20,
+        result = graph_queries.get_impact(
+            project["store"],
+            req.name,
+            scope,
+            limit=req.limit or 20,
             rank_by=req.rank_by or "pagerank_sum",
         )
     except ValueError as e:
@@ -263,8 +296,11 @@ def impact(req: ImpactRequest) -> JSONResponse:
     result["note"] = _notes(scope_note, result["note"])
     logger.info(
         "impact  project=%r  name=%r  total_references=%d  files=%d  files_total=%d",
-        req.project or DEFAULT_PROJECT, req.name,
-        result["total_references"], len(result["files"]), result["files_total"],
+        req.project or DEFAULT_PROJECT,
+        req.name,
+        result["total_references"],
+        len(result["files"]),
+        result["files_total"],
     )
     return JSONResponse(result)
 
@@ -277,11 +313,14 @@ def outgoing(req: OutgoingRequest) -> JSONResponse:
     scope, scope_note = _scope(project, req.path_prefix)
     result = graph_queries.find_outgoing(project["store"], req.name, scope, limit=req.limit)
     rows = result["results"]
-    logger.info("outgoing  project=%r  name=%r  hits=%d",
-                req.project or DEFAULT_PROJECT, req.name, len(rows))
-    return JSONResponse({
-        "outgoing": rows, "count": len(rows), "note": _notes(scope_note, result["note"]),
-    })
+    logger.info("outgoing  project=%r  name=%r  hits=%d", req.project or DEFAULT_PROJECT, req.name, len(rows))
+    return JSONResponse(
+        {
+            "outgoing": rows,
+            "count": len(rows),
+            "note": _notes(scope_note, result["note"]),
+        }
+    )
 
 
 @app.post("/investigate")
@@ -295,18 +334,26 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
     definitions = found["symbols"]
     if not definitions:
         note = found["note"]
-        logger.info("investigate  project=%r  name=%r  definitions=0 (short-circuit)",
-                    req.project or DEFAULT_PROJECT, req.name)
-        return JSONResponse({
-            "symbol": req.name,
-            "definitions": [],
-            "usages": {"usages": [], "count": 0},
-            "outgoing": {"outgoing": [], "count": 0},
-            "impact": {},
-            "notes": {
-                "definitions": note, "usages": note, "outgoing": note, "impact": note,
-            },
-        })
+        logger.info(
+            "investigate  project=%r  name=%r  definitions=0 (short-circuit)",
+            req.project or DEFAULT_PROJECT,
+            req.name,
+        )
+        return JSONResponse(
+            {
+                "symbol": req.name,
+                "definitions": [],
+                "usages": {"usages": [], "count": 0},
+                "outgoing": {"outgoing": [], "count": 0},
+                "impact": {},
+                "notes": {
+                    "definitions": note,
+                    "usages": note,
+                    "outgoing": note,
+                    "impact": note,
+                },
+            }
+        )
 
     if req.definition_source:
         _attach_definition_source(store, definitions, req.definition_source_max_chars)
@@ -318,28 +365,36 @@ def investigate(req: InvestigateRequest) -> JSONResponse:
 
     logger.info(
         "investigate  project=%r  name=%r  definitions=%d  usages=%d  outgoing=%d  impact_files=%d",
-        req.project or DEFAULT_PROJECT, req.name, len(definitions),
-        len(usages_result["results"]), len(outgoing_result["results"]),
+        req.project or DEFAULT_PROJECT,
+        req.name,
+        len(definitions),
+        len(usages_result["results"]),
+        len(outgoing_result["results"]),
         len(impact_result["files"]),
     )
-    return JSONResponse({
-        "symbol": req.name,
-        "definitions": definitions,
-        "usages": {
-            "usages": usages_result["results"], "count": len(usages_result["results"]),
-            "by_class": usages_result["by_class"], "content_matches": usages_result["content_matches"],
-        },
-        "outgoing": {
-            "outgoing": outgoing_result["results"], "count": len(outgoing_result["results"]),
-        },
-        "impact": impact_result,
-        "notes": {
-            "definitions": found["note"],
-            "usages": _notes(scope_note, usages_result["note"]),
-            "outgoing": _notes(scope_note, outgoing_result["note"]),
-            "impact": _notes(scope_note, impact_result["note"]),
-        },
-    })
+    return JSONResponse(
+        {
+            "symbol": req.name,
+            "definitions": definitions,
+            "usages": {
+                "usages": usages_result["results"],
+                "count": len(usages_result["results"]),
+                "by_class": usages_result["by_class"],
+                "content_matches": usages_result["content_matches"],
+            },
+            "outgoing": {
+                "outgoing": outgoing_result["results"],
+                "count": len(outgoing_result["results"]),
+            },
+            "impact": impact_result,
+            "notes": {
+                "definitions": found["note"],
+                "usages": _notes(scope_note, usages_result["note"]),
+                "outgoing": _notes(scope_note, outgoing_result["note"]),
+                "impact": _notes(scope_note, impact_result["note"]),
+            },
+        }
+    )
 
 
 @app.post("/hubs")
@@ -348,14 +403,21 @@ def hubs(req: HubsRequest) -> JSONResponse:
     project = _get_project(req.project)
     scope, scope_note = _scope(project, req.path_prefix)
     try:
-        result = graph_queries.get_hubs(project["store"],
-            scope, limit=req.limit or 20, edge_types=req.edge_types,
+        result = graph_queries.get_hubs(
+            project["store"],
+            scope,
+            limit=req.limit or 20,
+            edge_types=req.edge_types,
         )
     except ValueError as e:
         # 400 covers both the global-scope guard and an invalid edge_types value.
         raise HTTPException(400, str(e)) from None
-    logger.info("hubs  project=%r  path_prefix=%r  hits=%d",
-                req.project or DEFAULT_PROJECT, req.path_prefix, len(result["hubs"]))
+    logger.info(
+        "hubs  project=%r  path_prefix=%r  hits=%d",
+        req.project or DEFAULT_PROJECT,
+        req.path_prefix,
+        len(result["hubs"]),
+    )
     return JSONResponse({**result, "note": scope_note})
 
 
@@ -365,13 +427,19 @@ def trace(req: TraceRequest) -> JSONResponse:
     A name with multiple definitions has every one tried."""
     project = _get_project(req.project)
     result = trace_path(
-        project["store"], req.from_symbol, req.to_symbol,
-        max_depth=req.max_depth, include_semantic=req.include_semantic,
+        project["store"],
+        req.from_symbol,
+        req.to_symbol,
+        max_depth=req.max_depth,
+        include_semantic=req.include_semantic,
     )
     logger.info(
         "trace  project=%r  from=%r  to=%r  found=%s  depth=%s",
-        req.project or DEFAULT_PROJECT, req.from_symbol, req.to_symbol,
-        result["found"], result.get("depth"),
+        req.project or DEFAULT_PROJECT,
+        req.from_symbol,
+        req.to_symbol,
+        result["found"],
+        result.get("depth"),
     )
     if not result["found"] and result.get("reason") == "unknown_symbol":
         raise HTTPException(404, result["error"])
@@ -386,18 +454,26 @@ def find_by_message(req: FindByMessageRequest) -> JSONResponse:
     project = _get_project(req.project)
     result = message_match.find_by_message(project["store"], req.message, limit=req.limit or 20)
     rows = result["results"]
-    logger.info("find_by_message  project=%r  hits=%d  truncated=%s",
-                req.project or DEFAULT_PROJECT, len(rows), result["truncated"])
-    return JSONResponse({
-        "results": rows, "count": len(rows),
-        "truncated": result["truncated"], "note": result.get("note"),
-    })
+    logger.info(
+        "find_by_message  project=%r  hits=%d  truncated=%s",
+        req.project or DEFAULT_PROJECT,
+        len(rows),
+        result["truncated"],
+    )
+    return JSONResponse(
+        {
+            "results": rows,
+            "count": len(rows),
+            "truncated": result["truncated"],
+            "note": result.get("note"),
+        }
+    )
 
 
 @app.post("/index")
 def index(req: IndexRequest) -> JSONResponse:
     project = _get_project(req.project)
-    root    = project["root"]
+    root = project["root"]
     exclude = project["exclude"]
     include = project["include"]
 
@@ -417,7 +493,9 @@ def index(req: IndexRequest) -> JSONResponse:
                     )
 
         stats = index_paths(
-            req.paths, project["store"], project["embedder"],
+            req.paths,
+            project["store"],
+            project["embedder"],
             root=root,
             force=req.force,
             exclude=exclude,
@@ -446,7 +524,9 @@ def status(scope: list[str] | None = Query(None)) -> JSONResponse:
         else:
             project_stats[name] = {"ready": True, **p["store"].stats()}
         project_stats[name]["warnings"] = config_warnings(
-            p.get("root"), p.get("exclude") or [], p.get("include") or [],
+            p.get("root"),
+            p.get("exclude") or [],
+            p.get("include") or [],
             (scope or []) if name == DEFAULT_PROJECT else [],
         )
 
@@ -457,20 +537,48 @@ def status(scope: list[str] | None = Query(None)) -> JSONResponse:
 
 # Hand-curated, not derived from the route table: mechanical introspection is what /docs is for.
 _API_INDEX_ENDPOINTS: list[dict[str, str]] = [
-    {"method": "GET",  "path": "/",              "description": "This index."},
-    {"method": "GET",  "path": "/status",        "description": "Health check and DB statistics."},
-    {"method": "POST", "path": "/search",        "description": "Search chunks: semantic|fts|regex|hybrid."},
-    {"method": "POST", "path": "/research",      "description": "Deep-research retrieval with typed-edge evidence."},
-    {"method": "POST", "path": "/repomap",       "description": "Structural symbol map of a path prefix or the whole index."},
-    {"method": "POST", "path": "/symbol",        "description": "Exact or prefix lookup against the named-boundary symbol index."},
-    {"method": "POST", "path": "/usages",        "description": "Who references a symbol (incoming chunk_refs)."},
-    {"method": "POST", "path": "/outgoing",      "description": "What a symbol references (outgoing chunk_refs)."},
-    {"method": "POST", "path": "/investigate",   "description": "Composite definitions + usages + outgoing + impact for a symbol."},
-    {"method": "POST", "path": "/impact",        "description": "Blast radius of a symbol, aggregated by referencing file."},
-    {"method": "POST", "path": "/hubs",          "description": "Structurally load-bearing chunks, ranked by in-degree."},
-    {"method": "POST", "path": "/trace",         "description": "Shortest structural path between two symbols."},
-    {"method": "POST", "path": "/find_by_message", "description": "Find the source literal that emitted a runtime message."},
-    {"method": "POST", "path": "/index",         "description": "Parse + embed paths into the index."},
+    {"method": "GET", "path": "/", "description": "This index."},
+    {"method": "GET", "path": "/status", "description": "Health check and DB statistics."},
+    {"method": "POST", "path": "/search", "description": "Search chunks: semantic|fts|regex|hybrid."},
+    {
+        "method": "POST",
+        "path": "/research",
+        "description": "Deep-research retrieval with typed-edge evidence.",
+    },
+    {
+        "method": "POST",
+        "path": "/repomap",
+        "description": "Structural symbol map of a path prefix or the whole index.",
+    },
+    {
+        "method": "POST",
+        "path": "/symbol",
+        "description": "Exact or prefix lookup against the named-boundary symbol index.",
+    },
+    {"method": "POST", "path": "/usages", "description": "Who references a symbol (incoming chunk_refs)."},
+    {"method": "POST", "path": "/outgoing", "description": "What a symbol references (outgoing chunk_refs)."},
+    {
+        "method": "POST",
+        "path": "/investigate",
+        "description": "Composite definitions + usages + outgoing + impact for a symbol.",
+    },
+    {
+        "method": "POST",
+        "path": "/impact",
+        "description": "Blast radius of a symbol, aggregated by referencing file.",
+    },
+    {
+        "method": "POST",
+        "path": "/hubs",
+        "description": "Structurally load-bearing chunks, ranked by in-degree.",
+    },
+    {"method": "POST", "path": "/trace", "description": "Shortest structural path between two symbols."},
+    {
+        "method": "POST",
+        "path": "/find_by_message",
+        "description": "Find the source literal that emitted a runtime message.",
+    },
+    {"method": "POST", "path": "/index", "description": "Parse + embed paths into the index."},
 ]
 
 
@@ -481,10 +589,12 @@ def root() -> JSONResponse:
         version = importlib.metadata.version("chonks")
     except importlib.metadata.PackageNotFoundError:
         version = None
-    return JSONResponse({
-        "name":        "chonks",
-        "version":     version,
-        "description": "Local code RAG (semantic search + deep research) over source codebases.",
-        "endpoints":   _API_INDEX_ENDPOINTS,
-        "status_url":  "/status",
-    })
+    return JSONResponse(
+        {
+            "name": "chonks",
+            "version": version,
+            "description": "Local code RAG (semantic search + deep research) over source codebases.",
+            "endpoints": _API_INDEX_ENDPOINTS,
+            "status_url": "/status",
+        }
+    )

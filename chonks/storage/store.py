@@ -29,6 +29,7 @@ from chonks.storage.schema import SCHEMA_DDL, SCHEMA_VERSION
 def _refresh_from_registry() -> None:
     global CODE_LANGUAGES
     import chonks.languages as _languages
+
     CODE_LANGUAGES = _languages.CODE_LANGUAGES
 
 
@@ -46,6 +47,7 @@ _FTS_NAME_WEIGHT = 5.0
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _pack_f32(vec) -> bytes:
     """Pack floats into a little-endian float32 blob for sqlite-vec.
@@ -123,7 +125,7 @@ def oldest_recorded(meta_value: str) -> str:
     returned unchanged."""
     if not meta_value.startswith("mixed: "):
         return meta_value
-    rest = meta_value[len("mixed: "):]
+    rest = meta_value[len("mixed: ") :]
     if rest.startswith("{"):
         try:
             _, end = json.JSONDecoder().raw_decode(rest)
@@ -151,6 +153,7 @@ def _chunk_kind_clause(chunk_kind: str | None, column: str = "language") -> tupl
 # ---------------------------------------------------------------------------
 # Store
 # ---------------------------------------------------------------------------
+
 
 class Store:
     def __init__(self, db_path: str | Path, check_language_set: bool = True):
@@ -197,8 +200,7 @@ class Store:
             # Adds edge_type to a pre-migration DB. Guarded by a pragma check
             # since sqlite has no ADD COLUMN IF NOT EXISTS. No backfill needed:
             # build_refs clears and rebuilds chunk_refs on every index run.
-            cols = {row["name"] for row in
-                    self._conn.execute("PRAGMA table_info(chunk_refs)").fetchall()}
+            cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(chunk_refs)").fetchall()}
             if "edge_type" not in cols:
                 self._conn.execute(
                     "ALTER TABLE chunk_refs ADD COLUMN edge_type TEXT NOT NULL DEFAULT 'mentions'"
@@ -206,9 +208,7 @@ class Store:
                 self._conn.commit()
 
             # Catches DB/code schema mismatch immediately at startup.
-            stored_ver = self._conn.execute(
-                "SELECT value FROM meta WHERE key='schema_version'"
-            ).fetchone()
+            stored_ver = self._conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
             if stored_ver is None:
                 self._conn.execute(
                     "INSERT OR REPLACE INTO meta(key,value) VALUES('schema_version',?)",
@@ -235,7 +235,8 @@ class Store:
                 if mixed or recorded != current:
                     if isinstance(recorded, dict):
                         changed = sorted(
-                            name for name in set(recorded) | set(current)
+                            name
+                            for name in set(recorded) | set(current)
                             if recorded.get(name) != current.get(name)
                         )
                     else:
@@ -249,9 +250,7 @@ class Store:
                     )
 
             # Restore dim from meta if already set
-            row = self._conn.execute(
-                "SELECT value FROM meta WHERE key='embedding_dim'"
-            ).fetchone()
+            row = self._conn.execute("SELECT value FROM meta WHERE key='embedding_dim'").fetchone()
             if row:
                 self._dim = int(row["value"])
                 self._ensure_vec_table(self._dim)
@@ -288,9 +287,7 @@ class Store:
         should pass it so a silent dim-matches-but-model-differs swap is caught."""
         with self._lock:
             if self._dim is not None and self._dim != dim:
-                raise ValueError(
-                    f"Embedding dimension mismatch: DB has {self._dim}, got {dim}"
-                )
+                raise ValueError(f"Embedding dimension mismatch: DB has {self._dim}, got {dim}")
             # Missing recorded model is treated as matching (old DB); a
             # mismatched one is refused, since that's a silent wrong-vectors bug.
             if model is not None:
@@ -325,9 +322,7 @@ class Store:
 
     def get_file_hash(self, path: str) -> str | None:
         with self._lock:
-            row = self._conn.execute(
-                "SELECT content_hash FROM files WHERE path=?", (path,)
-            ).fetchone()
+            row = self._conn.execute("SELECT content_hash FROM files WHERE path=?", (path,)).fetchone()
             return row["content_hash"] if row else None
 
     def upsert_file(self, path: str, size: int, mtime: float, content_hash: str) -> None:
@@ -365,20 +360,13 @@ class Store:
         k-NN graph) without a second query."""
         with self._lock:
             chunk_ids = [
-                r[0]
-                for r in self._conn.execute(
-                    "SELECT id FROM chunks WHERE path=?", (path,)
-                ).fetchall()
+                r[0] for r in self._conn.execute("SELECT id FROM chunks WHERE path=?", (path,)).fetchall()
             ]
             self._delete_vectors(chunk_ids)
             for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
-                self._conn.execute(
-                    f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", batch
-                )
-                self._conn.execute(
-                    f"DELETE FROM chunks WHERE id IN ({placeholders})", batch
-                )
+                self._conn.execute(f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", batch)
+                self._conn.execute(f"DELETE FROM chunks WHERE id IN ({placeholders})", batch)
             self._conn.execute("DELETE FROM symbols WHERE path=?", (path,))
             self._conn.execute("DELETE FROM members WHERE path=?", (path,))
             self._conn.execute("DELETE FROM class_bases WHERE path=?", (path,))
@@ -390,8 +378,10 @@ class Store:
         """path -> (scan_key, records JSON) for every C/C++ file read by
         the definition scan (chonks/index/macro_defs.py)."""
         with self._lock:
-            return {r[0]: (r[1], r[2]) for r in self._conn.execute(
-                "SELECT path, scan_key, records FROM macro_definitions")}
+            return {
+                r[0]: (r[1], r[2])
+                for r in self._conn.execute("SELECT path, scan_key, records FROM macro_definitions")
+            }
 
     def put_macro_definitions(self, rows: dict[str, tuple[str, str]], drop=()) -> None:
         """Writes `rows` (path -> (scan_key, records JSON)) and removes the
@@ -402,15 +392,22 @@ class Store:
         with self._lock:
             self._conn.executemany(
                 "INSERT OR REPLACE INTO macro_definitions(path, scan_key, records) VALUES(?,?,?)",
-                [(path, key, records) for path, (key, records) in rows.items()])
+                [(path, key, records) for path, (key, records) in rows.items()],
+            )
             self._conn.executemany("DELETE FROM macro_definitions WHERE path=?", [(p,) for p in drop])
             self._conn.commit()
 
     _DEFINITION_QUERIES = (
-        ("chunk", "SELECT path, id, name, chunk_type, language FROM chunks WHERE name IS NOT NULL AND path IN ({})"),
+        (
+            "chunk",
+            "SELECT path, id, name, chunk_type, language FROM chunks WHERE name IS NOT NULL AND path IN ({})",
+        ),
         ("symbol", "SELECT path, chunk_id, name, kind, start_line, end_line FROM symbols WHERE path IN ({})"),
-        ("member", "SELECT path, chunk_id, name, owner, kind, type_text, arity_min, arity_max, variadic, flags, line "
-                   "FROM members WHERE path IN ({})"),
+        (
+            "member",
+            "SELECT path, chunk_id, name, owner, kind, type_text, arity_min, arity_max, variadic, flags, line "
+            "FROM members WHERE path IN ({})",
+        ),
         ("using", "SELECT path, NULL, NULL, scope, namespace FROM using_namespaces WHERE path IN ({})"),
         ("base", "SELECT path, NULL, NULL, owner, base FROM class_bases WHERE path IN ({})"),
     )
@@ -434,9 +431,7 @@ class Store:
         """(name, content, int8 vector) of each chunk at `path` that has a
         vector. Like get_definitions, call it before delete_file(path)."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT id, name, content FROM chunks WHERE path=?", (path,)
-            ).fetchall()
+            rows = self._conn.execute("SELECT id, name, content FROM chunks WHERE path=?", (path,)).fetchall()
         vecs = self.get_int8_embeddings_by_ids([r["id"] for r in rows])
         return [(r["name"], r["content"], vecs[r["id"]]) for r in rows if r["id"] in vecs]
 
@@ -465,8 +460,7 @@ class Store:
 
     def get_all_symbols(self, path_prefix: str | None = None) -> list[dict[str, Any]]:
         """Every symbol (optionally under a path prefix), for repomap listing."""
-        sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id "
-               "FROM symbols WHERE kind != ?")
+        sql = "SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols WHERE kind != ?"
         scope, scope_args = _scope_filter("path", path_prefix)
         sql += scope + " ORDER BY path, start_line"
         args = [FORWARD_DECLARATION, *scope_args]
@@ -476,8 +470,9 @@ class Store:
     # C++ symbols are qualified ("AABB::encloses") but callers query the bare
     # method name, so an exact miss falls back to a last-component suffix
     # match. LIKE wildcards in the name are escaped so '_' isn't a wildcard.
-    def find_symbols(self, name: str, path_prefix: str | None = None,
-                     prefix: bool = False) -> list[dict[str, Any]]:
+    def find_symbols(
+        self, name: str, path_prefix: str | None = None, prefix: bool = False
+    ) -> list[dict[str, Any]]:
         """Exact-name (or prefix) symbol lookup -> path:line + owning chunk_id.
         Bare names that miss exactly also match as the last component of a
         qualified name (see comment above)."""
@@ -487,7 +482,9 @@ class Store:
 
         def run(where: str, args: list) -> list[dict[str, Any]]:
             with self._lock:
-                return [dict(r) for r in self._conn.execute(base + where + tail, [*args, *scope_args]).fetchall()]
+                return [
+                    dict(r) for r in self._conn.execute(base + where + tail, [*args, *scope_args]).fetchall()
+                ]
 
         if prefix:
             return _definitions_first(run(r"name LIKE ? ESCAPE '\'", [_escape_like(name) + "%"]))
@@ -497,8 +494,7 @@ class Store:
         # Forward declarations only answer a name nothing defines, so a
         # qualified definition (`Outer::Inner`) beats a bare `class Inner;`.
         esc = _escape_like(name)
-        suffix = run(r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')",
-                     [f"%::{esc}", f"%.{esc}"])
+        suffix = run(r"(name LIKE ? ESCAPE '\' OR name LIKE ? ESCAPE '\')", [f"%::{esc}", f"%.{esc}"])
         if _has_definition(suffix) or not rows:
             return _definitions_first(suffix)
         return rows
@@ -510,8 +506,7 @@ class Store:
         than one id (overloads); callers needing "the" definition should try each."""
         with self._lock:
             def_rows = self._conn.execute(
-                "SELECT DISTINCT chunk_id FROM symbols "
-                "WHERE name = ? AND chunk_id IS NOT NULL AND kind != ?",
+                "SELECT DISTINCT chunk_id FROM symbols WHERE name = ? AND chunk_id IS NOT NULL AND kind != ?",
                 (name, FORWARD_DECLARATION),
             ).fetchall()
             if (with_qualified or not def_rows) and "::" not in name and "." not in name:
@@ -540,8 +535,9 @@ class Store:
         with self._lock:
             return self._conn.execute("SELECT COUNT(*) FROM symbols").fetchone()[0]
 
-    def get_symbols_by_chunk_ids(self, chunk_ids: list[str],
-                                 path_prefix: str | None = None) -> list[dict[str, Any]]:
+    def get_symbols_by_chunk_ids(
+        self, chunk_ids: list[str], path_prefix: str | None = None
+    ) -> list[dict[str, Any]]:
         """Symbol rows on the given chunks, forward declarations aside,
         optionally under a path prefix."""
         out: list[dict[str, Any]] = []
@@ -549,9 +545,13 @@ class Store:
         with self._lock:
             for batch in batched(list(chunk_ids), 900):
                 placeholders = ",".join("?" * len(batch))
-                sql = ("SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
-                       f"WHERE kind != ? AND chunk_id IN ({placeholders}){scope} ORDER BY path, start_line")
-                out.extend(dict(r) for r in self._conn.execute(sql, [FORWARD_DECLARATION, *batch, *scope_args]))
+                sql = (
+                    "SELECT path, name, kind, language, start_line, end_line, chunk_id FROM symbols "
+                    f"WHERE kind != ? AND chunk_id IN ({placeholders}){scope} ORDER BY path, start_line"
+                )
+                out.extend(
+                    dict(r) for r in self._conn.execute(sql, [FORWARD_DECLARATION, *batch, *scope_args])
+                )
         return out
 
     def get_symbol_spans(self, name: str, kinds: list[str]) -> list[tuple[str, str, int, int]]:
@@ -571,9 +571,13 @@ class Store:
     # Class model (members and bases of each class)
     # ------------------------------------------------------------------
 
-    def replace_class_model(self, path: str, members: list[dict[str, Any]],
-                            bases: list[dict[str, Any]],
-                            using_namespaces: list[dict[str, Any]]) -> None:
+    def replace_class_model(
+        self,
+        path: str,
+        members: list[dict[str, Any]],
+        bases: list[dict[str, Any]],
+        using_namespaces: list[dict[str, Any]],
+    ) -> None:
         """Replaces the `members`, `class_bases` and `using_namespaces` rows of `path`."""
         with self._lock:
             self._conn.execute("DELETE FROM members WHERE path=?", (path,))
@@ -589,8 +593,7 @@ class Store:
                 )
             if bases:
                 self._conn.executemany(
-                    "INSERT INTO class_bases(path, owner, base, line) "
-                    "VALUES (:path, :owner, :base, :line)",
+                    "INSERT INTO class_bases(path, owner, base, line) VALUES (:path, :owner, :base, :line)",
                     bases,
                 )
             if using_namespaces:
@@ -601,28 +604,43 @@ class Store:
                 )
             self._conn.commit()
 
-    _MEMBER_COLUMNS = ("path, language, owner, name, kind, type_text, arity_min, arity_max, "
-                       "variadic, flags, line, chunk_id")
+    _MEMBER_COLUMNS = (
+        "path, language, owner, name, kind, type_text, arity_min, arity_max, variadic, flags, line, chunk_id"
+    )
 
     def get_members(self, owner: str, name: str) -> list[dict[str, Any]]:
         with self._lock:
-            return [dict(r) for r in self._conn.execute(
-                f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner = ? AND name = ? "
-                "ORDER BY path, line", (owner, name)).fetchall()]
+            return [
+                dict(r)
+                for r in self._conn.execute(
+                    f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner = ? AND name = ? "
+                    "ORDER BY path, line",
+                    (owner, name),
+                ).fetchall()
+            ]
 
     def get_member_owners_by_path(self, path: str) -> list[str]:
         with self._lock:
-            return [r[0] for r in self._conn.execute(
-                "SELECT DISTINCT owner FROM members WHERE path = ? ORDER BY owner", (path,)).fetchall()]
+            return [
+                r[0]
+                for r in self._conn.execute(
+                    "SELECT DISTINCT owner FROM members WHERE path = ? ORDER BY owner", (path,)
+                ).fetchall()
+            ]
 
     def get_members_by_owners(self, owners: list[str]) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
         with self._lock:
             for batch in batched(list(owners), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend(dict(r) for r in self._conn.execute(
-                    f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner IN ({placeholders}) "
-                    "ORDER BY owner, name, path, line", batch).fetchall())
+                out.extend(
+                    dict(r)
+                    for r in self._conn.execute(
+                        f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE owner IN ({placeholders}) "
+                        "ORDER BY owner, name, path, line",
+                        batch,
+                    ).fetchall()
+                )
         return out
 
     def get_bases(self, owners: list[str]) -> list[dict[str, Any]]:
@@ -630,9 +648,14 @@ class Store:
         with self._lock:
             for batch in batched(list(owners), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend(dict(r) for r in self._conn.execute(
-                    f"SELECT path, owner, base, line FROM class_bases "
-                    f"WHERE owner IN ({placeholders}) ORDER BY owner, path, line", batch).fetchall())
+                out.extend(
+                    dict(r)
+                    for r in self._conn.execute(
+                        f"SELECT path, owner, base, line FROM class_bases "
+                        f"WHERE owner IN ({placeholders}) ORDER BY owner, path, line",
+                        batch,
+                    ).fetchall()
+                )
         return out
 
     def get_class_owners(self, class_kinds: list[str]) -> set[str]:
@@ -656,9 +679,14 @@ class Store:
         with self._lock:
             for batch in batched(list(chunk_ids), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend(dict(r) for r in self._conn.execute(
-                    f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE chunk_id IN ({placeholders}){named} "
-                    "ORDER BY path, line", [*batch, *([name] if name is not None else [])]).fetchall())
+                out.extend(
+                    dict(r)
+                    for r in self._conn.execute(
+                        f"SELECT {self._MEMBER_COLUMNS} FROM members WHERE chunk_id IN ({placeholders}){named} "
+                        "ORDER BY path, line",
+                        [*batch, *([name] if name is not None else [])],
+                    ).fetchall()
+                )
         return out
 
     def get_using_namespaces(self, paths: list[str]) -> list[dict[str, Any]]:
@@ -666,9 +694,14 @@ class Store:
         with self._lock:
             for batch in batched(list(paths), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend(dict(r) for r in self._conn.execute(
-                    f"SELECT path, scope, namespace, line FROM using_namespaces "
-                    f"WHERE path IN ({placeholders}) ORDER BY path, line", batch).fetchall())
+                out.extend(
+                    dict(r)
+                    for r in self._conn.execute(
+                        f"SELECT path, scope, namespace, line FROM using_namespaces "
+                        f"WHERE path IN ({placeholders}) ORDER BY path, line",
+                        batch,
+                    ).fetchall()
+                )
         return out
 
     # ------------------------------------------------------------------
@@ -722,9 +755,7 @@ class Store:
             # a preceding delete_file) stays correct too.
             self._delete_vectors(ids)
             placeholders = ",".join("?" * len(ids))
-            self._conn.execute(
-                f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", ids
-            )
+            self._conn.execute(f"DELETE FROM chunk_literals WHERE chunk_id IN ({placeholders})", ids)
 
             for chunk, emb in zip(chunks, embeddings):
                 cid = chunk["id"]
@@ -749,7 +780,8 @@ class Store:
                 )
                 if isinstance(emb, bytes):
                     self._conn.execute(
-                        "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_int8(?))", (cid, emb),
+                        "INSERT INTO chunk_vecs(id, embedding) VALUES(?, vec_int8(?))",
+                        (cid, emb),
                     )
                 else:
                     self._conn.execute(
@@ -814,9 +846,7 @@ class Store:
             if self._dim is None:
                 return []
             if self._dim != dim:
-                raise ValueError(
-                    f"Embedding dimension mismatch: DB has {self._dim}, got {dim}"
-                )
+                raise ValueError(f"Embedding dimension mismatch: DB has {self._dim}, got {dim}")
 
             kind_clause, kind_params = _chunk_kind_clause(chunk_kind)
             path_clause, path_params = _scope_filter("path", path_prefix)
@@ -1008,8 +1038,10 @@ class Store:
         with self._lock:
             for batch in batched(list(ids), 900):
                 placeholders = ",".join("?" * len(batch))
-                sql = ("SELECT id AS chunk_id, path, language, name, chunk_type, start_line, end_line "
-                       f"FROM chunks WHERE id IN ({placeholders}){scope}")
+                sql = (
+                    "SELECT id AS chunk_id, path, language, name, chunk_type, start_line, end_line "
+                    f"FROM chunks WHERE id IN ({placeholders}){scope}"
+                )
                 out.extend(dict(r) for r in self._conn.execute(sql, [*batch, *scope_args]))
         return out
 
@@ -1019,9 +1051,13 @@ class Store:
         with self._lock:
             for batch in batched(list(ids), 900):
                 placeholders = ",".join("?" * len(batch))
-                out.extend((r[0], r[1]) for r in self._conn.execute(
-                    f"SELECT id, content FROM chunks WHERE id IN ({placeholders}) AND instr(content, ?) > 0",
-                    [*batch, text]).fetchall())
+                out.extend(
+                    (r[0], r[1])
+                    for r in self._conn.execute(
+                        f"SELECT id, content FROM chunks WHERE id IN ({placeholders}) AND instr(content, ?) > 0",
+                        [*batch, text],
+                    ).fetchall()
+                )
         return out
 
     def get_ref_entries(self, ids: list[str], key: str, names: list[str]) -> list[dict[str, Any]]:
@@ -1039,7 +1075,8 @@ class Store:
                     "SELECT id, path, language, start_line, metadata FROM chunks c "
                     f"WHERE id IN ({placeholders}) "
                     "AND EXISTS (SELECT 1 FROM json_each(?) n WHERE instr(c.metadata, json_quote(n.value)) > 0)",
-                    [*batch, names_json]).fetchall()
+                    [*batch, names_json],
+                ).fetchall()
                 for r in rows:
                     try:
                         entries = json.loads(r["metadata"]).get(key) or ()
@@ -1047,12 +1084,22 @@ class Store:
                         continue
                     for entry in entries:
                         if (entry.get("name") if isinstance(entry, dict) else entry) in wanted:
-                            out.append({"id": r["id"], "path": r["path"], "language": r["language"],
-                                        "start_line": r["start_line"], "entry": entry})
+                            out.append(
+                                {
+                                    "id": r["id"],
+                                    "path": r["path"],
+                                    "language": r["language"],
+                                    "start_line": r["start_line"],
+                                    "entry": entry,
+                                }
+                            )
         return out
 
     def get_chunks_by_path_and_names(
-        self, path: str, names: list[str], limit: int | None = None,
+        self,
+        path: str,
+        names: list[str],
+        limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Chunks at `path` named in `names` (header/impl pairing by shared
         symbol name). Order not guaranteed; `limit` caps at the SQL level."""
@@ -1062,9 +1109,7 @@ class Store:
         with self._lock:
             for batch in batched(names, 900):
                 placeholders = ",".join("?" * len(batch))
-                sql = (
-                    f"SELECT * FROM chunks WHERE path = ? AND name IN ({placeholders})"
-                )
+                sql = f"SELECT * FROM chunks WHERE path = ? AND name IN ({placeholders})"
                 params: list[Any] = [path, *batch]
                 if limit is not None:
                     sql += " LIMIT ?"
@@ -1074,7 +1119,10 @@ class Store:
         return results
 
     def get_chunks_by_path_line_range(
-        self, path: str, start_line: int, end_line: int,
+        self,
+        path: str,
+        start_line: int,
+        end_line: int,
     ) -> list[dict[str, Any]]:
         """Chunks at `path` overlapping (start_line, end_line]. Used to
         fetch continuation chunks when a symbol's span outgrows the one
@@ -1093,26 +1141,20 @@ class Store:
 
     def stats(self) -> dict[str, Any]:
         with self._lock:
-            file_count  = self._conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+            file_count = self._conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
             chunk_count = self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-            db_size     = self.db_path.stat().st_size if self.db_path.exists() else 0
-            newest_row  = self._conn.execute(
-                "SELECT MAX(indexed_at) AS t FROM files"
-            ).fetchone()
-            root_row    = self._conn.execute(
-                "SELECT value FROM meta WHERE key='indexed_root'"
-            ).fetchone()
-            model_row   = self._conn.execute(
-                "SELECT value FROM meta WHERE key='embedding_model'"
-            ).fetchone()
+            db_size = self.db_path.stat().st_size if self.db_path.exists() else 0
+            newest_row = self._conn.execute("SELECT MAX(indexed_at) AS t FROM files").fetchone()
+            root_row = self._conn.execute("SELECT value FROM meta WHERE key='indexed_root'").fetchone()
+            model_row = self._conn.execute("SELECT value FROM meta WHERE key='embedding_model'").fetchone()
             return {
-                "files":             file_count,
-                "chunks":            chunk_count,
-                "db_size_mb":        round(db_size / 1024 / 1024, 2),
-                "embedding_dim":     self._dim,
-                "embedding_model":   model_row["value"] if model_row else None,
-                "indexed_root":      root_row["value"] if root_row else None,
-                "never_indexed":     chunk_count == 0,
+                "files": file_count,
+                "chunks": chunk_count,
+                "db_size_mb": round(db_size / 1024 / 1024, 2),
+                "embedding_dim": self._dim,
+                "embedding_model": model_row["value"] if model_row else None,
+                "indexed_root": root_row["value"] if root_row else None,
+                "never_indexed": chunk_count == 0,
                 "newest_indexed_at": newest_row["t"] if newest_row else None,
             }
 
@@ -1135,9 +1177,7 @@ class Store:
     def parsed_file_count(self) -> int:
         """Number of indexed files that produced at least one chunk."""
         with self._lock:
-            return self._conn.execute(
-                "SELECT COUNT(DISTINCT path) FROM chunks"
-            ).fetchone()[0]
+            return self._conn.execute("SELECT COUNT(DISTINCT path) FROM chunks").fetchone()[0]
 
     def tracked_file_count(self) -> int:
         """Row count in `files`. Used by chonks/index/pipeline.py's literal-index
@@ -1306,7 +1346,8 @@ class Store:
             for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
                 out.extend(
-                    (r[0], r[1], r[2]) for r in self._conn.execute(
+                    (r[0], r[1], r[2])
+                    for r in self._conn.execute(
                         "SELECT chunk_id, neighbor_id, distance FROM chunk_neighbors "
                         f"WHERE chunk_id IN ({placeholders})",
                         batch,
@@ -1320,16 +1361,15 @@ class Store:
             return
         with self._lock:
             self._conn.executemany(
-                "DELETE FROM chunk_neighbors WHERE chunk_id=? AND neighbor_id=?", pairs,
+                "DELETE FROM chunk_neighbors WHERE chunk_id=? AND neighbor_id=?",
+                pairs,
             )
 
     def get_all_neighbors(self) -> list[tuple[str, str]]:
         """Every (chunk_id, neighbor_id) edge, distance omitted; use
         get_neighbors for a single chunk's distances."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT chunk_id, neighbor_id FROM chunk_neighbors"
-            ).fetchall()
+            rows = self._conn.execute("SELECT chunk_id, neighbor_id FROM chunk_neighbors").fetchall()
         return [(r[0], r[1]) for r in rows]
 
     def get_all_chunk_ids(self) -> list[str]:
@@ -1345,9 +1385,7 @@ class Store:
         k-NN as one matmul instead of N per-query MATCH round-trips."""
         with self._lock:
             try:
-                rows = self._conn.execute(
-                    "SELECT id, embedding FROM chunk_vecs"
-                ).fetchall()
+                rows = self._conn.execute("SELECT id, embedding FROM chunk_vecs").fetchall()
             except sqlite3.OperationalError as e:
                 # Only "table doesn't exist" is a legitimate empty corpus.
                 # Any other error must propagate, or build_neighbors could
@@ -1389,10 +1427,7 @@ class Store:
         Used by the near-duplicate detector: same int8 representation
         search itself uses, no embedder round-trip needed."""
         blobs = self.get_int8_embeddings_by_ids(ids)
-        return {
-            cid: np.frombuffer(blob, dtype=np.int8).astype(np.float32)
-            for cid, blob in blobs.items()
-        }
+        return {cid: np.frombuffer(blob, dtype=np.int8).astype(np.float32) for cid, blob in blobs.items()}
 
     # ------------------------------------------------------------------
     # Folder summaries
@@ -1401,9 +1436,7 @@ class Store:
     def get_all_files(self) -> list[dict[str, Any]]:
         """Return all (path, content_hash) rows from files."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT path, content_hash FROM files"
-            ).fetchall()
+            rows = self._conn.execute("SELECT path, content_hash FROM files").fetchall()
         return [{"path": r["path"], "content_hash": r["content_hash"]} for r in rows]
 
     def get_folder_summary(self, path: str) -> dict[str, Any] | None:
@@ -1418,15 +1451,19 @@ class Store:
         if row is None:
             return None
         return {
-            "path":              row["path"],
-            "summary":           row["summary"],
+            "path": row["path"],
+            "summary": row["summary"],
             "summary_embedding": _unpack_f32(row["summary_embedding"]),
-            "content_hash":      row["content_hash"],
-            "generated_at":      row["generated_at"],
+            "content_hash": row["content_hash"],
+            "generated_at": row["generated_at"],
         }
 
     def upsert_folder_summary(
-        self, path: str, summary: str, embedding: list[float], content_hash: str,
+        self,
+        path: str,
+        summary: str,
+        embedding: list[float],
+        content_hash: str,
     ) -> None:
         """Insert or replace a folder's summary row. Embedding is stored as
         packed float32 (4 bytes per element)."""
@@ -1445,9 +1482,7 @@ class Store:
     def get_all_folder_paths(self) -> list[str]:
         """Return every folder path that currently has a summary."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT path FROM folder_summaries"
-            ).fetchall()
+            rows = self._conn.execute("SELECT path FROM folder_summaries").fetchall()
         return [r["path"] for r in rows]
 
     def get_folder_embeddings(self, paths: list[str]) -> dict[str, list[float]]:
@@ -1533,7 +1568,9 @@ class Store:
         with self._lock:
             for batch in batched(chunk_ids, 900):
                 placeholders = ",".join("?" * len(batch))
-                self._conn.execute(f"DELETE FROM chunk_mention_names WHERE chunk_id IN ({placeholders})", batch)
+                self._conn.execute(
+                    f"DELETE FROM chunk_mention_names WHERE chunk_id IN ({placeholders})", batch
+                )
 
     # ------------------------------------------------------------------
     # Graph v2 hierarchy (Stage 1)
@@ -1541,8 +1578,7 @@ class Store:
 
     def all_file_paths(self) -> list[str]:
         with self._lock:
-            return [r["path"] for r in
-                    self._conn.execute("SELECT path FROM files").fetchall()]
+            return [r["path"] for r in self._conn.execute("SELECT path FROM files").fetchall()]
 
     def clear_hierarchy(self) -> None:
         with self._lock:
@@ -1560,8 +1596,7 @@ class Store:
         with self._lock:
             if ignore_duplicates:
                 self._conn.executemany(
-                    "INSERT OR IGNORE INTO graph_edges(from_id, to_id, edge_type) "
-                    "VALUES(?,?,?)",
+                    "INSERT OR IGNORE INTO graph_edges(from_id, to_id, edge_type) VALUES(?,?,?)",
                     rows,
                 )
             else:
@@ -1590,8 +1625,7 @@ class Store:
         """to_ids of every graph_edges row out of `from_id`, ordered by to_id."""
         with self._lock:
             rows = self._conn.execute(
-                "SELECT to_id FROM graph_edges WHERE from_id = ? AND edge_type = ? "
-                "ORDER BY to_id",
+                "SELECT to_id FROM graph_edges WHERE from_id = ? AND edge_type = ? ORDER BY to_id",
                 (from_id, edge_type),
             ).fetchall()
         return [r["to_id"] for r in rows]
@@ -1609,8 +1643,7 @@ class Store:
         dicts ordered by path."""
         with self._lock:
             rows = self._conn.execute(
-                "SELECT id, path, parent_id FROM graph_nodes "
-                "WHERE kind = 'dir' ORDER BY path"
+                "SELECT id, path, parent_id FROM graph_nodes WHERE kind = 'dir' ORDER BY path"
             ).fetchall()
         return [dict(r) for r in rows]
 
@@ -1618,8 +1651,7 @@ class Store:
         """{parent_id: direct file count}, not a subtree total."""
         with self._lock:
             rows = self._conn.execute(
-                "SELECT parent_id, COUNT(*) AS n FROM graph_nodes "
-                "WHERE kind = 'file' GROUP BY parent_id"
+                "SELECT parent_id, COUNT(*) AS n FROM graph_nodes WHERE kind = 'file' GROUP BY parent_id"
             ).fetchall()
         return {r["parent_id"]: r["n"] for r in rows}
 
@@ -1668,9 +1700,7 @@ class Store:
         """Return the full persisted {chunk_id: score} PageRank map. Empty
         dict on a DB that predates persisted PageRank (or was never indexed)."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT chunk_id, score FROM chunk_pagerank"
-            ).fetchall()
+            rows = self._conn.execute("SELECT chunk_id, score FROM chunk_pagerank").fetchall()
         return {r["chunk_id"]: r["score"] for r in rows}
 
     def get_pagerank_for_chunks(self, ids: list[str]) -> dict[str, float]:
@@ -1727,12 +1757,13 @@ class Store:
         nonempty. A scoped refresh_indegree delta is only safe when this
         is true; otherwise the untouched majority looks legitimately empty."""
         with self._lock:
-            return self._conn.execute(
-                "SELECT 1 FROM chunk_indegree LIMIT 1"
-            ).fetchone() is not None
+            return self._conn.execute("SELECT 1 FROM chunk_indegree LIMIT 1").fetchone() is not None
 
     def hub_indegree_rows(
-        self, path_prefix: str | None, limit: int, edge_types_set: set[str] | None,
+        self,
+        path_prefix: str | None,
+        limit: int,
+        edge_types_set: set[str] | None,
     ) -> list[sqlite3.Row]:
         """Named chunks with summed chunk_indegree, ordered for get_hubs."""
         clauses = ["c.name IS NOT NULL"]
@@ -1766,8 +1797,7 @@ class Store:
         """(to_id, edge_type, n) over all of chunk_refs."""
         with self._lock:
             return self._conn.execute(
-                "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs"
-                " GROUP BY to_id, edge_type"
+                "SELECT to_id, edge_type, COUNT(*) AS n FROM chunk_refs GROUP BY to_id, edge_type"
             ).fetchall()
 
     def refresh_indegree(self, chunk_ids: list[str]) -> None:
@@ -1813,12 +1843,15 @@ class Store:
                 where = f"from_id IN ({placeholders}) OR to_id IN ({placeholders})"
                 params = batch + batch
                 affected_to_ids.update(
-                    r[0] for r in self._conn.execute(
-                        f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}", params,
+                    r[0]
+                    for r in self._conn.execute(
+                        f"SELECT DISTINCT to_id FROM chunk_refs WHERE {where}",
+                        params,
                     ).fetchall()
                 )
                 cur = self._conn.execute(
-                    f"DELETE FROM chunk_refs WHERE {where}", params,
+                    f"DELETE FROM chunk_refs WHERE {where}",
+                    params,
                 )
                 removed += cur.rowcount
         return removed, affected_to_ids
@@ -1827,15 +1860,10 @@ class Store:
         """Delete chunk_refs rows whose endpoint no longer exists in
         `chunks`; self-heals dangling edges. Also refreshes chunk_indegree
         for affected ids, but only when has_indegree() is already true."""
-        where = (
-            "from_id NOT IN (SELECT id FROM chunks) "
-            "OR to_id NOT IN (SELECT id FROM chunks)"
-        )
+        where = "from_id NOT IN (SELECT id FROM chunks) OR to_id NOT IN (SELECT id FROM chunks)"
         with self._lock:
             affected_to_ids = {
-                r[0] for r in self._conn.execute(
-                    f"SELECT to_id FROM chunk_refs WHERE {where}"
-                ).fetchall()
+                r[0] for r in self._conn.execute(f"SELECT to_id FROM chunk_refs WHERE {where}").fetchall()
             }
             cur = self._conn.execute(f"DELETE FROM chunk_refs WHERE {where}")
             removed = cur.rowcount if cur.rowcount is not None else 0
@@ -1851,9 +1879,7 @@ class Store:
         seen: set[str] = set()
         with self._lock:
             for batch in batched(names, 200):
-                phrase_query = " OR ".join(
-                    '"' + n.replace('"', '""') + '"' for n in batch
-                )
+                phrase_query = " OR ".join('"' + n.replace('"', '""') + '"' for n in batch)
                 cursor = self._conn.execute(
                     """
                     SELECT c.id, c.path, c.language, c.name, c.chunk_type,
@@ -1873,34 +1899,30 @@ class Store:
         """Every (from_id, to_id) edge, type-agnostic; see get_all_refs_typed
         for the typed variant."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT from_id, to_id FROM chunk_refs"
-            ).fetchall()
+            rows = self._conn.execute("SELECT from_id, to_id FROM chunk_refs").fetchall()
         return [(r[0], r[1]) for r in rows]
 
     def get_all_refs_typed(self) -> list[tuple[str, str, str]]:
         """Return every (from_id, to_id, edge_type) edge in the table."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT from_id, to_id, edge_type FROM chunk_refs"
-            ).fetchall()
+            rows = self._conn.execute("SELECT from_id, to_id, edge_type FROM chunk_refs").fetchall()
         return [(r[0], r[1], r[2]) for r in rows]
 
-    def iter_refs_typed(self, batch_size: int = 100_000,
-                        exclude_types: tuple[str, ...] = ()) -> Iterator[tuple[str, str, str]]:
+    def iter_refs_typed(
+        self, batch_size: int = 100_000, exclude_types: tuple[str, ...] = ()
+    ) -> Iterator[tuple[str, str, str]]:
         """Every (from_id, to_id, edge_type) edge not of `exclude_types`, fetched a
         batch at a time. Holds the store lock until exhausted or closed."""
         where = f" WHERE edge_type NOT IN ({','.join('?' * len(exclude_types))})" if exclude_types else ""
         with self._lock:
             cursor = self._conn.execute(
-                f"SELECT from_id, to_id, edge_type FROM chunk_refs{where}", exclude_types)
+                f"SELECT from_id, to_id, edge_type FROM chunk_refs{where}", exclude_types
+            )
             while rows := cursor.fetchmany(batch_size):
                 for r in rows:
                     yield r[0], r[1], r[2]
 
-    def get_module_edge_type_counts(
-        self, module_by_chunk: dict[str, str]
-    ) -> list[tuple[str, str, str, int]]:
+    def get_module_edge_type_counts(self, module_by_chunk: dict[str, str]) -> list[tuple[str, str, str, int]]:
         """Aggregate chunk_refs into module-level (from, to, edge_type,
         count) rows via a SQL GROUP BY, since the table can be tens of
         millions of rows. Self-loops (same module both ends) are dropped."""
@@ -1908,9 +1930,7 @@ class Store:
             return []
         with self._lock:
             self._conn.execute("DROP TABLE IF EXISTS temp.chunk_module")
-            self._conn.execute(
-                "CREATE TEMP TABLE chunk_module (id TEXT PRIMARY KEY, module TEXT NOT NULL)"
-            )
+            self._conn.execute("CREATE TEMP TABLE chunk_module (id TEXT PRIMARY KEY, module TEXT NOT NULL)")
             self._conn.executemany(
                 "INSERT INTO chunk_module(id, module) VALUES(?,?)",
                 list(module_by_chunk.items()),

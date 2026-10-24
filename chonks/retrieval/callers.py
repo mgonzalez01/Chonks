@@ -65,8 +65,9 @@ def owners_by_chunk(store, chunk_ids: list[str], member: str) -> dict[str, list[
     return out
 
 
-def reaching_edges(store, targets: Targets, edges: list[tuple[str, str, str]],
-                   callers: dict[str, dict]) -> list[Reached]:
+def reaching_edges(
+    store, targets: Targets, edges: list[tuple[str, str, str]], callers: dict[str, dict]
+) -> list[Reached]:
     """The edges in `edges` (into `targets`) that the caller's references to
     the name explain; `callers` holds each source chunk's row. A typed edge needs
     a reference to the name, or to a member the chunk defines for a class of that
@@ -112,14 +113,20 @@ def reaching_edges(store, targets: Targets, edges: list[tuple[str, str, str]],
 
     silent = [f for f in mentioning if not any(ref == member for ref, _p, _h in refs.get((f, CALLS), ()))]
     definers = {cid for cid in silent if last_component(callers[cid]["name"] or "") == member}
-    definers.update(r["chunk_id"] for r in store.get_symbols_by_chunk_ids(silent)
-                    if last_component(r["name"]) == member)
+    definers.update(
+        r["chunk_id"] for r in store.get_symbols_by_chunk_ids(silent) if last_component(r["name"]) == member
+    )
     definers.update(r["chunk_id"] for r in store.get_members_by_chunk_ids(silent, member))
 
     kept: list[Reached] = []
     for f, t, et in edges:
         if et in TYPED_EDGE_TYPES:
-            found = [got for key in TYPED_EDGE_TYPES for ref, got, _h in refs.get((f, key), ()) if ref in allowed[t]]
+            found = [
+                got
+                for key in TYPED_EDGE_TYPES
+                for ref, got, _h in refs.get((f, key), ())
+                if ref in allowed[t]
+            ]
             if any(got is not None and t in got for got in found):
                 kept.append(Reached(f, t, et, True if et == CALLS else None))
             elif any(got is None for got in found):

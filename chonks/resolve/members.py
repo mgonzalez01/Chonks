@@ -71,6 +71,7 @@ def settled_targets(resolution: Resolution | None) -> list[str] | None:
 
 class Lookup(NamedTuple):
     """A qualified method name read through the class model."""
+
     classes: tuple[str, ...]  # the classes its owner names; empty for a namespace
     found_in: tuple[str, ...]  # the classes whose rows answered: a base when inherited
     targets: list[str]
@@ -80,6 +81,7 @@ class Lookup(NamedTuple):
 class Context(NamedTuple):
     """Where a name is written: scopes to try innermost first ("" is the
     global one), then the namespaces using-directives make visible."""
+
     scopes: tuple[str, ...]
     usings: tuple[str, ...]
 
@@ -99,9 +101,18 @@ class _Row(NamedTuple):
 
 def _row(r: dict) -> _Row:
     intern = sys.intern
-    return _Row(intern(r["owner"]), intern(r["name"]), intern(r["kind"]), r["type_text"], r["arity_min"],
-                r["arity_max"], r["variadic"], r["line"], r["chunk_id"] and intern(r["chunk_id"]),
-                intern(r["path"]))
+    return _Row(
+        intern(r["owner"]),
+        intern(r["name"]),
+        intern(r["kind"]),
+        r["type_text"],
+        r["arity_min"],
+        r["arity_max"],
+        r["variadic"],
+        r["line"],
+        r["chunk_id"] and intern(r["chunk_id"]),
+        intern(r["path"]),
+    )
 
 
 class _Receiver(NamedTuple):
@@ -143,8 +154,9 @@ def members_index(store: "Store") -> "MemberIndex | None":
     return MemberIndex(store, _class_kinds())
 
 
-_SHARED: "weakref.WeakKeyDictionary[Store, tuple[tuple[int, int], MemberIndex | None]]" = \
+_SHARED: "weakref.WeakKeyDictionary[Store, tuple[tuple[int, int], MemberIndex | None]]" = (
     weakref.WeakKeyDictionary()
+)
 _SHARED_LOCK = threading.Lock()
 
 
@@ -228,9 +240,12 @@ class MemberIndex:
         spec: ClassModelSpec | None = _CLASS_MODELS.get(language)  # type: ignore[assignment]
         sep = spec.separator if spec is not None else "::"
         last = self._last(sep)
-        held = {r["chunk_id"] for r in self._store.get_members_by_chunk_ids(ids, name)
-                if r["owner"] in self.known
-                or any(k.endswith(sep + r["owner"]) for k in last.get(r["owner"].rsplit(sep, 1)[-1], ()))}
+        held = {
+            r["chunk_id"]
+            for r in self._store.get_members_by_chunk_ids(ids, name)
+            if r["owner"] in self.known
+            or any(k.endswith(sep + r["owner"]) for k in last.get(r["owner"].rsplit(sep, 1)[-1], ()))
+        }
         return [i for i in ids if i not in held]
 
     def usings(self, path: str) -> list[dict]:
@@ -250,9 +265,9 @@ class MemberIndex:
             scope, ns = u["scope"], u["namespace"]
             if scope and not owner.startswith(scope + sep):
                 continue
-            rest = owner[len(scope) + len(sep):] if scope else owner
+            rest = owner[len(scope) + len(sep) :] if scope else owner
             if ns.startswith(sep):
-                out.add(ns[len(sep):] + sep + rest)
+                out.add(ns[len(sep) :] + sep + rest)
             else:
                 out.add(ns + sep + rest)
                 if scope:
@@ -304,8 +319,9 @@ class MemberIndex:
 
     # ---------------------------------------------------------------- names
 
-    def _context(self, scopes: tuple[str, ...], path: str, line: int, within: str | None,
-                 sep: str) -> Context:
+    def _context(
+        self, scopes: tuple[str, ...], path: str, line: int, within: str | None, sep: str
+    ) -> Context:
         """`within` is the enclosing class or namespace, None when unknown;
         a directive inside a namespace applies only within it."""
         usings = self.usings(path)
@@ -319,7 +335,7 @@ class MemberIndex:
                 if scope and within is not None and within != scope and not within.startswith(scope + sep):
                     continue
                 if ns.startswith(sep):
-                    names.append(ns[len(sep):])
+                    names.append(ns[len(sep) :])
                     continue
                 if scope:
                     names.append(scope + sep + ns)
@@ -361,8 +377,12 @@ class MemberIndex:
         code whose enclosing namespace the evidence does not say."""
         got = self._file_scopes.get(path)
         if got is None:
-            names = {p for owner in self._store.get_member_owners_by_path(path)
-                     for p in _parents(owner, sep) if p and p not in self.known}
+            names = {
+                p
+                for owner in self._store.get_member_owners_by_path(path)
+                for p in _parents(owner, sep)
+                if p and p not in self.known
+            }
             got = self._file_scopes[path] = (*sorted(names, key=lambda n: (-n.count(sep), n)), "")
         return got
 
@@ -399,8 +419,9 @@ class MemberIndex:
             layer = nxt
         return []
 
-    def _type_of(self, text: str | None, at: Context, spec: ClassModelSpec,
-                 through: _Receiver | None = None) -> _Receiver | None:
+    def _type_of(
+        self, text: str | None, at: Context, spec: ClassModelSpec, through: _Receiver | None = None
+    ) -> _Receiver | None:
         """The receiver a written type makes. A name that is no class, reached
         through a class written with one template argument, is that argument."""
         ref = spec.type_ref(text) if text and spec.type_ref is not None else None
@@ -410,15 +431,21 @@ class MemberIndex:
         classes = self.qualify(ref.name, at, sep)
         if classes:
             return _Receiver(tuple(classes), ref.pointers, ref.args, at, through)
-        if (through is not None and len(through.args) == 1 and through.args_at is not None
-                and sep not in ref.name and not ref.args):
+        if (
+            through is not None
+            and len(through.args) == 1
+            and through.args_at is not None
+            and sep not in ref.name
+            and not ref.args
+        ):
             inner = self._type_of(through.args[0], through.args_at, spec, through.args_through)
             if inner is not None:
                 return inner._replace(pointers=inner.pointers + ref.pointers)
         return None
 
-    def _member_types(self, hits: list[tuple[str, _Row]], spec: ClassModelSpec,
-                      through: _Receiver | None) -> _Receiver | None:
+    def _member_types(
+        self, hits: list[tuple[str, _Row]], spec: ClassModelSpec, through: _Receiver | None
+    ) -> _Receiver | None:
         states = []
         for c, r in hits:
             at = self._class_context(c, r.path, r.line, spec.separator)
@@ -433,8 +460,11 @@ class MemberIndex:
     def _arrow(self, recv: _Receiver, spec: ClassModelSpec) -> tuple[bool, _Receiver | None]:
         """Whether the class has `operator->`, and the receiver it returns."""
         member = spec.operator_members.get(spec.pointer_access or "")
-        hits = [h for h in self.find(recv.classes, member, spec.separator) if h[1].kind != FIELD] \
-            if member else []
+        hits = (
+            [h for h in self.find(recv.classes, member, spec.separator) if h[1].kind != FIELD]
+            if member
+            else []
+        )
         st = self._member_types(hits, spec, recv)
         return bool(hits), st._replace(pointers=max(st.pointers - 1, 0)) if st is not None else None
 
@@ -449,7 +479,7 @@ class MemberIndex:
 
     def _step(self, recv: _Receiver, step: str, spec: ClassModelSpec) -> _Receiver | None:
         if step.endswith(_CALL_STEP):
-            hits = [h for h in self._member(recv, step[:-len(_CALL_STEP)], spec) if h[1].kind != FIELD]
+            hits = [h for h in self._member(recv, step[: -len(_CALL_STEP)], spec) if h[1].kind != FIELD]
             return self._member_types(hits, spec, recv)
         member = spec.operator_members.get(step)
         if member is not None:
@@ -470,8 +500,9 @@ class MemberIndex:
             out.extend(p for p in _parents(c, sep) if p in self.known and p not in out)
         return out
 
-    def _function_result(self, text: str, at: Context, cls: list[str],
-                         spec: ClassModelSpec) -> _Receiver | None:
+    def _function_result(
+        self, text: str, at: Context, cls: list[str], spec: ClassModelSpec
+    ) -> _Receiver | None:
         """What `f()` or `X::f()` gives: a temporary when it names a class,
         else the return type of that method (a bare `f` in the calling class)."""
         ref = spec.type_ref(text) if spec.type_ref is not None else None
@@ -489,8 +520,9 @@ class MemberIndex:
                 return self._member_types(hits, spec, None)
         return None
 
-    def _head(self, head: dict, at: Context, cls: list[str],
-              spec: ClassModelSpec) -> tuple[_Receiver | None, str]:
+    def _head(
+        self, head: dict, at: Context, cls: list[str], spec: ClassModelSpec
+    ) -> tuple[_Receiver | None, str]:
         via, typ, name = head.get("via"), head.get("type"), head.get("name") or ""
         sep = spec.separator
         if via == "this":
@@ -507,7 +539,7 @@ class MemberIndex:
         if via != "unknown":
             return None, UNTYPED
         if name.endswith(_CALL_STEP):
-            recv = self._function_result(name[:-len(_CALL_STEP)], at, cls, spec)
+            recv = self._function_result(name[: -len(_CALL_STEP)], at, cls, spec)
             return (recv, CALLING_CLASS) if recv is not None else (None, UNTYPED)
         if name.isidentifier() and cls:
             for c in self._enclosing(cls, sep):
@@ -530,8 +562,11 @@ class MemberIndex:
             owner = ref.name if ref is not None else owner
             at = Context(("",), ())
             classes = self.qualify(owner, at, sep)
-            hits = self.find(classes, member, sep) if classes else \
-                [(owner, r) for r in self.rows(owner, sep).get(member, ())]
+            hits = (
+                self.find(classes, member, sep)
+                if classes
+                else [(owner, r) for r in self.rows(owner, sep).get(member, ())]
+            )
             targets = (_targets(hits, None, TYPED).targets or []) if hits else []
             found_in = tuple(dict.fromkeys(c for c, r in hits if r.chunk_id in targets))
             return Lookup(tuple(classes), found_in, targets, self._qualified[(owner, at)][1])

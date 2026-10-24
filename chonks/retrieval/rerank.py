@@ -18,8 +18,10 @@ logger = logging.getLogger("chonks.rerank")
 
 
 def rerank_skipped_note(error: Exception) -> str:
-    return (f"reranking was skipped because the reranker failed ({type(error).__name__}); "
-            "these results are in hybrid order")
+    return (
+        f"reranking was skipped because the reranker failed ({type(error).__name__}); "
+        "these results are in hybrid order"
+    )
 
 
 def fuse_ranks(chunks: list[dict[str, Any]], scores: list[float]) -> list[dict[str, Any]]:
@@ -57,8 +59,12 @@ def reranked_hybrid(
         with httpx.Client() as client:
             scores = reranker.rerank(query, docs, client)
     except (httpx.HTTPError, ValueError) as e:
-        logger.warning("rerank  candidates=%d  secs=%.2f  outcome=skipped  error=%s",
-                       len(docs), time.perf_counter() - t0, e)
+        logger.warning(
+            "rerank  candidates=%d  secs=%.2f  outcome=skipped  error=%s",
+            len(docs),
+            time.perf_counter() - t0,
+            e,
+        )
         return chunks[:top_k], rerank_skipped_note(e)
     logger.info("rerank  candidates=%d  secs=%.2f  outcome=ok", len(docs), time.perf_counter() - t0)
     return fuse_ranks(chunks, scores)[:top_k], None

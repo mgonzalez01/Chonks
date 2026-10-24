@@ -1,4 +1,5 @@
 """Path normalization and filtering helpers for chunking."""
+
 import os
 import re
 import sys
@@ -38,7 +39,7 @@ def _same_entry(a: Path, b: Path) -> bool:
 def _is_under(path: Path, root: Path) -> bool:
     """Whether `path` is `root` or lies under it, counting another case or
     Unicode form of root that the file system opens as root."""
-    head = Path(*path.parts[:len(root.parts)])
+    head = Path(*path.parts[: len(root.parts)])
     return head == root or (_spelling_key(str(head)) == _spelling_key(str(root)) and _same_entry(head, root))
 
 
@@ -66,7 +67,7 @@ def _spelled_as_listed(paths: list[Path], root: Path | None) -> list[Path]:
     out = []
     for path in paths:
         spelled = root if root is not None and _is_under(path, root) else Path(path.anchor)
-        for name in path.parts[len(spelled.parts):]:
+        for name in path.parts[len(spelled.parts) :]:
             spelled = spelled / listed(spelled, name)
         out.append(spelled)
     return out
@@ -97,7 +98,7 @@ def _scope_under_root(scope: str, root: Path | None) -> str | None:
             return scope
     except (OSError, ValueError):
         return scope
-    rest = path.parts[len(root.parts):]
+    rest = path.parts[len(root.parts) :]
     return PurePosixPath(*rest).as_posix() if rest else None
 
 
@@ -121,8 +122,10 @@ def _normalize_prefixes(prefixes: list[str] | None) -> list[str]:
 @lru_cache(maxsize=None)
 def _segment_patterns(entry: str) -> tuple[re.Pattern[str], ...]:
     """One pattern per segment of `entry`: `*` matches within the segment, the rest is literal."""
-    return tuple(re.compile("[^/]*".join(re.escape(part) for part in seg.split("*")))
-                 for seg in entry.rstrip("/").split("/"))
+    return tuple(
+        re.compile("[^/]*".join(re.escape(part) for part in seg.split("*")))
+        for seg in entry.rstrip("/").split("/")
+    )
 
 
 def _segments_agree(parts: list[str], entry: str) -> bool:
@@ -208,8 +211,10 @@ def _matches_below(d: Path, segments: list[str], patterns: tuple[re.Pattern[str]
         names = os.listdir(d)
     except OSError:
         return False
-    return any(patterns[0].fullmatch(_fold(name)) and _matches_below(d / name, segments[1:], patterns[1:])
-               for name in names)
+    return any(
+        patterns[0].fullmatch(_fold(name)) and _matches_below(d / name, segments[1:], patterns[1:])
+        for name in names
+    )
 
 
 def _missing_prefixes(root: Path, prefixes: list[str]) -> list[str]:

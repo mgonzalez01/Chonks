@@ -56,8 +56,9 @@ def _chunk_locator(src: bytes, chunks: list[tuple[int, int, str, str]]) -> Calla
     next chunk starting on that line. Chunks can share a line, and an errored node's chunk
     spans the chunks salvaged from inside it."""
     lines = src.split(b"\n")
-    spans = sorted((((s, _start_col(text, s, e, lines)), e, cid) for s, e, text, cid in chunks),
-                   key=lambda span: span[0])
+    spans = sorted(
+        (((s, _start_col(text, s, e, lines)), e, cid) for s, e, text, cid in chunks), key=lambda span: span[0]
+    )
     starts = [start for start, _, _ in spans]
 
     def locate(line: int, col: int) -> str | None:

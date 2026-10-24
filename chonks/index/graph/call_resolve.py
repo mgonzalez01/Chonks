@@ -121,7 +121,8 @@ def _discriminate_definers(
         else:
             receiver_l = receiver.lower()
             suffix = [
-                i for i in ids
+                i
+                for i in ids
                 if any(q.lower().endswith(receiver_l) for q in _definer_qualifiers(id_to_chunk.get(i) or {}))
             ]
             if suffix:
@@ -130,7 +131,8 @@ def _discriminate_definers(
     arity_survivors: list[str] | None = None
     if arity is not None:
         arity_survivors = [
-            i for i in ids
+            i
+            for i in ids
             if _arity_compatible(i, id_to_chunk.get(i) or {}, name, arity, arity_cache, owner_decls)
         ]
 
@@ -169,7 +171,10 @@ register_refresh(_refresh_from_registry)
 
 
 def _find_signature_param_texts(
-    content: str, name: str, lang: str, accept: "Callable[[str, int], bool] | None" = None,
+    content: str,
+    name: str,
+    lang: str,
+    accept: "Callable[[str, int], bool] | None" = None,
 ) -> list[str]:
     """Param-list text for EVERY same-named signature in `content`, not
     just the first, since Python @overload stacks can differ in arity.
@@ -186,8 +191,9 @@ def _find_signature_param_texts(
         m = pattern.search(content, pos)
         if m is None:
             break
-        if ((signature_at is not None and not signature_at(content, m.start(1)))
-                or (accept is not None and not accept(content, m.start(1)))):
+        if (signature_at is not None and not signature_at(content, m.start(1))) or (
+            accept is not None and not accept(content, m.start(1))
+        ):
             pos = m.end()
             continue
         start = m.end() - 1  # index of the anchor '('
@@ -207,7 +213,7 @@ def _find_signature_param_texts(
             # or the next search re-matches it and loops forever.
             pos = start + 1
             continue
-        out.append(content[start + 1:end])
+        out.append(content[start + 1 : end])
         pos = end + 1
     return out
 
@@ -269,7 +275,8 @@ def _classify_param(part: str, lang: str) -> str:
 
 
 def _union_arity(
-    a: "tuple[int, int, bool]", b: "tuple[int, int, bool] | None",
+    a: "tuple[int, int, bool]",
+    b: "tuple[int, int, bool] | None",
 ) -> "tuple[int, int, bool]":
     if b is None:
         return a
@@ -277,7 +284,10 @@ def _union_arity(
 
 
 def _definer_param_arity(
-    content: str, name: str, lang: str, accept: "Callable[[str, int], bool] | None" = None,
+    content: str,
+    name: str,
+    lang: str,
+    accept: "Callable[[str, int], bool] | None" = None,
 ) -> "tuple[int, int, bool] | None":
     """(min_required, max_params, has_variadic) or None (always compatible).
     Overloads WIDEN together (recall over precision); C#'s `this` isn't stripped."""

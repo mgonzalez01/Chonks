@@ -45,8 +45,8 @@ _VERSIONISH_RE = re.compile(r"^[0-9]+([./][0-9]+)+$")
 
 
 def _dotted_fragment_ok(token: str) -> bool:
-    return not (_ALL_SINGLE_LETTER_SEGMENTS_RE.match(token)
-                or _VERSIONISH_RE.match(token))
+    return not (_ALL_SINGLE_LETTER_SEGMENTS_RE.match(token) or _VERSIONISH_RE.match(token))
+
 
 # CamelCase / PascalCase candidates: any bare word, filtered below to those
 # with a lower->upper transition, so "Google" doesn't count but "getUserById"

@@ -39,12 +39,14 @@ def rank_files(chunks: list[dict[str, Any]], top_m: int = 3) -> list[dict[str, A
 
     ranked = []
     for path in order:
-        ranked.append({
-            "path":      path,
-            "score":     max(scores[path]),
-            "n_chunks":  counts[path],
-            "best_rank": best_rank[path],
-        })
+        ranked.append(
+            {
+                "path": path,
+                "score": max(scores[path]),
+                "n_chunks": counts[path],
+                "best_rank": best_rank[path],
+            }
+        )
 
     # Final tiebreak: input (first-appearance) order. n_chunks is payload
     # only, not a scoring factor.

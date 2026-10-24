@@ -26,21 +26,25 @@ TYPED_EDGE_TYPES = (CALLS, IMPORTS, INHERITS)
 # associated/mentions split stays a ranking-inert display label until a
 # caller sets these two weights apart.
 DEFAULT_EDGE_TYPE_WEIGHTS: dict[str, float] = {
-    "calls":      1.0,
-    "imports":    1.0,
-    "inherits":   1.0,
-    "xlang":      1.0,
+    "calls": 1.0,
+    "imports": 1.0,
+    "inherits": 1.0,
+    "xlang": 1.0,
     "associated": 1.0,
-    "mentions":   1.0,
+    "mentions": 1.0,
 }
 
 # Provenance is derived from edge_type at query time.
 # 'extracted' labels the fact's mechanism: an
 # ambiguous name's fan-out edges are all still labelled extracted.
 PROVENANCE_BY_EDGE_TYPE = {
-    "calls": "extracted", "imports": "extracted", "inherits": "extracted",
+    "calls": "extracted",
+    "imports": "extracted",
+    "inherits": "extracted",
     "contains": "extracted",
-    "mentions": "inferred", "associated": "inferred", "semantic": "inferred",
+    "mentions": "inferred",
+    "associated": "inferred",
+    "semantic": "inferred",
     "xlang": "paired",
 }
 
@@ -50,11 +54,14 @@ def edge_provenance(edge_type: str) -> str:
     types default to inferred so an old or new DB never crashes here."""
     return PROVENANCE_BY_EDGE_TYPE.get(edge_type, "inferred")
 
+
 # When a chunk has edges of more than one type into the resolution set, the
 # lowest rank wins (deterministic; SQL row order is not). Shared by
 # find_usages and find_outgoing.
 _COLLAPSE_RANK = {
-    "calls": 0, "imports": 0, "inherits": 0,
+    "calls": 0,
+    "imports": 0,
+    "inherits": 0,
     "xlang": 1,
     "associated": 2,
     "mentions": 3,

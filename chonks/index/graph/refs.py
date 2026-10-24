@@ -20,7 +20,14 @@ from chonks.index.graph.call_resolve import _call_entry_fields, _discriminate_de
 from chonks.resolve.members import GLOBAL, MemberIndex, members_index, model_only, settled_targets
 
 from chonks.core.edges import (
-    ASSOCIATED, CALLS, INHERITS, MENTIONS, TYPED_EDGE_TYPES, XLANG, _MAX_CROSS_LANG_OCCURRENCES, _MIN_NAME_LEN,
+    ASSOCIATED,
+    CALLS,
+    INHERITS,
+    MENTIONS,
+    TYPED_EDGE_TYPES,
+    XLANG,
+    _MAX_CROSS_LANG_OCCURRENCES,
+    _MIN_NAME_LEN,
 )
 from chonks.core.refresh import register_refresh
 from chonks.languages import table as _lang_table, union as _lang_union
@@ -51,8 +58,13 @@ def _typed_targets(ids: list[str], lang: str, id_to_chunk: dict[str, dict]) -> l
 
 
 def _typed_refs(
-    c: dict, name_to_ids: dict[str, list[str]], id_to_chunk: dict[str, dict], arity_cache: dict,
-    owner_decls: "Callable[[str], Iterable[dict]] | None", members: MemberIndex | None, cap_mentions: bool,
+    c: dict,
+    name_to_ids: dict[str, list[str]],
+    id_to_chunk: dict[str, dict],
+    arity_cache: dict,
+    owner_decls: "Callable[[str], Iterable[dict]] | None",
+    members: MemberIndex | None,
+    cap_mentions: bool,
     class_holders: "Callable[..., list[str]] | None" = None,
 ) -> tuple[dict[str, str], set[str]]:
     """The chunk's typed edges as {to_id: edge_type}, and the names every call
@@ -90,8 +102,11 @@ def _typed_refs(
                 # The mentions pass's cap, so a typed fact is never dropped in favor of a noisier one.
                 if not ids or (cap_mentions and len(ids) > _MAX_CROSS_LANG_OCCURRENCES):
                     continue
-                targets = (_discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls)
-                           if edge_type == CALLS else ids)
+                targets = (
+                    _discriminate_definers(ids, name, receiver, arity, id_to_chunk, arity_cache, owner_decls)
+                    if edge_type == CALLS
+                    else ids
+                )
             for target_id in targets:
                 if target_id != cid:
                     out.setdefault(target_id, edge_type)
@@ -125,6 +140,7 @@ _REFS_RULES = 4
 # Graph construction
 # ---------------------------------------------------------------------------
 
+
 def _name_keys(name: str) -> tuple[str, ...]:
     """Bare last-component alias for `name` ("Foo::bar" -> "bar"), so a
     definer indexed only under a qualified name stays reachable from a bare
@@ -138,7 +154,8 @@ def _name_keys(name: str) -> tuple[str, ...]:
 
 
 def _name_index(
-    chunks: list[dict], sym_map: dict[str, list[str]] | None,
+    chunks: list[dict],
+    sym_map: dict[str, list[str]] | None,
 ) -> tuple[dict[str, list[str]], dict[str, set[str]], dict[str, str]]:
     """name -> definer ids, name -> their languages, and id -> language, from
     chunk names, the symbol index and the bare-alias fold, which is capped
@@ -217,7 +234,10 @@ def _name_index(
 
 
 def _mentioned_names(
-    c: dict, name_to_ids: dict[str, list[str]], settled: Collection[str], cap_mentions: bool,
+    c: dict,
+    name_to_ids: dict[str, list[str]],
+    settled: Collection[str],
+    cap_mentions: bool,
 ) -> set[str]:
     """The names `c`'s content spells that reach some other chunk, less its
     own name and the names the class model settles for it."""
@@ -235,7 +255,8 @@ def _mentioned_names(
 
 
 def _classify_mentions(
-    mentions: dict[str, set[str]], associated_top_frac: float,
+    mentions: dict[str, set[str]],
+    associated_top_frac: float,
 ) -> set[tuple[str, str]]:
     """PMI-ranks (chunk, mentioned name) pairs and returns the top
     `associated_top_frac` fraction to relabel 'associated'."""
@@ -262,8 +283,10 @@ def _classify_mentions(
 
 
 def _xlang_targets(
-    name_to_ids: dict[str, list[str]], name_to_langs: dict[str, set[str]],
-    id_to_lang: dict[str, str], names: Iterable[str],
+    name_to_ids: dict[str, list[str]],
+    name_to_langs: dict[str, set[str]],
+    id_to_lang: dict[str, str],
+    names: Iterable[str],
 ) -> dict[str, set[str]]:
     """id -> the ids it pairs with through one of `names`: definers of one
     name in two or more languages, under the cap, in different languages."""
@@ -281,8 +304,12 @@ def _xlang_targets(
 
 
 def _source_edges(
-    cid: str, mentioned: Iterable[str], associated: set[tuple[str, str]],
-    name_to_ids: dict[str, list[str]], xlang: Iterable[str], typed: dict[str, str],
+    cid: str,
+    mentioned: Iterable[str],
+    associated: set[tuple[str, str]],
+    name_to_ids: dict[str, list[str]],
+    xlang: Iterable[str],
+    typed: dict[str, str],
 ) -> dict[str, str]:
     """`cid`'s outgoing edges as {to_id: edge_type}. A typed edge supersedes
     xlang, xlang supersedes associated, associated supersedes mentions."""
@@ -299,9 +326,13 @@ def _source_edges(
 
 
 def _graph(
-    chunks: list[dict], sym_map: dict[str, list[str]] | None = None,
-    *, cap_mentions: bool = False, associated_top_frac: float = 0.0,
-    extra_definers: list[dict] | None = None, log: PassLog | None = None,
+    chunks: list[dict],
+    sym_map: dict[str, list[str]] | None = None,
+    *,
+    cap_mentions: bool = False,
+    associated_top_frac: float = 0.0,
+    extra_definers: list[dict] | None = None,
+    log: PassLog | None = None,
     owner_decls: "Callable[[str], Iterable[dict]] | None" = None,
     members: MemberIndex | None = None,
     class_holders: "Callable[..., list[str]] | None" = None,
@@ -323,8 +354,9 @@ def _graph(
     for i, c in enumerate(chunks):
         if log:
             log.progress("typed edges", i, len(chunks))
-        got, names = _typed_refs(c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions,
-                                 class_holders)
+        got, names = _typed_refs(
+            c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions, class_holders
+        )
         if got:
             typed[c["id"]] = got
         if names:
@@ -352,8 +384,9 @@ def _graph(
     for i, cid in enumerate(sources):
         if log:
             log.progress("edges", i, len(sources))
-        out = _source_edges(cid, mentions.get(cid, ()), associated, name_to_ids,
-                            xlang.get(cid, ()), typed.get(cid, {}))
+        out = _source_edges(
+            cid, mentions.get(cid, ()), associated, name_to_ids, xlang.get(cid, ()), typed.get(cid, {})
+        )
         for target_id, edge_type in out.items():
             edges[(cid, target_id)] = edge_type
     if log:
@@ -361,7 +394,9 @@ def _graph(
     return edges, mentions
 
 
-def _build_graph(chunks: list[dict], sym_map: dict[str, list[str]] | None = None, **kw) -> dict[tuple[str, str], str]:
+def _build_graph(
+    chunks: list[dict], sym_map: dict[str, list[str]] | None = None, **kw
+) -> dict[tuple[str, str], str]:
     """The edges of `_graph`."""
     return _graph(chunks, sym_map, **kw)[0]
 
@@ -375,7 +410,8 @@ def _owner_decls(store: "Store") -> "Callable[[str], list[dict]]":
     def lookup(qualifier: str) -> list[dict]:
         if qualifier not in memo:
             memo[qualifier] = [
-                c for path, _lang, start, end in store.get_symbol_spans(qualifier, kinds)
+                c
+                for path, _lang, start, end in store.get_symbol_spans(qualifier, kinds)
                 for c in store.get_chunks_by_path_line_range(path, start - 1, end)
             ]
         return memo[qualifier]
@@ -438,8 +474,12 @@ def build_refs(
             and batch <= _REFS_INCREMENTAL_MAX_FRACTION * max(total, 1)
         ):
             written = _build_refs_incremental(
-                store, set(changed_ids), set(deleted_ids), deleted_defs or {},
-                cap_mentions=cap_mentions, associated_top_frac=associated_top_frac,
+                store,
+                set(changed_ids),
+                set(deleted_ids),
+                deleted_defs or {},
+                cap_mentions=cap_mentions,
+                associated_top_frac=associated_top_frac,
             )
             if written is not None:
                 return written
@@ -447,7 +487,10 @@ def build_refs(
             logger.info(
                 "chunk_refs incremental update skipped (batch=%d, N=%d, parameters %s, "
                 "graph built with %s) — falling back to full rebuild.",
-                batch, total, params, built_with,
+                batch,
+                total,
+                params,
+                built_with,
             )
 
     log = PassLog(logger, "chunk_refs")
@@ -461,14 +504,16 @@ def build_refs(
     log.info("loaded %d named chunks in %.1fs", len(chunks), time.monotonic() - t0)
     sym_map = store.get_symbol_name_chunks()
     named_ids = {c["id"] for c in chunks}
-    unnamed_definer_ids = sorted(
-        {cid for ids in sym_map.values() for cid in ids} - named_ids
-    )
+    unnamed_definer_ids = sorted({cid for ids in sym_map.values() for cid in ids} - named_ids)
     edges, mentions = _graph(
-        chunks, sym_map,
-        cap_mentions=cap_mentions, associated_top_frac=associated_top_frac,
+        chunks,
+        sym_map,
+        cap_mentions=cap_mentions,
+        associated_top_frac=associated_top_frac,
         extra_definers=store.get_chunks_by_ids(unnamed_definer_ids) if unnamed_definer_ids else None,
-        log=log, owner_decls=_owner_decls(store), members=members_index(store),
+        log=log,
+        owner_decls=_owner_decls(store),
+        members=members_index(store),
         class_holders=_class_holders(store),
     )
     refs = [(u, v, t) for (u, v), t in edges.items()]
@@ -489,14 +534,18 @@ def build_refs(
 
 
 def _touched_names(
-    store: "Store", changed_ids: set[str], deleted_defs: dict[tuple[str, str | None], frozenset[tuple]],
+    store: "Store",
+    changed_ids: set[str],
+    deleted_defs: dict[tuple[str, str | None], frozenset[tuple]],
 ) -> set[str] | None:
     """The names, with their bare aliases, of the definitions the batch
     removed, added or altered; a chunk re-inserted under its old id with the
     same rows touches nothing. None when a row tied to no chunk changed, a
     class's bases or a file's using-directives: calls anywhere can resolve
     through those."""
-    paths = {path for path, _cid in deleted_defs} | {c["path"] for c in store.get_chunk_spans(list(changed_ids))}
+    paths = {path for path, _cid in deleted_defs} | {
+        c["path"] for c in store.get_chunk_spans(list(changed_ids))
+    }
     after = store.get_definitions(sorted(paths))
     names: set[str] = set()
     for key in deleted_defs.keys() | after.keys():
@@ -509,7 +558,10 @@ def _touched_names(
 
 
 def _xlang_endpoints(
-    names: set[str], chunks: list[dict], sym_map: dict[str, list[str]], changed_ids: set[str],
+    names: set[str],
+    chunks: list[dict],
+    sym_map: dict[str, list[str]],
+    changed_ids: set[str],
 ) -> set[str]:
     """Every chunk that can pair across languages through one of `names`,
     before the batch or after it. A share of a name's definers is left out
@@ -577,8 +629,10 @@ def _build_refs_incremental(
     # or defines whose definitions changed, or the PMI ranking.
     touched = _touched_names(store, changed_ids, deleted_defs)
     if touched is None:
-        logger.info("chunk_refs incremental update aborted: class bases or using-directives "
-                    "changed — falling back to full rebuild.")
+        logger.info(
+            "chunk_refs incremental update aborted: class bases or using-directives "
+            "changed — falling back to full rebuild."
+        )
         return None
     base = changed_ids | _xlang_endpoints(touched, chunks, sym_map, changed_ids)
     limit = _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * max(total, 1)
@@ -597,7 +651,10 @@ def _build_refs_incremental(
         logger.info(
             "chunk_refs incremental update aborted: over %d of %d chunks to recompute "
             "(touched_names=%d), past %.0f%% — falling back to full rebuild.",
-            limit, total, len(touched), _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * 100,
+            limit,
+            total,
+            len(touched),
+            _REFS_INCREMENTAL_MAX_REFERENCER_FRACTION * 100,
         )
         return None
     sources = rows.keys() | base
@@ -606,7 +663,9 @@ def _build_refs_incremental(
 
     members = members_index(store)
     typed_ids = {
-        target_id for c in named for edge_type in TYPED_EDGE_TYPES
+        target_id
+        for c in named
+        for edge_type in TYPED_EDGE_TYPES
         for raw in (c.get("metadata") or {}).get(edge_type) or ()
         for target_id in name_to_ids.get(_call_entry_name(raw)) or ()
     }
@@ -618,10 +677,15 @@ def _build_refs_incremental(
     mentions: dict[str, set[str]] = {}
     for c in named:
         typed[c["id"]], settled = _typed_refs(
-            c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions, class_holders)
+            c, name_to_ids, id_to_chunk, arity_cache, owner_decls, members, cap_mentions, class_holders
+        )
         mentions[c["id"]] = _mentioned_names(c, name_to_ids, settled, cap_mentions)
-    xlang = _xlang_targets(name_to_ids, name_to_langs, id_to_lang,
-                           [name for name, ids in name_to_ids.items() if not sources.isdisjoint(ids)])
+    xlang = _xlang_targets(
+        name_to_ids,
+        name_to_langs,
+        id_to_lang,
+        [name for name, ids in name_to_ids.items() if not sources.isdisjoint(ids)],
+    )
 
     # The ranking is corpus-wide: a chunk outside `sources` keeps its edges
     # and names, but a pair of it can cross the cut either way.
@@ -633,14 +697,18 @@ def _build_refs_incremental(
         after = {cid: names for cid, names in before.items() if cid not in gone and cid not in sources}
         after.update((cid, names) for cid, names in mentions.items() if names)
         associated = _classify_mentions(after, associated_top_frac)
-        relabelled = {cid: after[cid] for cid, _name in associated ^ promoted_before
-                      if cid in after and cid not in sources}
+        relabelled = {
+            cid: after[cid]
+            for cid, _name in associated ^ promoted_before
+            if cid in after and cid not in sources
+        }
 
     removed_n, gone_targets = store.delete_refs_touching(list(gone))
     stored = store.get_refs_from(sorted(sources | relabelled.keys()))
     new_out: dict[str, dict[str, str]] = {
-        cid: _source_edges(cid, mentions.get(cid, ()), associated, name_to_ids,
-                           xlang.get(cid, ()), typed.get(cid, {}))
+        cid: _source_edges(
+            cid, mentions.get(cid, ()), associated, name_to_ids, xlang.get(cid, ()), typed.get(cid, {})
+        )
         for cid in sources
     }
     for cid, names in relabelled.items():
@@ -661,13 +729,21 @@ def _build_refs_incremental(
     if associated_top_frac > 0:
         store.delete_mention_names(sorted(gone | sources))
         store.insert_mention_names([(cid, name) for cid, names in mentions.items() for name in names])
-    store.refresh_indegree(sorted(
-        gone | gone_targets | {to_id for _cid, to_id in removed} | {to_id for _cid, to_id, _t in written}))
+    store.refresh_indegree(
+        sorted(
+            gone | gone_targets | {to_id for _cid, to_id in removed} | {to_id for _cid, to_id, _t in written}
+        )
+    )
     store.commit()
     logger.info(
         "chunk_refs incremental update: changed=%d, deleted=%d, touched_names=%d, "
         "recomputed=%d, relabelled=%d, rows removed=%d, rows written=%d.",
-        len(changed_ids), len(deleted_ids), len(touched), len(sources), len(relabelled),
-        removed_n + len(removed), len(written),
+        len(changed_ids),
+        len(deleted_ids),
+        len(touched),
+        len(sources),
+        len(relabelled),
+        removed_n + len(removed),
+        len(written),
     )
     return len(written)

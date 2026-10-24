@@ -67,8 +67,10 @@ def _or_fts_query(query: str) -> str:
 # meaning in fts mode even when it matches nothing.
 _FTS_SYNTAX_RE = re.compile(r'"|\b(?:AND|OR|NOT|NEAR)\b')
 
-ANY_WORD_NOTE = ("no chunk contains every word of the query, so these contain any of them; "
-                 "fewer, more specific words narrow it")
+ANY_WORD_NOTE = (
+    "no chunk contains every word of the query, so these contain any of them; "
+    "fewer, more specific words narrow it"
+)
 
 # FTS starvation fallback: if implicit-AND finds <top_k hits, retry
 # OR-joined but admit a hit only if it's in the semantic pool AND ranks
@@ -78,7 +80,7 @@ OR_FALLBACK_MAX_RANK = 20
 # α weights chunk similarity, β weights folder-summary similarity. No
 # hard-filtering, so a failed re-rank still degrades to plain semantic search.
 DEFAULT_BLEND_ALPHA = 1.0
-DEFAULT_BLEND_BETA  = 0.2
+DEFAULT_BLEND_BETA = 0.2
 
 # Oversample factor for folder-blend re-rank before truncating to top_k.
 _FOLDER_BLEND_OVERSAMPLE = 4
@@ -109,7 +111,9 @@ def _int8_cosine(query_vec: list[float], blob: bytes) -> float:
 
 
 def _cap_per_file(
-    chunks: list[dict[str, Any]], top_k: int, file_cap: int,
+    chunks: list[dict[str, Any]],
+    top_k: int,
+    file_cap: int,
 ) -> list[dict[str, Any]]:
     """Truncate rank-ordered `chunks` to `top_k`, capped at `file_cap` per
     path. Skips (never reorders) chunks over cap so slots backfill from the
@@ -136,7 +140,7 @@ class Searcher:
         embedder: Embedder,
         reformulate_query: bool = DEFAULT_REFORMULATE_QUERY,
     ):
-        self._store    = store
+        self._store = store
         self._embedder = embedder
         # Default OFF. Only affects the SEMANTIC embed side, never FTS.
         self._reformulate_query = reformulate_query
@@ -212,12 +216,13 @@ class Searcher:
             if file_cap > 0:
                 oversample = max(oversample, top_k * _FILE_CAP_OVERSAMPLE)
             candidates = self._store.search_semantic(
-                vec, oversample, path_prefix, chunk_kind=chunk_kind,
+                vec,
+                oversample,
+                path_prefix,
+                chunk_kind=chunk_kind,
             )
             if candidates:
-                folder_paths = list({
-                    posixpath.dirname(c["path"]) or "." for c in candidates
-                })
+                folder_paths = list({posixpath.dirname(c["path"]) or "." for c in candidates})
                 folder_embs = self._store.get_folder_embeddings(folder_paths)
                 folder_sims: dict[str, float] = {}
                 for fp, emb in folder_embs.items():
@@ -227,9 +232,7 @@ class Searcher:
                     if len(emb) != len(vec):
                         continue
                     folder_sims[fp] = _cosine(vec, emb)
-                chunk_blobs = self._store.get_int8_embeddings_by_ids(
-                    [c["id"] for c in candidates]
-                )
+                chunk_blobs = self._store.get_int8_embeddings_by_ids([c["id"] for c in candidates])
                 for c in candidates:
                     folder = posixpath.dirname(c["path"]) or "."
                     blob = chunk_blobs.get(c["id"])
@@ -247,9 +250,9 @@ class Searcher:
             else:
                 blobs = self._store.get_int8_embeddings_by_ids([c["id"] for c in results])
                 results = [
-                    c for c in results
-                    if (b := blobs.get(c["id"])) is not None
-                    and _int8_cosine(vec, b) >= min_score
+                    c
+                    for c in results
+                    if (b := blobs.get(c["id"])) is not None and _int8_cosine(vec, b) >= min_score
                 ]
 
         return results
@@ -336,7 +339,9 @@ class Searcher:
         try:
             sem_results = self.semantic(query, oversample, path_prefix, client=_client, chunk_kind=chunk_kind)
             # RRF degrades to semantic-only if sanitisation empties the query.
-            fts_results = self.fts(fts_query, oversample, path_prefix, chunk_kind=chunk_kind) if fts_query else []
+            fts_results = (
+                self.fts(fts_query, oversample, path_prefix, chunk_kind=chunk_kind) if fts_query else []
+            )
         finally:
             if client is None:
                 _client.close()

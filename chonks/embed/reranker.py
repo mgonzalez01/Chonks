@@ -70,15 +70,20 @@ def probe_reranker(reranker: Reranker, timeout: float = 10.0) -> str | None:
     try:
         with httpx.Client() as client:
             relevant, unrelated = reranker.rerank(
-                PROBE_QUERY, [PROBE_RELEVANT, PROBE_UNRELATED], client, timeout=timeout)
+                PROBE_QUERY, [PROBE_RELEVANT, PROBE_UNRELATED], client, timeout=timeout
+            )
     except Exception as e:  # noqa: BLE001, any failure is the same answer: not usable
         first_line = str(e).partition("\n")[0]
         return f"does not answer ({type(e).__name__}: {first_line})"
     scale = max(abs(relevant), abs(unrelated))
     if scale < 1e-6:
-        return (f"scores every document near zero (relevant {relevant:.3g}, unrelated {unrelated:.3g}), "
-                "so reranking reorders at random; the model file may lack its classification head")
+        return (
+            f"scores every document near zero (relevant {relevant:.3g}, unrelated {unrelated:.3g}), "
+            "so reranking reorders at random; the model file may lack its classification head"
+        )
     if relevant - unrelated < 0.1 * scale:
-        return (f"scores an unrelated document ({unrelated:.3g}) about as high as a relevant one "
-                f"({relevant:.3g}), so reranking reorders at random")
+        return (
+            f"scores an unrelated document ({unrelated:.3g}) about as high as a relevant one "
+            f"({relevant:.3g}), so reranking reorders at random"
+        )
     return None

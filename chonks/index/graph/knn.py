@@ -50,7 +50,7 @@ _NEIGHBOR_BYTES_PER_ROW_ELEM = 16
 # Mode picked by embedding dim: float32 dot products are exactly correct
 # (bit-identical to int32) only when dim*127^2 < 2^24, i.e. dim <= 1040;
 # above that a RAM budget decides fast (approximate) vs exact (dgemm).
-_NEIGHBOR_DIM_SAFE_DOT_PRODUCT_MAX = 2 ** 24
+_NEIGHBOR_DIM_SAFE_DOT_PRODUCT_MAX = 2**24
 
 # RAM-aware fallback for dim-unsafe corpora: if the one-shot float32
 # corpus fits this fraction of free RAM, "fast" mode still wins; else
@@ -77,6 +77,7 @@ def _available_ram_bytes() -> int | None:
     without psutil), so callers must handle that fallback themselves."""
     try:
         import psutil  # optional; most accurate + cross-platform
+
         return int(psutil.virtual_memory().available)
     except Exception:  # noqa: BLE001, psutil is optional; any failure tries the next source
         pass
@@ -91,11 +92,18 @@ def _available_ram_bytes() -> int | None:
         import ctypes
 
         class _MS(ctypes.Structure):
-            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
-                        ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
-                        ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
-                        ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
-                        ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
         st = _MS()
         st.dwLength = ctypes.sizeof(_MS)
         if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
@@ -161,17 +169,18 @@ def _detect_knn_backend() -> str:
     Never raises."""
     try:
         import cupy as cp
+
         if cp.cuda.runtime.getDeviceCount() > 0:
             return "cuda"
     except Exception:  # noqa: BLE001, any failure is the same answer: not usable
         pass
     try:
         import mlx.core  # noqa: F401
+
         return "mlx"
     except Exception:  # noqa: BLE001, any failure is the same answer: not usable
         pass
     return "numpy"
-
 
 
 class _Corpus:
@@ -229,11 +238,15 @@ class _Corpus:
         if backend == "auto":
             backend = _detect_knn_backend() if (not self.exact and dim_safe) else "numpy"
             if backend != "numpy":
-                logger.info("k-NN backend auto-selected: %s (set CHONKS_KNN_BACKEND or "
-                            "config knn_backend to force one)", backend)
+                logger.info(
+                    "k-NN backend auto-selected: %s (set CHONKS_KNN_BACKEND or "
+                    "config knn_backend to force one)",
+                    backend,
+                )
         if not self.exact and dim_safe and backend == "mlx":
             try:
                 import mlx.core as mx
+
                 self._mx = mx.array(self.m)
                 self._mxt = self._mx.T
                 logger.info("k-NN matmul backend: MLX (Metal GPU), N=%d dim=%d", self.n, dim)
@@ -249,15 +262,22 @@ class _Corpus:
                 logger.info(
                     "CHONKS_KNN_BACKEND=cuda set but this corpus isn't "
                     "GPU-safe (exact=%s, dim=%d) — using numpy, same gate "
-                    "as the MLX backend.", self.exact, dim,
+                    "as the MLX backend.",
+                    self.exact,
+                    dim,
                 )
-        if (self._cp is None and self._mx is None and not (explicit and backend == "numpy")
-                and self.n >= _KNN_CPU_HINT_MIN_N):
+        if (
+            self._cp is None
+            and self._mx is None
+            and not (explicit and backend == "numpy")
+            and self.n >= _KNN_CPU_HINT_MIN_N
+        ):
             logger.warning(
                 "k-NN graph on CPU for N=%d chunks: expect tens of minutes on a large "
                 "corpus. On an NVIDIA machine run `uv sync --extra cuda` and re-run; the "
                 "GPU path is picked up automatically and gives a bit-identical result. "
-                "On Apple silicon install the `mlx` package.", self.n,
+                "On Apple silicon install the `mlx` package.",
+                self.n,
             )
         # Block size also sets exact mode's column-chunk width; RAM is
         # measured after self.m is resident so the budget reflects what's free.
@@ -271,6 +291,7 @@ class _Corpus:
                 # CUDA also serves the incremental caller (list row_idx),
                 # unlike MLX (see __init__); the transfer back is lossless.
                 import cupy as cp
+
                 idx_dev = row_idx if isinstance(row_idx, slice) else cp.asarray(row_idx)
                 return cp.asnumpy(self._cp[idx_dev] @ self._cpt)
             # Plain numpy: no device backend armed, or it's MLX (which uses
@@ -306,6 +327,7 @@ class _Corpus:
         on Metal, only (block x k) arrays cross back. Sub-sliced under
         _MLX_TOPK_MAX_BUFFER_BYTES: argpartition silently corrupts past that size."""
         import mlx.core as mx
+
         if self._mx_rank is None:
             self._mx_rank = mx.array(rank)
         sub = max(1, min(end - start, _MLX_TOPK_MAX_BUFFER_BYTES // (self.n * 8)))
@@ -341,6 +363,7 @@ class _Corpus:
         argument, cupy instead of Metal. No known corruption cliff here, but
         the same buffer cap and distinct-index check are kept as insurance."""
         import cupy as cp
+
         if self._cp_rank is None:
             self._cp_rank = cp.asarray(rank)
         sub = max(1, min(end - start, _CUDA_TOPK_MAX_BUFFER_BYTES // (self.n * 8)))
@@ -378,6 +401,7 @@ class _Corpus:
 # Every top-k site must break a distance tie the SAME way (smaller
 # chunk_id wins), or the incremental-equals-full-rebuild contract breaks.
 
+
 def _id_rank(ids: list[str]) -> np.ndarray:
     """rank[i] = position of ids[i] in ascending lexicographic order; must
     match _merge_displaced's tie-break exactly."""
@@ -397,7 +421,9 @@ def _tie_break_keys(sims: np.ndarray, rank: np.ndarray, n: int) -> np.ndarray:
 
 
 def _merge_displaced(
-    stored: dict[str, float], rows: list[tuple[str, str, float]], k: int,
+    stored: dict[str, float],
+    rows: list[tuple[str, str, float]],
+    k: int,
 ) -> tuple[list[str], list[tuple[str, str, float]]]:
     """Cuts a row's stored neighbours plus its displacing candidates back to
     the k smallest (distance, neighbor_id). Returns the stored ids that drop
@@ -432,6 +458,7 @@ def _device_backend_armed(dim: int) -> bool:
             return False
     return True
 
+
 def build_neighbors(
     store: "Store",
     k: int = GRAPHRAG_TOP_K,
@@ -459,7 +486,8 @@ def build_neighbors(
         # the numpy-tuned fraction; see the constant's comment.
         device_backend = _device_backend_armed(dim)
         max_fraction = (
-            _NEIGHBOR_INCREMENTAL_MAX_FRACTION_DEVICE if device_backend
+            _NEIGHBOR_INCREMENTAL_MAX_FRACTION_DEVICE
+            if device_backend
             else _NEIGHBOR_INCREMENTAL_MAX_FRACTION
         )
         if (
@@ -469,8 +497,15 @@ def build_neighbors(
             and n_before - 1 >= k
         ):
             result = _build_neighbors_incremental(
-                store, ids, blob, dim, k, set(changed_ids), set(deleted_ids),
-                block_rows=block_rows, max_fraction=max_fraction,
+                store,
+                ids,
+                blob,
+                dim,
+                k,
+                set(changed_ids),
+                set(deleted_ids),
+                block_rows=block_rows,
+                max_fraction=max_fraction,
             )
             if result is not None:
                 return result
@@ -480,7 +515,10 @@ def build_neighbors(
             logger.info(
                 "k-NN incremental update skipped (batch=%d, N=%d, backend=%s, "
                 "max_fraction=%.3f) — falling back to full rebuild.",
-                batch, n, "device" if device_backend else "numpy", max_fraction,
+                batch,
+                n,
+                "device" if device_backend else "numpy",
+                max_fraction,
             )
 
     k = min(k, n - 1)  # argpartition requires kth < N
@@ -496,21 +534,25 @@ def build_neighbors(
         backend_name = "MLX" if corpus._mx is not None else "CUDA"
         cap = _MLX_TOPK_MAX_BUFFER_BYTES if corpus._mx is not None else _CUDA_TOPK_MAX_BUFFER_BYTES
         logger.info(
-            "k-NN matmul block: %d rows (%s device buffers capped at ~%.1f GB "
-            "per sub-slice, N=%d, mode=%s)",
-            block, backend_name, cap / 1e9, n,
+            "k-NN matmul block: %d rows (%s device buffers capped at ~%.1f GB per sub-slice, N=%d, mode=%s)",
+            block,
+            backend_name,
+            cap / 1e9,
+            n,
             "exact" if corpus.exact else "fast",
         )
     else:
         logger.info(
             "k-NN matmul block: %d rows (~%.1f GB peak working set, N=%d, mode=%s)",
-            block, block * n * _NEIGHBOR_BYTES_PER_ROW_ELEM / 1e9, n,
+            block,
+            block * n * _NEIGHBOR_BYTES_PER_ROW_ELEM / 1e9,
+            n,
             "exact" if corpus.exact else "fast",
         )
 
     inserted = 0
     pending: list[tuple[str, str, float]] = []
-    inv_scale = 1.0 / (127.0 ** 2)
+    inv_scale = 1.0 / (127.0**2)
     rank = _id_rank(ids)
 
     bar = tqdm(
@@ -560,9 +602,17 @@ def build_neighbors(
     store.commit()
     return inserted
 
+
 def _topk_for_rows(
-    corpus: "_Corpus", ids: list[str], row_idx: list[int], k: int,
-    block: int, inv_scale: float, rank: np.ndarray, *, phase: str = "rows",
+    corpus: "_Corpus",
+    ids: list[str],
+    row_idx: list[int],
+    k: int,
+    block: int,
+    inv_scale: float,
+    rank: np.ndarray,
+    *,
+    phase: str = "rows",
 ) -> list[tuple[str, str, float]]:
     """Exact top-k for given rows vs the whole corpus, using the bulk path's
     same tie-break (`rank`) so a recomputed row matches a from-scratch
@@ -573,7 +623,7 @@ def _topk_for_rows(
     t0 = time.monotonic()
     last_log = t0
     for start in range(0, total, block):
-        chunk = row_idx[start:start + block]
+        chunk = row_idx[start : start + block]
         sims = corpus.sims_block(chunk)  # (len(chunk), N)
         corpus.mask_self(sims, chunk)
         keys = _tie_break_keys(sims, rank, n)
@@ -591,10 +641,14 @@ def _topk_for_rows(
         if now - last_log >= _NEIGHBOR_PROGRESS_INTERVAL_S:
             logger.info(
                 "k-NN incremental %s: %d/%d rows recomputed (%.0fs elapsed).",
-                phase, min(start + block, total), total, now - t0,
+                phase,
+                min(start + block, total),
+                total,
+                now - t0,
             )
             last_log = now
     return out
+
 
 def _build_neighbors_incremental(
     store: "Store",
@@ -613,13 +667,14 @@ def _build_neighbors_incremental(
     from changed rows exceeds `max_fraction`, only knowable after the step-3 matmul."""
     n = len(ids)
     id_to_idx = {cid: i for i, cid in enumerate(ids)}
-    inv_scale = 1.0 / (127.0 ** 2)
+    inv_scale = 1.0 / (127.0**2)
     rank = _id_rank(ids)
 
     # Step 1: damaged rows captured before their stale edges are deleted;
     # filtered to ids still present, not already changed or deleted.
     damaged_ids = {
-        d for d in store.get_chunk_ids_by_neighbor(list(deleted_ids))
+        d
+        for d in store.get_chunk_ids_by_neighbor(list(deleted_ids))
         if d in id_to_idx and d not in changed_ids and d not in deleted_ids
     }
 
@@ -632,7 +687,9 @@ def _build_neighbors_incremental(
     logger.info(
         "k-NN incremental: N=%d, m=%d changed, a=%d damaged rows to repair — "
         "this can take several minutes on CPU.",
-        n, len(changed_ids), len(damaged_ids),
+        n,
+        len(changed_ids),
+        len(damaged_ids),
     )
 
     corpus = _Corpus(ids, blob, dim, block_rows)
@@ -645,7 +702,13 @@ def _build_neighbors_incremental(
     changed_rows = sorted(id_to_idx[c] for c in changed_ids if c in id_to_idx)
     if changed_rows:
         own_topk = _topk_for_rows(
-            corpus, ids, changed_rows, k, block, inv_scale, rank,
+            corpus,
+            ids,
+            changed_rows,
+            k,
+            block,
+            inv_scale,
+            rank,
             phase="changed-rows top-k",
         )
         store.insert_neighbors(own_topk)
@@ -675,7 +738,7 @@ def _build_neighbors_incremental(
 
         improved: dict[str, list[tuple[str, str, float]]] = defaultdict(list)
         for start in range(0, len(changed_rows), block):
-            chunk = changed_rows[start:start + block]
+            chunk = changed_rows[start : start + block]
             sims = corpus.sims_block(chunk)  # (len(chunk), N)
             corpus.mask_self(sims, chunk)
             # NOTE: rows are incoming CANDIDATES, columns are TARGETS whose
@@ -694,12 +757,13 @@ def _build_neighbors_incremental(
         # Mid-flight bail, see the docstring: only the displaced count enters
         # the budget.
         total_improved = len(improved)
-        if total_improved > max(_NEIGHBOR_INCREMENTAL_BAIL_MIN_ROWS,
-                                max_fraction * n):
+        if total_improved > max(_NEIGHBOR_INCREMENTAL_BAIL_MIN_ROWS, max_fraction * n):
             logger.info(
                 "k-NN incremental bail: %d displaced rows exceed the %.1f%% "
                 "budget (N=%d) — falling back to full rebuild.",
-                total_improved, max_fraction * 100, n,
+                total_improved,
+                max_fraction * 100,
+                n,
             )
             return None
 
@@ -722,7 +786,13 @@ def _build_neighbors_incremental(
         store.delete_neighbors_from(list(damaged_ids))  # clear any leftover rows first
         damaged_rows = sorted(id_to_idx[d] for d in damaged_ids)
         recomputed = _topk_for_rows(
-            corpus, ids, damaged_rows, k, block, inv_scale, rank,
+            corpus,
+            ids,
+            damaged_rows,
+            k,
+            block,
+            inv_scale,
+            rank,
             phase="damaged-rows repair",
         )
         store.insert_neighbors(recomputed)
@@ -732,6 +802,11 @@ def _build_neighbors_incremental(
     logger.info(
         "k-NN incremental update: N=%d, changed=%d, deleted=%d, damaged=%d, "
         "stale edges removed=%d, edges written=%d.",
-        n, len(changed_ids), len(deleted_ids), len(damaged_ids), removed, inserted,
+        n,
+        len(changed_ids),
+        len(deleted_ids),
+        len(damaged_ids),
+        removed,
+        inserted,
     )
     return inserted

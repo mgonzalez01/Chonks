@@ -5,6 +5,7 @@
 mode every suggested exclude is still confirmed one at a time regardless
 of this flag.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,15 +27,28 @@ DEFAULT_CONFIG_PATH = "config.json"
 # Matched by exact basename, not substring, so e.g. "distribution/" is
 # never swept up.
 JUNK_DIR_NAMES = {
-    "node_modules", ".venv", "venv", ".git", "__pycache__",
-    "dist", "build", "target", ".nuget", "packages", ".next",
-    "coverage", "DerivedData", "Intermediate", "Saved",
+    "node_modules",
+    ".venv",
+    "venv",
+    ".git",
+    "__pycache__",
+    "dist",
+    "build",
+    "target",
+    ".nuget",
+    "packages",
+    ".next",
+    "coverage",
+    "DerivedData",
+    "Intermediate",
+    "Saved",
 }
 
 
 # --------------------------------------------------------------------------
 # Pure logic: scanning, config building, serialization. No stdin/stdout.
 # --------------------------------------------------------------------------
+
 
 def expand_path(raw: str) -> Path:
     """Expand ~ and resolve to an absolute path (does not require existence)."""
@@ -67,9 +81,7 @@ def _dir_stats(path: Path) -> tuple[int, int]:
     return count, size
 
 
-def scan_junk_candidates(
-    root: Path, junk_names: set[str] = JUNK_DIR_NAMES
-) -> list[dict]:
+def scan_junk_candidates(root: Path, junk_names: set[str] = JUNK_DIR_NAMES) -> list[dict]:
     """Walk `root`, return one entry per junk-dir candidate:
     {"path": "<posix, relative to root>/", "file_count": int, "size_bytes": int}.
     Once matched, a candidate's subtree is not descended into further, so a
@@ -84,11 +96,13 @@ def scan_junk_candidates(
                 child = dir_path / d
                 count, size = _dir_stats(child)
                 rel = child.relative_to(root).as_posix() + "/"
-                candidates.append({
-                    "path": rel,
-                    "file_count": count,
-                    "size_bytes": size,
-                })
+                candidates.append(
+                    {
+                        "path": rel,
+                        "file_count": count,
+                        "size_bytes": size,
+                    }
+                )
                 # Don't descend: already fully accounted for above.
             else:
                 keep.append(d)
@@ -171,7 +185,7 @@ def render_mcp_add(*, chonks_root: Path, db: Path, config: Path, scope: str = "u
         f"  -e CHONKS_SERVER_PY={server_py} \\",
         f"  -e CHONKS_DB={db.resolve()} \\",
         f"  -e CHONKS_CONFIG={config.resolve()} \\",
-        "  -e \"CHONKS_PY_CMD=uv run python\" \\",
+        '  -e "CHONKS_PY_CMD=uv run python" \\',
         f"  -- node {mcp_index}",
     ]
     return "\n".join(lines)
@@ -185,19 +199,23 @@ def gpu_install_hint(*, which_fn=shutil.which, cupy_importable: bool | None = No
     if cupy_importable is None:
         try:
             import cupy  # noqa: F401
+
             cupy_importable = True
         except Exception:  # noqa: BLE001, any failure is the same answer: not usable
             cupy_importable = False
     if cupy_importable:
         return None
-    return ("NVIDIA GPU detected but the CUDA k-NN extra is not installed. Run "
-            "`uv sync --extra cuda`; the graph build then uses the GPU automatically "
-            "(tens of minutes down to seconds on a large corpus).")
+    return (
+        "NVIDIA GPU detected but the CUDA k-NN extra is not installed. Run "
+        "`uv sync --extra cuda`; the graph build then uses the GPU automatically "
+        "(tens of minutes down to seconds on a large corpus)."
+    )
 
 
 # --------------------------------------------------------------------------
 # Prompt loop: thin wrappers over an injectable input function.
 # --------------------------------------------------------------------------
+
 
 def ask(input_fn, prompt: str, default: str | None = None) -> str:
     suffix = f" [{default}]" if default is not None else ""
@@ -217,41 +235,52 @@ def ask_yes_no(input_fn, prompt: str, default: bool = False) -> bool:
 # Wizard
 # --------------------------------------------------------------------------
 
+
 def run_wizard(argv: list[str] | None = None, input_fn=input, print_fn=print) -> int:
     parser = argparse.ArgumentParser(
         prog="chonks init",
         description="Interactive first-run setup wizard for Chonks — writes "
-                     "config.json and prints the claude mcp add command.",
+        "config.json and prints the claude mcp add command.",
     )
     parser.add_argument(
-        "--yes", action="store_true",
+        "--yes",
+        action="store_true",
         help="Non-interactive: use flags/defaults, skip all prompts.",
     )
     parser.add_argument("--codebase", default=None, metavar="DIR")
     parser.add_argument("--db", default=None, metavar="FILE")
     parser.add_argument("--embed-url", default=None, metavar="URL")
     parser.add_argument(
-        "--embed-model", default=None, metavar="NAME",
+        "--embed-model",
+        default=None,
+        metavar="NAME",
         help=f"Model name recorded in config.json (default: {RECOMMENDED_EMBED_MODEL}). "
-             "The name selects the query/document instruction prefixes, so it must "
-             "match the model the server actually runs.",
+        "The name selects the query/document instruction prefixes, so it must "
+        "match the model the server actually runs.",
     )
     parser.add_argument(
-        "--exclude", action="append", default=None, metavar="PREFIX",
+        "--exclude",
+        action="append",
+        default=None,
+        metavar="PREFIX",
         help="Exclude prefix to add (repeatable). Only used with --yes.",
     )
     parser.add_argument(
-        "--auto-exclude", action="store_true",
+        "--auto-exclude",
+        action="store_true",
         help="With --yes only: auto-apply scan-detected junk-dir suggestions "
-             "instead of ignoring them. Has no effect in interactive mode — "
-             "there every suggestion is confirmed one at a time regardless.",
+        "instead of ignoring them. Has no effect in interactive mode — "
+        "there every suggestion is confirmed one at a time regardless.",
     )
     parser.add_argument(
-        "--config", default=DEFAULT_CONFIG_PATH, metavar="FILE",
+        "--config",
+        default=DEFAULT_CONFIG_PATH,
+        metavar="FILE",
         help=f"Where to write config.json (default: {DEFAULT_CONFIG_PATH}).",
     )
     parser.add_argument(
-        "--force", action="store_true",
+        "--force",
+        action="store_true",
         help="Overwrite an existing config file without prompting.",
     )
     args = parser.parse_args(argv)
@@ -269,8 +298,7 @@ def run_wizard(argv: list[str] | None = None, input_fn=input, print_fn=print) ->
         # No stdin (piped/CI invocation) or Ctrl-C mid-prompt: exit cleanly
         # instead of dumping a traceback. config.json may already exist if the
         # interrupt hit the post-write "run the first index?" prompt.
-        print_fn("\nAborted. For scripted setup use: "
-                 "chonks init --yes --codebase <dir> [--auto-exclude]")
+        print_fn("\nAborted. For scripted setup use: chonks init --yes --codebase <dir> [--auto-exclude]")
         return 1
 
 
@@ -294,7 +322,10 @@ def _run_noninteractive(args, config_path: Path, chonks_root: Path, print_fn) ->
     embed_model = args.embed_model or RECOMMENDED_EMBED_MODEL
 
     config = build_config(
-        codebase=str(codebase), db=db, embed_url=embed_url, exclude=exclude,
+        codebase=str(codebase),
+        db=db,
+        embed_url=embed_url,
+        exclude=exclude,
         embed_model=embed_model,
     )
     written, msg = write_config(config_path, config, force=args.force)
@@ -334,8 +365,10 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
     candidates = scan_junk_candidates(codebase)
     exclude: list[str] = []
     if candidates:
-        print_fn(f"Found {len(candidates)} candidate director{'y' if len(candidates)==1 else 'ies'} "
-                  f"to consider excluding:\n")
+        print_fn(
+            f"Found {len(candidates)} candidate director{'y' if len(candidates) == 1 else 'ies'} "
+            f"to consider excluding:\n"
+        )
         for cand in candidates:
             evidence = f"{cand['file_count']} files, {format_size(cand['size_bytes'])}"
             if ask_yes_no(input_fn, f"  Exclude {cand['path']} ({evidence})?", default=True):
@@ -354,8 +387,10 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
         break
 
     # 2. fallback extensions
-    print_fn(f"\nDefault fallback extensions (indexed via line-based chunking, "
-              f"no AST grammar): {', '.join(DEFAULT_FALLBACK_EXTENSIONS)}")
+    print_fn(
+        f"\nDefault fallback extensions (indexed via line-based chunking, "
+        f"no AST grammar): {', '.join(DEFAULT_FALLBACK_EXTENSIONS)}"
+    )
     fallback_extensions = DEFAULT_FALLBACK_EXTENSIONS
     if not ask_yes_no(input_fn, "Use this list?", default=True):
         raw = ask(input_fn, "Enter comma-separated extensions (with leading dots)", default="")
@@ -366,8 +401,9 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
     # embed url + live ping
     embed_url = ask(input_fn, "Embedding server URL", default=DEFAULT_EMBED_URL)
     embed_model = ask(
-        input_fn, "Embedding model name (selects the query/document prefixes; "
-        "must match what the server runs)", default=RECOMMENDED_EMBED_MODEL,
+        input_fn,
+        "Embedding model name (selects the query/document prefixes; must match what the server runs)",
+        default=RECOMMENDED_EMBED_MODEL,
     )
     print_fn(f"Pinging {embed_url} ...")
     result = ping_embedder(embed_url, model=embed_model)
@@ -382,22 +418,36 @@ def _run_interactive(args, config_path: Path, chonks_root: Path, input_fn, print
 
     # 3. write config
     config = build_config(
-        codebase=str(codebase), db=db, embed_url=embed_url,
-        exclude=exclude, fallback_extensions=fallback_extensions,
+        codebase=str(codebase),
+        db=db,
+        embed_url=embed_url,
+        exclude=exclude,
+        fallback_extensions=fallback_extensions,
         embed_model=embed_model,
     )
     written, msg = write_config(config_path, config, force=True)
     print_fn(f"\n{msg}")
 
-    print_fn("\nRegister with Claude Code (one line per flag; PowerShell users replace the trailing \\ with `):\n")
+    print_fn(
+        "\nRegister with Claude Code (one line per flag; PowerShell users replace the trailing \\ with `):\n"
+    )
     print_fn(render_mcp_add(chonks_root=chonks_root, db=Path(db), config=config_path))
-    print_fn("\nThen /mcp inside Claude Code should list chonks. For a project-scoped .mcp.json instead, use -s project.")
+    print_fn(
+        "\nThen /mcp inside Claude Code should list chonks. For a project-scoped .mcp.json instead, use -s project."
+    )
 
     if ask_yes_no(input_fn, "\nRun the first index now?", default=False):
         import subprocess
+
         cmd = [
-            sys.executable, "-m", "chonks.ops.index_cmd",
-            str(codebase), "--db", db, "--config", str(config_path),
+            sys.executable,
+            "-m",
+            "chonks.ops.index_cmd",
+            str(codebase),
+            "--db",
+            db,
+            "--config",
+            str(config_path),
         ]
         print_fn(f"\n$ {' '.join(cmd)}")
         subprocess.run(cmd)

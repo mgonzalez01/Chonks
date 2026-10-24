@@ -21,29 +21,29 @@ logger = logging.getLogger("chonks.research")
 # ---------------------------------------------------------------------------
 
 _DEFAULTS = {
-    "max_iterations":            3,
-    "convergence_threshold":     0.15,
-    "oversample_factor":         3,
-    "max_candidates":            500,
-    "top_k":                     50,
-    "iteration_timeout_s":       30,
-    "graph_seeds_per_iter":      20,
+    "max_iterations": 3,
+    "convergence_threshold": 0.15,
+    "oversample_factor": 3,
+    "max_candidates": 500,
+    "top_k": 50,
+    "iteration_timeout_s": 30,
+    "graph_seeds_per_iter": 20,
     "graph_neighbours_per_seed": 5,
-    "hub_indegree_max":          50,
-    "structural_weight":         0.5,
-    "structural_seed_n":         30,
-    "edge_type_weights":         DEFAULT_EDGE_TYPE_WEIGHTS,
+    "hub_indegree_max": 50,
+    "structural_weight": 0.5,
+    "structural_seed_n": 30,
+    "edge_type_weights": DEFAULT_EDGE_TYPE_WEIGHTS,
     # Confidence gate (LARGER, arXiv:2605.16352): below this fraction of the
     # top score, a candidate can't seed graph expansion. 0.0 = off.
-    "graph_seed_min_rel_score":  0.0,
+    "graph_seed_min_rel_score": 0.0,
     # Interleave selector, ON by default; interleave=False is an internal
     # off-switch kept for eval baselines. See _select_final_interleave for
     # what interleave_reserved_n and interleave_file_cap each do.
-    "interleave_reserved_n":     40,
-    "interleave_file_cap":       3,
+    "interleave_reserved_n": 40,
+    "interleave_file_cap": 3,
     # Header/impl paired-file expansion, off by default pending a further
     # ablation. See _graph_expand for the companion-selection rule.
-    "expand_paired_files":       False,
+    "expand_paired_files": False,
 }
 
 # Cap on chunks a single paired-file companion contributes to expansion.
@@ -58,17 +58,20 @@ PAIRED_TRIGGER_FILES = 20
 # Regex patterns for extracting symbol names, in match order. PascalCase
 # (index _PASCAL_IDX) needs extra filtering, see _extract_symbols.
 _SYMBOL_PATTERNS = [
-    re.compile(r'\b([A-Z][A-Za-z0-9_]+(?:::[A-Za-z0-9_]+)+)'),  # Qualified::Name
-    re.compile(r'\b([A-Z][A-Za-z0-9_]{2,})\b'),                  # PascalCase (filtered)
-    re.compile(r'\b([a-z][A-Za-z0-9_]{3,}(?:Manager|Handler|Controller|Service|Factory|Builder|Provider|Processor|Runner|Worker|Loader|Parser))\b'),
+    re.compile(r"\b([A-Z][A-Za-z0-9_]+(?:::[A-Za-z0-9_]+)+)"),  # Qualified::Name
+    re.compile(r"\b([A-Z][A-Za-z0-9_]{2,})\b"),  # PascalCase (filtered)
+    re.compile(
+        r"\b([a-z][A-Za-z0-9_]{3,}(?:Manager|Handler|Controller|Service|Factory|Builder|Provider|Processor|Runner|Worker|Loader|Parser))\b"
+    ),
 ]
 _PASCAL_IDX = 1
-_MULTI_CAP_RE = re.compile(r'[A-Z][a-z0-9_]*[A-Z]')  # ≥2 uppercase letters
+_MULTI_CAP_RE = re.compile(r"[A-Z][a-z0-9_]*[A-Z]")  # ≥2 uppercase letters
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_symbols(chunks: list[dict]) -> list[str]:
     """Pull candidate symbol names from chunk content via regex. Single-cap
@@ -175,6 +178,7 @@ def _apply_structural_boost(
     # score or order.
     prox: dict[str, float] = {}
     donor: dict[str, tuple[str, str]] = {}
+
     def bump(cid: str, s: float, donor_id: str, et: str) -> None:
         if s > prox.get(cid, 0.0):
             prox[cid] = s
@@ -282,7 +286,8 @@ def _graph_expand(
         if to_id not in seed_ids and weights.get(edge_type, 1.0) > 0:
             expansion_ids.add(to_id)
             admitted_via.setdefault(
-                to_id, {"origin": "graph", "anchor_id": from_id, "edge_type": edge_type},
+                to_id,
+                {"origin": "graph", "anchor_id": from_id, "edge_type": edge_type},
             )
 
     # Placed before the hub filter below so paired hits get the same
@@ -315,9 +320,12 @@ def _graph_expand(
                 for companion_path in companion_paths:
                     name_hits = (
                         store.get_chunks_by_path_and_names(
-                            companion_path, seed_names, limit=PAIRED_CHUNKS_PER_FILE,
+                            companion_path,
+                            seed_names,
+                            limit=PAIRED_CHUNKS_PER_FILE,
                         )
-                        if seed_names else []
+                        if seed_names
+                        else []
                     )
                     if name_hits:
                         for hit in name_hits:
@@ -400,10 +408,13 @@ def _select_final_interleave(
     # missed AND whose file is not already represented; only a NEW file earns a
     # rescue slot (a duplicate-file rescue would not move any file rank).
     reserved = sorted(
-        (c for c in candidates
-         if c.get("_struct_boost", 0.0) > 0.0
-         and c["id"] not in natural_ids
-         and c.get("path", "") not in seen_paths),
+        (
+            c
+            for c in candidates
+            if c.get("_struct_boost", 0.0) > 0.0
+            and c["id"] not in natural_ids
+            and c.get("path", "") not in seen_paths
+        ),
         key=lambda c: c["_struct_boost"],
         reverse=True,
     )
@@ -449,12 +460,14 @@ def _result_connections(store: Store, ids: list[str], cap: int = 40) -> list[dic
         if key in seen:
             continue
         seen.add(key)
-        out.append({
-            "from_id":    from_id,
-            "to_id":      to_id,
-            "edge_type":  edge_type,
-            "provenance": edge_provenance(edge_type),
-        })
+        out.append(
+            {
+                "from_id": from_id,
+                "to_id": to_id,
+                "edge_type": edge_type,
+                "provenance": edge_provenance(edge_type),
+            }
+        )
         if len(out) >= cap:
             break
     return out
@@ -463,6 +476,7 @@ def _result_connections(store: Store, ids: list[str], cap: int = 40) -> list[dic
 # ---------------------------------------------------------------------------
 # Main research function
 # ---------------------------------------------------------------------------
+
 
 def deep_research(
     query: str,
@@ -478,17 +492,17 @@ def deep_research(
     the healthy path.
     `compact` leaves `content` out of the returned chunks."""
     cfg = {**_DEFAULTS, **(cfg or {})}
-    top_k                = cfg["top_k"]
-    oversample           = cfg["oversample_factor"]
-    max_iters            = cfg["max_iterations"]
-    graph_seed_min_rel   = cfg["graph_seed_min_rel_score"]
-    conv_threshold       = cfg["convergence_threshold"]
-    max_candidates       = cfg["max_candidates"]
+    top_k = cfg["top_k"]
+    oversample = cfg["oversample_factor"]
+    max_iters = cfg["max_iterations"]
+    graph_seed_min_rel = cfg["graph_seed_min_rel_score"]
+    conv_threshold = cfg["convergence_threshold"]
+    max_candidates = cfg["max_candidates"]
     graph_seeds_per_iter = cfg["graph_seeds_per_iter"]
-    graph_neighbours     = cfg["graph_neighbours_per_seed"]
-    hub_indegree_max     = cfg["hub_indegree_max"]
-    edge_type_weights    = cfg["edge_type_weights"]
-    expand_paired_files  = cfg["expand_paired_files"]
+    graph_neighbours = cfg["graph_neighbours_per_seed"]
+    hub_indegree_max = cfg["hub_indegree_max"]
+    edge_type_weights = cfg["edge_type_weights"]
+    expand_paired_files = cfg["expand_paired_files"]
 
     store = searcher.store
 
@@ -523,7 +537,7 @@ def deep_research(
                 else:
                     hits = searcher.semantic(query, fetch_k, path_prefix)
                 for h in hits:
-                    h["_origin"]    = "seed"
+                    h["_origin"] = "seed"
                     h["_iteration"] = 0
                 all_candidates.extend(hits)
             except Exception as e:  # noqa: BLE001, each search step is best-effort
@@ -540,8 +554,7 @@ def deep_research(
             top_score = all_candidates[0].get("_score", 0.0)
             if top_score > 0:
                 floor = graph_seed_min_rel * top_score
-                expand_seeds = [c for c in all_candidates
-                                if c.get("_score", 0.0) >= floor]
+                expand_seeds = [c for c in all_candidates if c.get("_score", 0.0) >= floor]
 
         try:
             graph_hits = _graph_expand(
@@ -556,7 +569,7 @@ def deep_research(
             )
             for h in graph_hits:
                 # No _score here, _score_candidates ranks it by query cosine.
-                h.setdefault("_origin",    "graph")
+                h.setdefault("_origin", "graph")
                 h.setdefault("_iteration", iteration)
             all_candidates.extend(graph_hits)
             logger.debug("graph expansion added %d candidates", len(graph_hits))
@@ -573,7 +586,7 @@ def deep_research(
             try:
                 hits = searcher.regex(sym, top_k=10, path_prefix=path_prefix)
                 for h in hits:
-                    h.setdefault("_origin",    "regex")
+                    h.setdefault("_origin", "regex")
                     h.setdefault("_iteration", iteration)
                 all_candidates.extend(hits)
             except Exception as e:  # noqa: BLE001, each search step is best-effort
@@ -601,8 +614,10 @@ def deep_research(
     # Final re-rank: blend query relevance with structural proximity to the
     # top seeds. See _apply_structural_boost for why.
     all_candidates = _apply_structural_boost(
-        all_candidates, store,
-        beta=cfg["structural_weight"], seed_n=cfg["structural_seed_n"],
+        all_candidates,
+        store,
+        beta=cfg["structural_weight"],
+        seed_n=cfg["structural_seed_n"],
         edge_type_weights=edge_type_weights,
         expand_paired_files=expand_paired_files,
     )
@@ -623,9 +638,9 @@ def deep_research(
         final_chunks = [{k: v for k, v in c.items() if k != "content"} for c in final_chunks]
 
     return {
-        "chunks":      final_chunks,
-        "count":       len(final_chunks),
-        "iterations":  iterations,
+        "chunks": final_chunks,
+        "count": len(final_chunks),
+        "iterations": iterations,
         "connections": connections,
-        "degraded":    degraded,
+        "degraded": degraded,
     }

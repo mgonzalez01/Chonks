@@ -1,4 +1,5 @@
 """HLSL language plugin data."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,7 +21,7 @@ def is_cbuffer(node: Node, src: bytes) -> bool:
         return False
     for child in node.children:
         if child.type == "type_identifier":
-            text = src[child.start_byte:child.end_byte].decode(errors="replace")
+            text = src[child.start_byte : child.end_byte].decode(errors="replace")
             return text in ("cbuffer", "tbuffer")
     return False
 
@@ -69,9 +70,19 @@ HLSL = LanguageSpec(
         "preproc_include": INCLUDE,
         "call_expression": Field("function", "calls"),
     },
-    signature_at=outside_bodies(frozenset({
-        "struct", "class", "interface", "enum", "namespace", "cbuffer", "tbuffer",
-    })),
+    signature_at=outside_bodies(
+        frozenset(
+            {
+                "struct",
+                "class",
+                "interface",
+                "enum",
+                "namespace",
+                "cbuffer",
+                "tbuffer",
+            }
+        )
+    ),
     # Shader code is macro-dense (Unity's UNITY_VERTEX_INPUT_INSTANCE_ID,
     # CBUFFER_START): same preprocessor, same handling as C and C++.
     doc_comment_prefixes=("///", "//!", "/**", "/*!"),
@@ -86,8 +97,9 @@ HLSL = LanguageSpec(
     # Same C-preprocessor-family grammar as cpp: string_literal/raw_string_literal
     # leaves, concatenated_string for adjacent juxtaposition. No plus_type: HLSL
     # has no "+"-based string concatenation to detect, same as c/cpp.
-    literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
-                         concat_types=("concatenated_string",)),
+    literals=LiteralSpec(
+        leaf_types=("string_literal", "raw_string_literal"), concat_types=("concatenated_string",)
+    ),
     display_name="HLSL",
 )
 

@@ -48,19 +48,14 @@ def _format_folder_summary(
         ext_counts[ext] += 1
     total = len(file_paths)
     ext_dist = ", ".join(
-        f"{ext} {round(100 * c / total)}%"
-        for ext, c in sorted(ext_counts.items(), key=lambda kv: -kv[1])
+        f"{ext} {round(100 * c / total)}%" for ext, c in sorted(ext_counts.items(), key=lambda kv: -kv[1])
     )
 
     ranked = sorted(folder_chunks, key=lambda c: -scores.get(c["id"], 0.0))
     top_symbols = [c["name"] for c in ranked if c["name"]][:TOP_SYMBOLS_PER_FOLDER]
     symbols_line = ", ".join(top_symbols) if top_symbols else "(no named symbols)"
 
-    return (
-        f"{folder}/  [{parent_token}]\n"
-        f"  files: {total} ({ext_dist})\n"
-        f"  top symbols: {symbols_line}"
-    )
+    return f"{folder}/  [{parent_token}]\n  files: {total} ({ext_dist})\n  top symbols: {symbols_line}"
 
 
 def build_folder_summaries(
@@ -112,7 +107,7 @@ def build_folder_summaries(
     refreshed = 0
     if pending:
         for i in range(0, len(pending), SUMMARY_EMBED_BATCH):
-            batch = pending[i:i + SUMMARY_EMBED_BATCH]
+            batch = pending[i : i + SUMMARY_EMBED_BATCH]
             texts = [p[1] for p in batch]
             try:
                 embeddings = embed_fn(texts)
@@ -120,7 +115,9 @@ def build_folder_summaries(
                 logger.error(
                     "Failed to embed folder-summary batch (%d items): %s — "
                     "remaining %d summaries skipped this run",
-                    len(batch), e, len(pending) - i - len(batch),
+                    len(batch),
+                    e,
+                    len(pending) - i - len(batch),
                 )
                 break
             for (folder, summary, content_hash), emb in zip(batch, embeddings):

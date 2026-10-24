@@ -36,7 +36,7 @@ def _attach_definition_source(store, definitions: list[dict], max_chars: int) ->
             # The declaration's own lines, not the unrelated chunk around them.
             lines = _canonical_chunk_content(chunk).splitlines()
             first = d["start_line"] - chunk["start_line"]
-            d["source"] = "\n".join(lines[first:first + d["end_line"] - d["start_line"] + 1])
+            d["source"] = "\n".join(lines[first : first + d["end_line"] - d["start_line"] + 1])
             continue
         content = chunk.get("content") or ""
         chunk_end, def_end = chunk.get("end_line"), d.get("end_line")
@@ -59,9 +59,8 @@ def _attach_definition_source(store, definitions: list[dict], max_chars: int) ->
                 )
         if len(content) > per_def_budget:
             d["source"] = (
-                content[:per_def_budget]
-                + f"\n… [truncated at {per_def_budget} chars — Read "
-                  f"{d['path']}:{d['start_line']}-{d['end_line']} for the rest]"
+                content[:per_def_budget] + f"\n… [truncated at {per_def_budget} chars — Read "
+                f"{d['path']}:{d['start_line']}-{d['end_line']} for the rest]"
             )
         else:
             d["source"] = content

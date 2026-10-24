@@ -26,8 +26,7 @@ def _vocab_fingerprint(vocab: set[str]) -> str:
     """Invalidates the unhealable-content memo when the vocab or the heal
     logic changes: a file healing depends on which macros are pre-blanked,
     so a memo built under a narrower vocab must be dropped once it grows."""
-    return hashlib.sha256(
-        "\n".join([_HEAL_LOGIC_VERSION, *sorted(vocab)]).encode()).hexdigest()
+    return hashlib.sha256("\n".join([_HEAL_LOGIC_VERSION, *sorted(vocab)]).encode()).hexdigest()
 
 
 def load_macro_memo(store, macros):
@@ -51,12 +50,12 @@ def load_macro_memo(store, macros):
     # Compared against `persisted`, not `vocab`: `vocab` also carries this
     # run's non-persisted seed, which would cause spurious invalidation.
     if unhealable_hashes:
-        stored_fp  = store.get_meta("unhealable_vocab_fingerprint")
+        stored_fp = store.get_meta("unhealable_vocab_fingerprint")
         current_fp = _vocab_fingerprint(persisted)
         if stored_fp != current_fp:
             logger.info(
-                "macro vocab changed since unhealable memo was built — "
-                "clearing %d memoized entries", len(unhealable_hashes)
+                "macro vocab changed since unhealable memo was built — clearing %d memoized entries",
+                len(unhealable_hashes),
             )
             unhealable_order = []
             unhealable_hashes = set()
@@ -64,14 +63,14 @@ def load_macro_memo(store, macros):
     return persisted, vocab, unhealable_order, unhealable_hashes, new_unhealable
 
 
-def persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, new_unhealable,
-                       vocab_changed: bool = False):
+def persist_macro_memo(
+    store, persisted, macro_file_counts, unhealable_order, new_unhealable, vocab_changed: bool = False
+):
     """Writes the macro vocab and, when it changed, the unhealable-content memo to meta."""
     # `persisted` carried forward unconditionally: its members were
     # pre-blanked, so they can't reappear in macro_file_counts (see
     # _MACRO_PERSIST_MIN_FILES for the filter on new ones).
-    qualifying = {m for m, c in macro_file_counts.items()
-                  if c >= _MACRO_PERSIST_MIN_FILES}
+    qualifying = {m for m, c in macro_file_counts.items() if c >= _MACRO_PERSIST_MIN_FILES}
     if qualifying or vocab_changed:
         # Persist only the durable set + newly-qualifying macros, NOT the runtime
         # seed (which is layered on at load time), so a config seed never bakes in.
@@ -87,5 +86,4 @@ def persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, ne
         # Fingerprint of the vocab this memo was (re)built under, the same
         # `persisted | qualifying` set persisted above as meta['macro_vocab'],
         # so load_macro_memo's next-run load-time check can detect vocab growth.
-        store.set_meta("unhealable_vocab_fingerprint",
-                       _vocab_fingerprint(persisted | qualifying))
+        store.set_meta("unhealable_vocab_fingerprint", _vocab_fingerprint(persisted | qualifying))

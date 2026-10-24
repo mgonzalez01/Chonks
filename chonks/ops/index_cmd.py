@@ -30,6 +30,7 @@ logger = logging.getLogger("chonks.chunker")
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _load_config(explicit: str | None) -> dict:
     """Load config.json, logging each file that failed and the one that loaded."""
     loaded = load_config(explicit)
@@ -46,108 +47,142 @@ def _load_config(explicit: str | None) -> dict:
 def main(argv=None) -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Index source files into a Chonks sqlite-vec database."
-    )
+    parser = argparse.ArgumentParser(description="Index source files into a Chonks sqlite-vec database.")
     parser.add_argument(
-        "paths", nargs="*", metavar="PATH",
+        "paths",
+        nargs="*",
+        metavar="PATH",
         help="Files or directories to index (recursively). Not required with --reembed.",
     )
     parser.add_argument(
-        "--reembed", action="store_true",
+        "--reembed",
+        action="store_true",
         help="Re-embed all chunks already in the DB without re-parsing source files. "
-             "Updates vectors only; use after changing the embedding format.",
+        "Updates vectors only; use after changing the embedding format.",
     )
     parser.add_argument(
-        "--suggest-subsystems", action="store_true",
+        "--suggest-subsystems",
+        action="store_true",
         help="Cluster folder summaries by cosine similarity and print suggested "
-             "`subsystems` groupings ready to paste into config.json. No indexing.",
+        "`subsystems` groupings ready to paste into config.json. No indexing.",
     )
     parser.add_argument(
-        "--rebuild-graphs", action="store_true",
+        "--rebuild-graphs",
+        action="store_true",
         help="Re-run the post-index passes (build_refs + build_neighbors + "
-             "build_folder_summaries) against the existing DB without re-parsing "
-             "or re-embedding any source files. Use to recover after a graph-build "
-             "failure that left chunks indexed but graphs empty.",
+        "build_folder_summaries) against the existing DB without re-parsing "
+        "or re-embedding any source files. Use to recover after a graph-build "
+        "failure that left chunks indexed but graphs empty.",
     )
     parser.add_argument(
-        "--rebuild-knn", action="store_true",
+        "--rebuild-knn",
+        action="store_true",
         help="Like --rebuild-graphs but skips build_refs: re-runs only "
-             "build_neighbors + PageRank + build_folder_summaries against the existing "
-             "DB. build_refs dominates wall clock at scale (~25min/385k chunks vs ~8min "
-             "for kNN) and is unneeded when chunk_refs is already persisted and only "
-             "chunk_neighbors is stale/empty. Falls back to the full --rebuild-graphs "
-             "chain, with a warning, if chunk_refs is empty (nothing to reuse).",
+        "build_neighbors + PageRank + build_folder_summaries against the existing "
+        "DB. build_refs dominates wall clock at scale (~25min/385k chunks vs ~8min "
+        "for kNN) and is unneeded when chunk_refs is already persisted and only "
+        "chunk_neighbors is stale/empty. Falls back to the full --rebuild-graphs "
+        "chain, with a warning, if chunk_refs is empty (nothing to reuse).",
     )
     parser.add_argument(
-        "--subsystem-threshold", type=float, default=None, metavar="DIST",
+        "--subsystem-threshold",
+        type=float,
+        default=None,
+        metavar="DIST",
         help="Cosine-distance cut threshold for --suggest-subsystems (default: 0.30).",
     )
     parser.add_argument(
-        "--db", default=None, metavar="FILE",
+        "--db",
+        default=None,
+        metavar="FILE",
         help="Path to the sqlite DB file (created if absent). "
-             f"Default: config.json's `db` key, else {DEFAULT_DB}",
+        f"Default: config.json's `db` key, else {DEFAULT_DB}",
     )
     parser.add_argument(
-        "--force", action="store_true",
+        "--force",
+        action="store_true",
         help="Re-index all files even if unchanged.",
     )
     parser.add_argument(
-        "--root", default=None, metavar="DIR",
+        "--root",
+        default=None,
+        metavar="DIR",
         help="Root directory to store paths relative to (for portable DBs). "
-             "Defaults to the common ancestor of the indexed paths.",
+        "Defaults to the common ancestor of the indexed paths.",
     )
     parser.add_argument(
-        "--embed-url", default=None, metavar="URL",
-        help=f"Embedding server URL. Precedence: this flag > config.embed_url > "
-             f"{DEFAULT_EMBED_URL}",
+        "--embed-url",
+        default=None,
+        metavar="URL",
+        help=f"Embedding server URL. Precedence: this flag > config.embed_url > {DEFAULT_EMBED_URL}",
     )
     parser.add_argument(
-        "--embed-model", default=None, metavar="NAME",
+        "--embed-model",
+        default=None,
+        metavar="NAME",
         help=f"Embedding model name (sent in /v1/embeddings request body). "
-             f"Precedence: this flag > config.embed_model > {DEFAULT_EMBED_MODEL}",
+        f"Precedence: this flag > config.embed_model > {DEFAULT_EMBED_MODEL}",
     )
     parser.add_argument(
-        "--embed-query-prefix", default=None, metavar="STR",
+        "--embed-query-prefix",
+        default=None,
+        metavar="STR",
         help="Instruction prefix prepended to QUERY text before embedding; overrides "
-             "the per-model preset. Pass '' to force no prefix. Code models like "
-             "jina-code-embeddings need asymmetric query/doc prefixes; Qwen3-Embedding "
-             "needs a query-side instruction only. The preset handles both.",
+        "the per-model preset. Pass '' to force no prefix. Code models like "
+        "jina-code-embeddings need asymmetric query/doc prefixes; Qwen3-Embedding "
+        "needs a query-side instruction only. The preset handles both.",
     )
     parser.add_argument(
-        "--embed-doc-prefix", default=None, metavar="STR",
+        "--embed-doc-prefix",
+        default=None,
+        metavar="STR",
         help="Instruction prefix prepended to DOCUMENT (chunk) text at index time; "
-             "overrides the per-model preset. Pass '' to force no prefix.",
+        "overrides the per-model preset. Pass '' to force no prefix.",
     )
     parser.add_argument(
-        "--embed-batch", default=None, type=int, metavar="N",
+        "--embed-batch",
+        default=None,
+        type=int,
+        metavar="N",
         help=f"Chunks per embedding request. Precedence: this flag > config.embed_batch "
-             f"> {EMBED_BATCH}. Raise for small/fast embedders to keep the GPU fed.",
+        f"> {EMBED_BATCH}. Raise for small/fast embedders to keep the GPU fed.",
     )
     parser.add_argument(
-        "--embed-inflight", default=None, type=int, metavar="N",
+        "--embed-inflight",
+        default=None,
+        type=int,
+        metavar="N",
         help=f"Concurrent in-flight embedding batches. Precedence: this flag > "
-             f"config.embed_inflight > {EMBED_INFLIGHT}. Raise (with llama-server "
-             f"--parallel) for small/fast embedders; the default suits a heavy 4B.",
+        f"config.embed_inflight > {EMBED_INFLIGHT}. Raise (with llama-server "
+        f"--parallel) for small/fast embedders; the default suits a heavy 4B.",
     )
     parser.add_argument(
-        "--config", default=None, metavar="FILE",
+        "--config",
+        default=None,
+        metavar="FILE",
         help="Path to config.json. Used to load `exclude`, `include`, and `codebase` root.",
     )
     parser.add_argument(
-        "--exclude", action="append", default=None, metavar="PREFIX",
+        "--exclude",
+        action="append",
+        default=None,
+        metavar="PREFIX",
         help="Path prefix (relative to root) to skip during scan. A * matches within "
-             "one path segment; quote such a pattern so the shell leaves it alone. "
-             "Repeat for multiple.",
+        "one path segment; quote such a pattern so the shell leaves it alone. "
+        "Repeat for multiple.",
     )
     parser.add_argument(
-        "--include", action="append", default=None, metavar="PREFIX",
+        "--include",
+        action="append",
+        default=None,
+        metavar="PREFIX",
         help="Path prefix that overrides matching excludes when strictly more "
-             "specific (e.g. --exclude tmp/ --include tmp/git/a/). A * matches as "
-             "in --exclude. Repeat for multiple.",
+        "specific (e.g. --exclude tmp/ --include tmp/git/a/). A * matches as "
+        "in --exclude. Repeat for multiple.",
     )
     parser.add_argument(
-        "--log-level", default="info",
+        "--log-level",
+        default="info",
         choices=["debug", "info", "warning", "error"],
         help="Logging verbosity (default: info)",
     )
@@ -160,9 +195,9 @@ def main(argv=None) -> None:
             tqdm.write(self.format(record), file=sys.stderr)
 
     handler = _TqdmHandler()
-    handler.setFormatter(logging.Formatter(
-        "%(asctime)s %(levelname)-8s %(name)s: %(message)s", datefmt="%H:%M:%S"
-    ))
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-8s %(name)s: %(message)s", datefmt="%H:%M:%S")
+    )
     logging.root.setLevel(args.log_level.upper())
     logging.root.addHandler(handler)
 
@@ -189,17 +224,20 @@ def main(argv=None) -> None:
     knn_backend = config.get("knn_backend")
     if knn_backend is not None:
         if knn_backend not in ("auto", "numpy", "mlx", "cuda"):
-            parser.error(
-                f"config.json knn_backend must be auto|numpy|mlx|cuda, got {knn_backend!r}"
-            )
+            parser.error(f"config.json knn_backend must be auto|numpy|mlx|cuda, got {knn_backend!r}")
         if knn_backend != "auto" and not os.environ.get("CHONKS_KNN_BACKEND"):
             os.environ["CHONKS_KNN_BACKEND"] = knn_backend
 
     if args.rebuild_graphs and args.rebuild_knn:
         parser.error("--rebuild-graphs and --rebuild-knn are mutually exclusive")
 
-    if (not args.reembed and not args.suggest_subsystems and not args.rebuild_graphs
-            and not args.rebuild_knn and not args.paths):
+    if (
+        not args.reembed
+        and not args.suggest_subsystems
+        and not args.rebuild_graphs
+        and not args.rebuild_knn
+        and not args.paths
+    ):
         parser.error(
             "provide paths to index, or use --reembed / --suggest-subsystems / "
             "--rebuild-graphs / --rebuild-knn"
@@ -215,49 +253,60 @@ def main(argv=None) -> None:
 
     # Embedder configuration: CLI flag > config key > module default. Resolved
     # once here and threaded down, so there's no module-level mutable state.
-    embed_url   = args.embed_url   or config.get("embed_url")   or DEFAULT_EMBED_URL
+    embed_url = args.embed_url or config.get("embed_url") or DEFAULT_EMBED_URL
     embed_model = args.embed_model or config.get("embed_model") or DEFAULT_EMBED_MODEL
     # Prefixes: CLI flag (incl. "") > config key > per-model preset (resolved inside
     # Embedder). None here means "not set on flag or config" => let the preset apply.
-    query_prefix = (args.embed_query_prefix if args.embed_query_prefix is not None
-                    else config.get("embed_query_prefix"))
-    doc_prefix   = (args.embed_doc_prefix if args.embed_doc_prefix is not None
-                    else config.get("embed_doc_prefix"))
-    embedder    = Embedder(embed_url, embed_model,
-                           query_prefix=query_prefix, doc_prefix=doc_prefix)
+    query_prefix = (
+        args.embed_query_prefix if args.embed_query_prefix is not None else config.get("embed_query_prefix")
+    )
+    doc_prefix = (
+        args.embed_doc_prefix if args.embed_doc_prefix is not None else config.get("embed_doc_prefix")
+    )
+    embedder = Embedder(embed_url, embed_model, query_prefix=query_prefix, doc_prefix=doc_prefix)
     # Indexing concurrency: CLI flag > config key > default. Raise for small/fast embedders.
-    embed_batch    = (args.embed_batch if args.embed_batch is not None
-                      else (config.get("embed_batch") or EMBED_BATCH))
-    embed_inflight = (args.embed_inflight if args.embed_inflight is not None
-                      else (config.get("embed_inflight") or EMBED_INFLIGHT))
+    embed_batch = (
+        args.embed_batch if args.embed_batch is not None else (config.get("embed_batch") or EMBED_BATCH)
+    )
+    embed_inflight = (
+        args.embed_inflight
+        if args.embed_inflight is not None
+        else (config.get("embed_inflight") or EMBED_INFLIGHT)
+    )
 
     if args.rebuild_graphs or args.rebuild_knn:
         with Store(args.db) as store:
             print(f"DB: {args.db}")
-            print(f"Embedding server: {embedder.url} ({embedder.model}) "
-                  f"(only needed if folder summaries need refresh)\n")
+            print(
+                f"Embedding server: {embedder.url} ({embedder.model}) "
+                f"(only needed if folder summaries need refresh)\n"
+            )
             skip_refs = args.rebuild_knn
             if skip_refs and store.count_refs() == 0:
-                print("chunk_refs is empty — --rebuild-knn has nothing to reuse; "
-                      "falling back to the full --rebuild-graphs chain.")
+                print(
+                    "chunk_refs is empty — --rebuild-knn has nothing to reuse; "
+                    "falling back to the full --rebuild-graphs chain."
+                )
                 skip_refs = False
             if skip_refs:
                 print("Skipping build_refs (--rebuild-knn): chunk_refs already persisted.")
             else:
                 ref_count = build_refs(
-                    store, cap_mentions=options["cap_mentions_fanout"],
+                    store,
+                    cap_mentions=options["cap_mentions_fanout"],
                     associated_top_frac=options["associated_top_frac"],
                 )
                 print(f"Rebuilt {ref_count} cross-reference edges.")
             neighbor_count = build_neighbors(store)
             print(f"Built {neighbor_count} k-NN neighbour edges.")
             pagerank_count = persist_pagerank(
-                store, force=True, edge_type_weights=edge_type_weights,
+                store,
+                force=True,
+                edge_type_weights=edge_type_weights,
             )
             print(f"Persisted {pagerank_count} PageRank scores.")
             hierarchy = rebuild_hierarchy(store)
-            print(f"Built hierarchy: {hierarchy['nodes']} nodes, "
-                  f"{hierarchy['edges']} contains edges.")
+            print(f"Built hierarchy: {hierarchy['nodes']} nodes, {hierarchy['edges']} contains edges.")
             try:
                 with httpx.Client() as client:
                     summary_stats = build_folder_summaries(
@@ -275,20 +324,21 @@ def main(argv=None) -> None:
 
     if args.suggest_subsystems:
         from chonks.ops.subsystems import DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD, suggest_subsystems
+
         threshold = args.subsystem_threshold or DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD
         with Store(args.db) as store:
             clusters = suggest_subsystems(store, distance_threshold=threshold)
         if not clusters:
-            print("No subsystem clusters found at threshold "
-                  f"{threshold:.3f}. (Either fewer than 2 folders are indexed, "
-                  "or all are too dissimilar.)", file=sys.stderr)
+            print(
+                "No subsystem clusters found at threshold "
+                f"{threshold:.3f}. (Either fewer than 2 folders are indexed, "
+                "or all are too dissimilar.)",
+                file=sys.stderr,
+            )
         else:
             # Suggested format mirrors the `subsystems` map shape from config.json;
             # names are placeholders the user should rewrite to be meaningful.
-            output = {
-                f"cluster_{i:02d}": paths
-                for i, paths in enumerate(clusters, 1)
-            }
+            output = {f"cluster_{i:02d}": paths for i, paths in enumerate(clusters, 1)}
             print(json.dumps({"subsystems": output}, indent=2))
         sys.exit(0)
 
@@ -332,7 +382,9 @@ def main(argv=None) -> None:
             print(f"Paths: {args.paths}\n")
 
             result = index_paths(
-                args.paths, store, embedder,
+                args.paths,
+                store,
+                embedder,
                 root=root,
                 force=args.force,
                 exclude=exclude_list,
@@ -345,12 +397,13 @@ def main(argv=None) -> None:
 
             cov_note = ""
             if result["low_coverage_files"]:
-                cov_note = (f" (worst: {result['worst_coverage_file']} at "
-                            f"{int(result['worst_coverage'] * 100)}%)")
+                cov_note = (
+                    f" (worst: {result['worst_coverage_file']} at {int(result['worst_coverage'] * 100)}%)"
+                )
             print(
                 f"\nDone in {result['total_elapsed_s']}s "
                 f"(embed {result['embed_elapsed_s']}s, "
-                + (f"fts {result['fts_elapsed_s']}s, " if result['fts_elapsed_s'] else "")
+                + (f"fts {result['fts_elapsed_s']}s, " if result["fts_elapsed_s"] else "")
                 + f"refs {result['refs_elapsed_s']}s, "
                 f"knn {result['knn_elapsed_s']}s, pagerank {result['pagerank_elapsed_s']}s, "
                 f"hierarchy {result['hierarchy_elapsed_s']}s, "
@@ -374,8 +427,10 @@ def main(argv=None) -> None:
                 f"(in {result['literals_capped_chunks']} chunks)"
             )
             if result["unsupported_ext_skipped"]:
-                print("unsupported extensions: "
-                      + skipped_exts_line(result["unsupported_exts"], result["unsupported_ext_skipped"]))
+                print(
+                    "unsupported extensions: "
+                    + skipped_exts_line(result["unsupported_exts"], result["unsupported_ext_skipped"])
+                )
             print(json.dumps(store.stats(), indent=2))
 
             # Same rule as doctor.py's breakdown; run here so it surfaces

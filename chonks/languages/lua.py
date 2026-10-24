@@ -1,4 +1,5 @@
 """Lua language plugin data."""
+
 from __future__ import annotations
 
 import re
@@ -16,7 +17,7 @@ def literal_wrapper(raw: str) -> "tuple[str, str] | object":
     if m:
         close = "]" + m.group(1) + "]"
         if raw.endswith(close) and len(raw) >= m.end() + len(close):
-            return raw[m.end():-len(close)], "raw"
+            return raw[m.end() : -len(close)], "raw"
         return raw, "raw"
     return NOT_HANDLED
 
@@ -35,9 +36,7 @@ LUA = LanguageSpec(
     salvage_nodes=frozenset({"function_declaration"}),
     # Lua's 'name' field is an identifier, or a dot_index_expression for the
     # `M.foo` module-table idiom; name_text() handles both.
-    name_rules=(
-        NameRule(("function_declaration",), name_field),
-    ),
+    name_rules=(NameRule(("function_declaration",), name_field),),
     line_comment_prefixes=("--",),
     block_comments=False,
     doc_comment_prefixes=("---",),

@@ -1,4 +1,5 @@
 """Python language plugin data."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -6,7 +7,14 @@ from typing import TYPE_CHECKING
 from ._ast import name_text
 from ._naming import decorated_name, name_field
 from .spec import (
-    ChildSpec, Children, Field, FieldChildren, LanguageSpec, LiteralSpec, NameRule, NestedSpec,
+    ChildSpec,
+    Children,
+    Field,
+    FieldChildren,
+    LanguageSpec,
+    LiteralSpec,
+    NameRule,
+    NestedSpec,
     NOT_HANDLED,
 )
 
@@ -24,7 +32,7 @@ def is_main_block(node: Node, src: bytes) -> bool:
     cond = node.child_by_field_name("condition")
     if cond is None:
         return False
-    text = src[cond.start_byte:cond.end_byte].decode(errors="replace")
+    text = src[cond.start_byte : cond.end_byte].decode(errors="replace")
     return "__name__" in text and "__main__" in text
 
 
@@ -68,8 +76,11 @@ def is_python_docstring_position(n: Node) -> bool:
         return False
     if parent.type == "module":
         return True
-    return parent.type == "block" and parent.parent is not None and \
-        parent.parent.type in ("function_definition", "class_definition")
+    return (
+        parent.type == "block"
+        and parent.parent is not None
+        and parent.parent.type in ("function_definition", "class_definition")
+    )
 
 
 def base_name(node: Node, src: bytes) -> str | None:
@@ -79,11 +90,14 @@ def base_name(node: Node, src: bytes) -> str | None:
     return name_text(node, src) if node is not None and node.type == "identifier" else None
 
 
-IMPORT = Children((
-    ChildSpec(("dotted_name",), "imports"),
-    ChildSpec(("aliased_import",), "imports",
-              nested=NestedSpec(("dotted_name",), name_text, break_inner=True)),
-))
+IMPORT = Children(
+    (
+        ChildSpec(("dotted_name",), "imports"),
+        ChildSpec(
+            ("aliased_import",), "imports", nested=NestedSpec(("dotted_name",), name_text, break_inner=True)
+        ),
+    )
+)
 
 PYTHON = LanguageSpec(
     name="python",
@@ -120,8 +134,12 @@ PYTHON = LanguageSpec(
         "class_definition": "class",
         "decorated_definition": "function",
     },
-    literals=LiteralSpec(leaf_types=("string",), concat_types=("concatenated_string",),
-                         plus_type="binary_operator", skip_fn=is_python_docstring_position),
+    literals=LiteralSpec(
+        leaf_types=("string",),
+        concat_types=("concatenated_string",),
+        plus_type="binary_operator",
+        skip_fn=is_python_docstring_position,
+    ),
     raw_string_prefix=is_raw_prefix,
     file_metadata=file_metadata,
     display_name="Python",

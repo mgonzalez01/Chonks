@@ -8,8 +8,8 @@ import numpy as np
 
 # CLI-only defaults; library callers (server.py, MCP) build Embedder from config
 # and never touch these, keeping a remote-embedder swap a pure config change.
-DEFAULT_EMBED_URL   = "http://localhost:11437/v1/embeddings"
-DEFAULT_EMBED_MODEL = "qwen3-embedding"   # ignored by llama-server but required by spec
+DEFAULT_EMBED_URL = "http://localhost:11437/v1/embeddings"
+DEFAULT_EMBED_MODEL = "qwen3-embedding"  # ignored by llama-server but required by spec
 # What `chonks init` writes; the name selects the prefix preset below.
 # Servers ignore the model name field, Chonks doesn't.
 RECOMMENDED_EMBED_MODEL = "jina-code-embeddings-0.5b"
@@ -30,7 +30,8 @@ EMBED_QUERY_TOKEN_BUDGET = 3800
 
 
 def truncate_query_text(
-    text: str, token_budget: int = EMBED_QUERY_TOKEN_BUDGET,
+    text: str,
+    token_budget: int = EMBED_QUERY_TOKEN_BUDGET,
 ) -> tuple[str, bool]:
     """Truncate `text` to a char budget derived from `token_budget`. Returns
     (text, truncated); untouched if already within budget. Slicing is Unicode-safe
@@ -50,7 +51,7 @@ def truncate_query_text(
 #
 # jina-code-embeddings, nl2code task (natural-language query -> code snippet):
 JINA_CODE_QUERY_PREFIX = "Find the most relevant code snippet given the following query:\n"
-JINA_CODE_DOC_PREFIX   = "Candidate code snippet:\n"
+JINA_CODE_DOC_PREFIX = "Candidate code snippet:\n"
 
 # nomic-ai/CodeRankEmbed: query-side prefix only, drops SILENTLY if the
 # model-name gate doesn't match (no error, just degraded ranking).
@@ -60,8 +61,7 @@ CODERANK_QUERY_PREFIX = "Represent this query for searching relevant code: "
 # <|endoftext|> itself (add_special), so Chonks adds nothing extra on the doc
 # side. Measured to help research recall on the panel, see eval/results/F1.
 QWEN3_QUERY_PREFIX = (
-    "Instruct: Given a code search query, retrieve relevant code snippets that answer the query\n"
-    "Query: "
+    "Instruct: Given a code search query, retrieve relevant code snippets that answer the query\nQuery: "
 )
 
 # Case-insensitive substring match on embed_model. Explicit embed_query_prefix/
@@ -128,7 +128,7 @@ class Embedder:
         doc_prefix: str | None = None,
         query_token_budget: int | None = None,
     ):
-        self.url   = url
+        self.url = url
         self.model = model
         # Resolve asymmetric instruction prefixes once (see `resolve_prefixes`):
         # None => use the per-model preset; "" => force no prefix; str => verbatim.
@@ -140,17 +140,20 @@ class Embedder:
             logger.warning(
                 "embed_model is not set; using the built-in default %r, which applies the "
                 "Qwen3 query instruction. If %s serves a different model, set embed_model "
-                "to its name.", model, url,
+                "to its name.",
+                model,
+                url,
             )
-        elif (matched_prefix_preset(model) is None
-                and query_prefix is None and doc_prefix is None):
+        elif matched_prefix_preset(model) is None and query_prefix is None and doc_prefix is None:
             logger.warning(
                 "embed_model=%r matches no instruction-prefix preset (%s): queries "
                 "and documents embed without prefixes. If %s serves jina-code-embeddings, "
                 "set embed_model to a name containing 'jina-code' (and re-index if the "
                 "DB was built without prefixes). Set embed_query_prefix/embed_doc_prefix "
                 "explicitly to silence this.",
-                model, ", ".join(sorted(_PREFIX_PRESETS)), url,
+                model,
+                ", ".join(sorted(_PREFIX_PRESETS)),
+                url,
             )
         # See `truncate_query_text`. None => the conservative default.
         self.query_token_budget = (
@@ -256,8 +259,9 @@ def probe_embedder(embedder: Embedder, timeout: float = 10.0) -> str | None:
     return None
 
 
-def ping_embedder(base_url: str, *, post_fn=None, timeout: float = 5.0,
-                  model: str = RECOMMENDED_EMBED_MODEL) -> dict:
+def ping_embedder(
+    base_url: str, *, post_fn=None, timeout: float = 5.0, model: str = RECOMMENDED_EMBED_MODEL
+) -> dict:
     """Live-check an embedding server. Never raises: failures (timeout,
     4xx/5xx, malformed body) all collapse into {"reachable": False, "error":
     <str>}. `post_fn` is injectable for tests."""

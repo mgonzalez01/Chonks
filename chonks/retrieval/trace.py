@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from chonks.storage.store import Store
 
 _ASSOCIATED_RANK = 1  # typed edges (calls/imports/inherits/xlang) rank 0
-_MENTIONS_RANK = 2   # plain mentions ranks below associated
-_SEMANTIC_RANK = 3   # semantic k-NN edges are the least preferred, fallback-only
+_MENTIONS_RANK = 2  # plain mentions ranks below associated
+_SEMANTIC_RANK = 3  # semantic k-NN edges are the least preferred, fallback-only
 
 
 def _edge_rank(edge_type: str) -> int:
@@ -177,9 +177,19 @@ def trace_path(
     to_ids = resolve_targets(store, to_symbol).chunk_ids
 
     if not from_ids:
-        return {"found": False, "error": f"Unknown symbol: {from_symbol!r}", "reason": "unknown_symbol", "used_semantic": False}
+        return {
+            "found": False,
+            "error": f"Unknown symbol: {from_symbol!r}",
+            "reason": "unknown_symbol",
+            "used_semantic": False,
+        }
     if not to_ids:
-        return {"found": False, "error": f"Unknown symbol: {to_symbol!r}", "reason": "unknown_symbol", "used_semantic": False}
+        return {
+            "found": False,
+            "error": f"Unknown symbol: {to_symbol!r}",
+            "reason": "unknown_symbol",
+            "used_semantic": False,
+        }
 
     path = _bidirectional_bfs(store, from_ids, to_ids, max_depth, max_fanout, include_semantic=False)
     used_semantic = False
@@ -191,7 +201,7 @@ def trace_path(
         return {
             "found": False,
             "error": f"No path found from {from_symbol!r} to {to_symbol!r} within max_depth={max_depth}"
-                     + ("" if include_semantic else " (structural edges only; retry with include_semantic=True)"),
+            + ("" if include_semantic else " (structural edges only; retry with include_semantic=True)"),
             "used_semantic": include_semantic,
         }
 
@@ -203,20 +213,22 @@ def trace_path(
 
         def _display(c: dict) -> dict:
             return {
-                "chunk_id":   c.get("id"),
-                "path":       c.get("path"),
-                "name":       c.get("name"),
+                "chunk_id": c.get("id"),
+                "path": c.get("path"),
+                "name": c.get("name"),
                 "chunk_type": c.get("chunk_type"),
                 "start_line": c.get("start_line"),
-                "end_line":   c.get("end_line"),
+                "end_line": c.get("end_line"),
             }
 
-        hops.append({
-            "from_chunk": _display(cu),
-            "to_chunk":   _display(cv),
-            "edge_type":  edge_type,
-            "direction":  direction,
-            "provenance": edge_provenance(edge_type),
-        })
+        hops.append(
+            {
+                "from_chunk": _display(cu),
+                "to_chunk": _display(cv),
+                "edge_type": edge_type,
+                "direction": direction,
+                "provenance": edge_provenance(edge_type),
+            }
+        )
 
     return {"found": True, "hops": hops, "depth": len(hops), "used_semantic": used_semantic}

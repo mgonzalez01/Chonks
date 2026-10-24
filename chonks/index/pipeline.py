@@ -73,6 +73,7 @@ from chonks.storage.store import Store, oldest_recorded
 def _refresh_from_registry() -> None:
     global _EXT_TO_LANG
     import chonks.languages as _languages
+
     _EXT_TO_LANG = _languages.EXT_TO_LANG
 
 
@@ -113,8 +114,7 @@ class _DaemonPool:
     def __init__(self, max_workers: int):
         self._q: queue.Queue = queue.Queue()
         self._threads = [
-            threading.Thread(target=self._worker, daemon=True,
-                             name=f"embed-pool-{i}")
+            threading.Thread(target=self._worker, daemon=True, name=f"embed-pool-{i}")
             for i in range(max_workers)
         ]
         for t in self._threads:
@@ -169,6 +169,7 @@ SKIPPED_EXTS_KEPT = 50
 # Incremental indexer
 # ---------------------------------------------------------------------------
 
+
 # ------------------------------------------------------- parser thread
 def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
     state = rs.state
@@ -190,15 +191,22 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
             try:
                 with lock:
                     state["current_file"] = fpath.name
-                src  = fpath.read_bytes()
+                src = fpath.read_bytes()
                 lang = _lang_for_path(fpath)
                 _oc: dict = {}
                 if lang is not None:
                     # Skip the heal sweep entirely for content already known
                     # unhealable from a prior run.
                     heal = content_hash not in unhealable_hashes
-                    segs = segment_file(src, lang, path=stored_path, counters=_oc,
-                                        macros=vocab, self_heal=heal, definitions=definitions)
+                    segs = segment_file(
+                        src,
+                        lang,
+                        path=stored_path,
+                        counters=_oc,
+                        macros=vocab,
+                        self_heal=heal,
+                        definitions=definitions,
+                    )
                 else:
                     # No grammar for this extension, admitted only because it's
                     # in fallback_extensions (scan_producer already filtered out
@@ -207,12 +215,12 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                     segs = segment_text_file(src, path=stored_path, counters=_oc)
                 # coverage: low means content was silently dropped (parse
                 # error, or Python module-level code that's never a boundary).
-                covered  = sum(len(s["content"].encode("utf-8")) for s in segs)
+                covered = sum(len(s["content"].encode("utf-8")) for s in segs)
                 coverage = covered / max(1, len(src))
                 with lock:
                     if _oc.get("oversize_chunks"):
                         state["oversize_chunks"] += _oc.get("oversize_chunks", 0)
-                        state["oversize_files"]  += _oc.get("oversize_files", 0)
+                        state["oversize_files"] += _oc.get("oversize_files", 0)
                     if _oc.get("parse_error"):
                         state["parse_error_files"] += 1
                     if _oc.get("macro_healed"):
@@ -240,10 +248,10 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                     if coverage < 0.70:
                         state["low_coverage_files"] += 1
                         if coverage < state["worst_coverage"]:
-                            state["worst_coverage"]      = coverage
+                            state["worst_coverage"] = coverage
                             state["worst_coverage_file"] = stored_path
                 stat = fpath.stat()
-                n    = len(segs)
+                n = len(segs)
                 file_metadata = _file_metadata(stored_path, lang)
                 # file_symbols must be populated BEFORE the first chunk for
                 # this file is enqueued: the embedder can complete the file
@@ -254,37 +262,39 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                     cid = _chunk_id(stored_path, seg["start_line"], seg["content"])
                     text = _compress_for_embed(seg["content"], name=seg["name"], path=stored_path)
                     chunk_ranges.append((seg["start_line"], seg["end_line"], seg["content"], cid))
-                    chunk_dicts.append({
-                        "id":           cid,
-                        "path":         stored_path,
-                        "language":     lang,
-                        "chunk_type":   seg["chunk_type"],
-                        "name":         seg["name"],
-                        "start_line":   seg["start_line"],
-                        "end_line":     seg["end_line"],
-                        "content":      seg["content"],
-                        "metadata":     _chunk_metadata(file_metadata, seg.get("refs")),
-                        "literals":     seg.get("literals") or [],
-                        # private metadata stripped before DB insert
-                        "_fpath":        stored_path,
-                        "_content_hash": content_hash,
-                        "_file_total":   n,
-                        "_stat":         stat,
-                        "_text":         text,
-                        "_vec":          old_vecs.get(text),
-                    })
+                    chunk_dicts.append(
+                        {
+                            "id": cid,
+                            "path": stored_path,
+                            "language": lang,
+                            "chunk_type": seg["chunk_type"],
+                            "name": seg["name"],
+                            "start_line": seg["start_line"],
+                            "end_line": seg["end_line"],
+                            "content": seg["content"],
+                            "metadata": _chunk_metadata(file_metadata, seg.get("refs")),
+                            "literals": seg.get("literals") or [],
+                            # private metadata stripped before DB insert
+                            "_fpath": stored_path,
+                            "_content_hash": content_hash,
+                            "_file_total": n,
+                            "_stat": stat,
+                            "_text": text,
+                            "_vec": old_vecs.get(text),
+                        }
+                    )
                 # Handed to the embedder thread to write on commit. A member
                 # has no column, so it is placed at the start of its line.
                 chunk_at = _chunk_locator(src, chunk_ranges)
                 sym_rows = [
                     {
-                        "path":       stored_path,
-                        "name":       sym["name"],
-                        "kind":       sym["kind"],
-                        "language":   sym["language"],
+                        "path": stored_path,
+                        "name": sym["name"],
+                        "kind": sym["kind"],
+                        "language": sym["language"],
                         "start_line": sym["start_line"],
-                        "end_line":   sym["end_line"],
-                        "chunk_id":   chunk_at(sym["start_line"], sym["start_col"]),
+                        "end_line": sym["end_line"],
+                        "chunk_id": chunk_at(sym["start_line"], sym["start_col"]),
                     }
                     for sym in (_oc.get("symbols") or [])
                 ]
@@ -293,12 +303,11 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                     for m in (_oc.get("members") or [])
                 ]
                 base_rows = [{**b, "path": stored_path} for b in (_oc.get("bases") or [])]
-                using_rows = [{**u, "path": stored_path}
-                              for u in (_oc.get("using_namespaces") or [])]
+                using_rows = [{**u, "path": stored_path} for u in (_oc.get("using_namespaces") or [])]
                 with lock:
                     if sym_rows or member_rows or base_rows or using_rows:
                         file_symbols[stored_path] = (sym_rows, member_rows, base_rows, using_rows)
-                    state["files_parsed"]  += 1
+                    state["files_parsed"] += 1
                     state["chunks_queued"] += n
                 # embed_q.put() must NOT be called under `lock`: commit_phase
                 # needs `lock` to drain, so holding it here would deadlock.
@@ -308,7 +317,7 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
             except Exception as e:  # noqa: BLE001, a file that fails to parse is counted, not fatal
                 with lock:
                     state["files_parsed"] += 1
-                    state["errors"]       += 1
+                    state["errors"] += 1
                 logger.error("PARSE ERROR %s: %s", fpath, e)
     except Exception as e:
         worker_exc[0] = e
@@ -320,7 +329,9 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
 
 
 # ------------------------------------------------------ embedder thread
-def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch: int, embed_inflight: int) -> None:
+def embedder_worker(
+    rs: RunState, store: Store, embedder: Embedder, embed_batch: int, embed_inflight: int
+) -> None:
     state = rs.state
     lock = rs.lock
     done_event = rs.done_event
@@ -331,13 +342,17 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
     # embed_phase runs in a thread pool so HTTP overlaps the GPU; commit_phase
     # runs serially here (single-writer). Futures drained FIFO to keep
     # insertion order matching submission order.
-    file_embedded: dict[str, int]          = {}  # fpath → chunks embedded
-    file_dropped: dict[str, int]           = {}  # fpath → chunks dropped (embed error)
-    file_retry: set[str]                   = set()  # fpaths that dropped a chunk to a server error
-    file_meta: dict[str, tuple]            = {}  # fpath → (hash, total, stat)
-    batch: list[dict]                      = []
+    file_embedded: dict[str, int] = {}  # fpath → chunks embedded
+    file_dropped: dict[str, int] = {}  # fpath → chunks dropped (embed error)
+    file_retry: set[str] = set()  # fpaths that dropped a chunk to a server error
+    file_meta: dict[str, tuple] = {}  # fpath → (hash, total, stat)
+    batch: list[dict] = []
 
-    def embed_phase(snapshot: list[dict], client: httpx.Client) -> tuple[list[dict], list[list[float] | bytes], int, list[tuple[dict, Exception | None]], int, Exception | None]:
+    def embed_phase(
+        snapshot: list[dict], client: httpx.Client
+    ) -> tuple[
+        list[dict], list[list[float] | bytes], int, list[tuple[dict, Exception | None]], int, Exception | None
+    ]:
         """Network phase (thread pool); only shared-state touch is the
         watchdog clock. Chunks holding a stored vector are not sent. Returns
         batch_exc, the top-level failure if any, for commit_phase's
@@ -350,7 +365,8 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
             catch a fast-failing dead embedder (see EmbedderDownError)."""
             try:
                 return embedder.embed_documents(
-                    ts, client, timeout=compute_embed_timeout(len(ts), (embed_inflight - 1) * embed_batch))
+                    ts, client, timeout=compute_embed_timeout(len(ts), (embed_inflight - 1) * embed_batch)
+                )
             finally:
                 with lock:
                     state["last_progress_ts"] = time.monotonic()
@@ -361,7 +377,8 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
                 state["inflight_batches"][id(snapshot)] = _batch_label(fresh)
             try:
                 embedded, embeddings, truncated, errors, failed, batch_exc = _embed_phase_inner(
-                    fresh, [c["_text"] for c in fresh], _embed_live)
+                    fresh, [c["_text"] for c in fresh], _embed_live
+                )
             finally:
                 with lock:
                     state["inflight_batches"].pop(id(snapshot), None)
@@ -371,14 +388,20 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         done = [c for c in snapshot if id(c) in vecs]
         return done, [vecs[id(c)] for c in done], truncated, errors, failed, batch_exc
 
-    def _embed_phase_inner(snapshot: list[dict], texts: list[str], _embed_live) -> tuple[list[dict], list[list[float]], int, list[tuple[dict, Exception | None]], int, Exception | None]:
+    def _embed_phase_inner(
+        snapshot: list[dict], texts: list[str], _embed_live
+    ) -> tuple[
+        list[dict], list[list[float]], int, list[tuple[dict, Exception | None]], int, Exception | None
+    ]:
         try:
             embeddings = _embed_live(texts)
             return snapshot, embeddings, 0, [], 0, None
         except Exception as e:  # noqa: BLE001, any batch failure falls back to isolating chunks
             logger.warning("EMBED batch failed (%d chunks), isolating: %s", len(snapshot), e)
             ok_chunks, embeddings, truncated, errors = _embed_isolating(
-                snapshot, texts, _embed_live,
+                snapshot,
+                texts,
+                _embed_live,
             )
             for chunk, exc in errors:
                 logger.error("EMBED ERROR %s:%s: %s", chunk["path"], chunk["start_line"], exc)
@@ -394,8 +417,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         if file_embedded.get(fp, 0) + file_dropped.get(fp, 0) != total:
             return
         ch, _, stat = file_meta[fp]
-        store.upsert_file(fp, stat.st_size, stat.st_mtime,
-                          INCOMPLETE_FILE_HASH if fp in file_retry else ch)
+        store.upsert_file(fp, stat.st_size, stat.st_mtime, INCOMPLETE_FILE_HASH if fp in file_retry else ch)
         # Refresh the file's decoupled symbols and class model.
         # delete-then-insert is idempotent on re-index; written here on the
         # single-writer thread so they stay consistent with the file's chunks.
@@ -408,7 +430,14 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         with lock:
             state["indexed"] += 1
 
-    def commit_phase(chunks_to_insert: list[dict], embeddings: list[list[float]], truncated: int, errors: list[tuple[dict, Exception | None]], batch_failed: int = 0, batch_exc: Exception | None = None) -> None:
+    def commit_phase(
+        chunks_to_insert: list[dict],
+        embeddings: list[list[float]],
+        truncated: int,
+        errors: list[tuple[dict, Exception | None]],
+        batch_failed: int = 0,
+        batch_exc: Exception | None = None,
+    ) -> None:
         """DB-write phase. Runs only on the embedder thread so inserts and
         file-completion bookkeeping stay strictly ordered."""
         # A batch reaching commit_phase at all, success or failure, is
@@ -469,8 +498,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
                 store.commit()
             return
 
-        clean = [{k: v for k, v in c.items() if not k.startswith("_")}
-                 for c in chunks_to_insert]
+        clean = [{k: v for k, v in c.items() if not k.startswith("_")} for c in chunks_to_insert]
         store.insert_chunks(clean, embeddings, model=embedder.model)
         with lock:
             changed_chunk_ids.update(c["id"] for c in clean)
@@ -488,8 +516,8 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         store.commit()
         with lock:
             state["chunks_embedded"] += len(chunks_to_insert)
-            state["chunks_reused"]   += len(chunks_to_insert) - embedded_now
-            state["truncated"]       += truncated
+            state["chunks_reused"] += len(chunks_to_insert) - embedded_now
+            state["truncated"] += truncated
 
     try:
         with httpx.Client() as client, _DaemonPool(max_workers=embed_inflight) as pool:
@@ -536,8 +564,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
 # ------------------------------------------------------ scan producer
 # Streams changed files into parse_q as the walk progresses. Orphan
 # pruning runs after, since it needs the full set of paths seen.
-def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: list[str],
-                      data_limit: int):
+def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: list[str], data_limit: int):
     """(path, stored path) of the files scan_producer indexes, limited to
     macro self-heal languages (C, C++, HLSL), for the definition scan that runs
     before parsing. Same exclude/include and data-blob rules as scan_producer."""
@@ -563,9 +590,11 @@ def _macro_lang_paths(paths, root: Path | None, excludes: list[str], includes: l
             for dirpath, dirnames, filenames in os.walk(p):
                 dir_path = Path(dirpath)
                 if excludes:
-                    dirnames[:] = [d for d in dirnames
-                                   if not _dir_should_prune(_to_stored_path(dir_path / d, root),
-                                                            excludes, includes)]
+                    dirnames[:] = [
+                        d
+                        for d in dirnames
+                        if not _dir_should_prune(_to_stored_path(dir_path / d, root), excludes, includes)
+                    ]
                 for fname in filenames:
                     fpath = (dir_path / fname).resolve()
                     if (stored := admitted(fpath)) is not None:
@@ -588,8 +617,9 @@ def _root_scope_covers(stored: str, root: Path) -> bool:
     return False
 
 
-def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str],
-                      includes: list[str], data_limit: int) -> DefinitionTable:
+def _load_definitions(
+    store: Store, paths, root: Path | None, excludes: list[str], includes: list[str], data_limit: int
+) -> DefinitionTable:
     """The definition table over every C, C++ and HLSL file the index holds. Files
     under this run's paths are read, and re-scanned only when their content
     changed; files outside them keep their stored records, so indexing one
@@ -631,8 +661,9 @@ def _load_definitions(store: Store, paths, root: Path | None, excludes: list[str
     for stored, (key, rec_json) in cached.items():
         if stored in seen:
             continue
-        if stored in scope_files or any(stored.startswith(d) if d else _root_scope_covers(stored, root)
-                                        for d in scope_dirs):
+        if stored in scope_files or any(
+            stored.startswith(d) if d else _root_scope_covers(stored, root) for d in scope_dirs
+        ):
             gone.append(stored)
             continue
         if key.startswith(f"{SCAN_VERSION}:"):
@@ -669,12 +700,23 @@ def _claim_embed_text(store: Store, embedder) -> bool:
 
 def _stored_vectors(store: Store, path: str) -> dict[str, bytes]:
     """The stored vector of each chunk of `path`, keyed by its embed text."""
-    return {_compress_for_embed(content, name=name, path=path): vec
-            for name, content, vec in store.get_chunk_vectors_for_path(path)}
+    return {
+        _compress_for_embed(content, name=name, path=path): vec
+        for name, content, vec in store.get_chunk_vectors_for_path(path)
+    }
 
 
-def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, store: Store, force: bool,
-                  excludes: list[str], includes: list[str], fallback_exts: set[str], data_limit: int) -> None:
+def scan_producer(
+    rs: RunState,
+    paths: list[str | Path],
+    root: Path | None,
+    store: Store,
+    force: bool,
+    excludes: list[str],
+    includes: list[str],
+    fallback_exts: set[str],
+    data_limit: int,
+) -> None:
     state = rs.state
     lock = rs.lock
     deleted_chunk_ids = rs.deleted_chunk_ids
@@ -688,6 +730,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
     # worktree). Warn-only: doesn't change what's scanned or indexed.
     dotdir_repo_prefixes: dict[str, int] = {}
     try:
+
         def emit(fpath: Path) -> None:
             nonlocal excluded_count
             k = str(fpath)
@@ -713,13 +756,15 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                         "scan: stored path %r reached via a second on-disk "
                         "path (%s) — indexing once (junction/symlink or "
                         "overlapping include maps two files to one path)",
-                        stored_path, fpath)
+                        stored_path,
+                        fpath,
+                    )
                     return
                 # Added even if not re-indexed: prune treats absence as
                 # deleted-from-disk, so a hash error below must not read as one.
                 scanned_stored.add(stored_path)
                 content_hash = _file_hash(fpath)
-                stored_hash  = store.get_file_hash(stored_path)
+                stored_hash = store.get_file_hash(stored_path)
                 if not force and stored_hash == content_hash:
                     with lock:
                         state["skipped"] += 1
@@ -809,20 +854,28 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                     "%d file%s under %s look%s like a nested repo copy "
                     "(contains .git) — add an exclude if this isn't "
                     'intended: config.json "exclude": ["%s"]',
-                    n, "" if n == 1 else "s", dd_prefix, "s" if n == 1 else "", dd_prefix,
+                    n,
+                    "" if n == 1 else "s",
+                    dd_prefix,
+                    "s" if n == 1 else "",
+                    dd_prefix,
                 )
 
         if excluded_count:
             if includes:
-                logger.info("Excluded %d files matching %s (with includes %s)",
-                            excluded_count, excludes, includes)
+                logger.info(
+                    "Excluded %d files matching %s (with includes %s)", excluded_count, excludes, includes
+                )
             else:
                 logger.info("Excluded %d files matching %s", excluded_count, excludes)
         if pruned_dirs:
             # Visibility: how many excluded directories were never
             # descended into at all, vs. filtered file-by-file above.
-            logger.info("Pruned %d excluded director%s from the walk (not descended)",
-                        pruned_dirs, "y" if pruned_dirs == 1 else "ies")
+            logger.info(
+                "Pruned %d excluded director%s from the walk (not descended)",
+                pruned_dirs,
+                "y" if pruned_dirs == 1 else "ies",
+            )
         with lock:
             state["dirs_pruned"] = pruned_dirs
             data_blob_skipped = state["data_blob_skipped"]
@@ -870,17 +923,22 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
         with lock:
             state["scan_complete"] = True
             unsupported = state["unsupported_ext_skipped"]
-        logger.info("Scan complete: %d to index, %d unchanged, %d pruned.",
-                    state["to_index"], state["skipped"], pruned)
+        logger.info(
+            "Scan complete: %d to index, %d unchanged, %d pruned.",
+            state["to_index"],
+            state["skipped"],
+            pruned,
+        )
         if unsupported:
             logger.info(
-                "Skipped %d file(s) with unsupported extension (not in "
-                "_EXT_TO_LANG or fallback_extensions).", unsupported,
+                "Skipped %d file(s) with unsupported extension (not in _EXT_TO_LANG or fallback_extensions).",
+                unsupported,
             )
         if data_blob_skipped:
             logger.info(
-                "Skipped %d oversize data file(s) (over the %d-byte "
-                "data_blob_size_limit).", data_blob_skipped, data_limit,
+                "Skipped %d oversize data file(s) (over the %d-byte data_blob_size_limit).",
+                data_blob_skipped,
+                data_limit,
             )
     finally:
         parse_q.put(_SENTINEL)
@@ -924,11 +982,11 @@ def index_paths(
     paths = _spelled_as_listed([Path(p).resolve() for p in paths], root)
     excludes = _normalize_prefixes(exclude)
     includes = _normalize_prefixes(include)
-    fallback_exts = {e.lower() for e in
-                     (fallback_extensions if fallback_extensions is not None
-                      else DEFAULT_FALLBACK_EXTENSIONS)}
-    data_limit = (data_blob_size_limit if data_blob_size_limit is not None
-                  else DEFAULT_DATA_BLOB_SIZE_LIMIT)
+    fallback_exts = {
+        e.lower()
+        for e in (fallback_extensions if fallback_extensions is not None else DEFAULT_FALLBACK_EXTENSIONS)
+    }
+    data_limit = data_blob_size_limit if data_blob_size_limit is not None else DEFAULT_DATA_BLOB_SIZE_LIMIT
     t0 = time.monotonic()  # for the end-of-run chunks/s throughput line
 
     persisted, vocab, unhealable_order, unhealable_hashes, new_unhealable = load_macro_memo(store, macros)
@@ -937,15 +995,19 @@ def index_paths(
     # only the rest.
     t_defs = time.monotonic()
     definitions = _load_definitions(store, paths, root, excludes, includes, data_limit)
-    logger.info("Read macro definitions in %.1fs (%d names)",
-                time.monotonic() - t_defs, len(definitions.classes))
+    logger.info(
+        "Read macro definitions in %.1fs (%d names)", time.monotonic() - t_defs, len(definitions.classes)
+    )
     # A saved macro the source defines as a type, a declaration writer or a
     # wrapper is dropped: blanking it with its arguments everywhere would
     # delete what it declares.
     vetoed_saved = persisted & definitions.vetoes
     if vetoed_saved:
-        logger.info("Dropping %d saved macro(s) the source says must not be blanked: %s",
-                    len(vetoed_saved), ", ".join(sorted(vetoed_saved)))
+        logger.info(
+            "Dropping %d saved macro(s) the source says must not be blanked: %s",
+            len(vetoed_saved),
+            ", ".join(sorted(vetoed_saved)),
+        )
         persisted = persisted - vetoed_saved
     vocab = vocab - definitions.vetoes
     # Per-macro file count, checked against _MACRO_PERSIST_MIN_FILES at persist
@@ -969,48 +1031,48 @@ def index_paths(
 
     # --------------------------------------------------------- shared state
     state = {
-        "files_parsed":    0,
-        "files_scanned":   0,       # unique files the producer has discovered (drives the bar pre-scan-complete)
-        "chunks_queued":   0,
+        "files_parsed": 0,
+        "files_scanned": 0,  # unique files the producer has discovered (drives the bar pre-scan-complete)
+        "chunks_queued": 0,
         "chunks_embedded": 0,
-        "chunks_reused":   0,       # of chunks_embedded, those given their stored vector instead
-        "indexed":         0,
-        "errors":          0,
-        "retry_chunks":    0,       # of errors, chunks a server error dropped; the next run retries their files
-        "retry_files":     0,
-        "truncated":       0,
-        "batch_failures":  0,       # batches that failed the whole-batch embed and fell to bisection
+        "chunks_reused": 0,  # of chunks_embedded, those given their stored vector instead
+        "indexed": 0,
+        "errors": 0,
+        "retry_chunks": 0,  # of errors, chunks a server error dropped; the next run retries their files
+        "retry_files": 0,
+        "truncated": 0,
+        "batch_failures": 0,  # batches that failed the whole-batch embed and fell to bisection
         "consecutive_batch_failures": 0,  # top-level whole-batch failures in a row under a
-                                           # non-4xx exception (circuit breaker,
-                                           # EMBEDDER_DOWN_THRESHOLD); reset on any success
-        "oversize_chunks": 0,       # chunks over CHUNK_MAX the chunker byte-split (long-line/data files)
-        "oversize_files":  0,
-        "parse_error_files":  0,    # tree-sitter reported a parse error AFTER self-heal (genuinely unparseable)
-        "macro_healed_files": 0,    # C++ files whose macros were discovered + blanked to fix the parse
+        # non-4xx exception (circuit breaker,
+        # EMBEDDER_DOWN_THRESHOLD); reset on any success
+        "oversize_chunks": 0,  # chunks over CHUNK_MAX the chunker byte-split (long-line/data files)
+        "oversize_files": 0,
+        "parse_error_files": 0,  # tree-sitter reported a parse error AFTER self-heal (genuinely unparseable)
+        "macro_healed_files": 0,  # C++ files whose macros were discovered + blanked to fix the parse
         "error_salvaged_files": 0,  # files where error-recovery boundary salvage fired
         "error_salvaged_nodes": 0,  # total glued boundary nodes salvaged across all files
         "literals_capped_chunks": 0,  # chunks whose literal count hit the per-chunk cap
-        "literals_dropped": 0,        # total literals silently dropped by that cap
-        "low_coverage_files": 0,    # <70% of file bytes reached any chunk (silent content loss)
-        "worst_coverage":     1.0,  # lowest per-file coverage seen, for a pointer to the worst offender
+        "literals_dropped": 0,  # total literals silently dropped by that cap
+        "low_coverage_files": 0,  # <70% of file bytes reached any chunk (silent content loss)
+        "worst_coverage": 1.0,  # lowest per-file coverage seen, for a pointer to the worst offender
         "worst_coverage_file": "",
-        "skipped":         0,
-        "to_index":        0,       # files producer pushed (known only after scan finishes)
+        "skipped": 0,
+        "to_index": 0,  # files producer pushed (known only after scan finishes)
         "unsupported_ext_skipped": 0,  # files never even queued: extension has no grammar
-                                       # and isn't in fallback_extensions (visibility)
+        # and isn't in fallback_extensions (visibility)
         "unsupported_exts": Counter(),  # the same files by extension
         "data_blob_skipped": 0,  # oversize machine-generated data file, guard hit
-        "pruned":          0,
-        "dirs_pruned":     0,  # excluded directories skipped without descending
-        "scan_complete":   False,
-        "current_file":    "",  # parser position, runs ahead of the embedder
+        "pruned": 0,
+        "dirs_pruned": 0,  # excluded directories skipped without descending
+        "scan_complete": False,
+        "current_file": "",  # parser position, runs ahead of the embedder
         "last_progress_ts": time.monotonic(),  # last embedder response; watchdog clock
         # Batches currently inside an embedder round trip, keyed by batch identity
         # (several are in flight at once at embed_inflight > 1). See the
         # watchdog's abort message below for why this, not `current_file`.
         "inflight_batches": {},
     }
-    lock       = threading.Lock()
+    lock = threading.Lock()
     done_event = threading.Event()
     # Decoupled symbol, member, class-base and using-namespace rows per file,
     # handed from the parser thread to the embedder thread. Guarded by `lock`.
@@ -1026,28 +1088,42 @@ def index_paths(
     # Guarded by `lock`, same as the id sets.
     deleted_chunk_defs: dict[tuple[str, str | None], frozenset[tuple]] = {}
 
-    parse_q: queue.Queue = queue.Queue(maxsize=64)    # (fpath, hash) → parser
+    parse_q: queue.Queue = queue.Queue(maxsize=64)  # (fpath, hash) → parser
     embed_q: queue.Queue = queue.Queue(maxsize=2000)  # chunk dicts  → embedder
     rs = RunState(
-        state=state, lock=lock, done_event=done_event, file_symbols=file_symbols,
-        worker_exc=worker_exc, changed_chunk_ids=changed_chunk_ids,
-        deleted_chunk_ids=deleted_chunk_ids, deleted_chunk_defs=deleted_chunk_defs,
-        parse_q=parse_q, embed_q=embed_q, macro_file_counts=macro_file_counts,
-        unhealable_hashes=unhealable_hashes, unhealable_order=unhealable_order,
-        new_unhealable=new_unhealable, reuse_vectors=reuse_vectors,
+        state=state,
+        lock=lock,
+        done_event=done_event,
+        file_symbols=file_symbols,
+        worker_exc=worker_exc,
+        changed_chunk_ids=changed_chunk_ids,
+        deleted_chunk_ids=deleted_chunk_ids,
+        deleted_chunk_defs=deleted_chunk_defs,
+        parse_q=parse_q,
+        embed_q=embed_q,
+        macro_file_counts=macro_file_counts,
+        unhealable_hashes=unhealable_hashes,
+        unhealable_order=unhealable_order,
+        new_unhealable=new_unhealable,
+        reuse_vectors=reuse_vectors,
     )
 
     # ---------------------------------------------------- start threads
-    t_parser   = threading.Thread(target=parser_worker,   args=(rs, vocab, definitions), daemon=True)
-    t_embedder = threading.Thread(target=embedder_worker, args=(rs, store, embedder, embed_batch, embed_inflight), daemon=True)
-    t_scanner  = threading.Thread(target=scan_producer,   args=(rs, paths, root, store, force, excludes, includes, fallback_exts, data_limit), daemon=True)
+    t_parser = threading.Thread(target=parser_worker, args=(rs, vocab, definitions), daemon=True)
+    t_embedder = threading.Thread(
+        target=embedder_worker, args=(rs, store, embedder, embed_batch, embed_inflight), daemon=True
+    )
+    t_scanner = threading.Thread(
+        target=scan_producer,
+        args=(rs, paths, root, store, force, excludes, includes, fallback_exts, data_limit),
+        daemon=True,
+    )
     t_parser.start()
     t_embedder.start()
     t_scanner.start()
 
     # ---------------------------------------------------- progress bars
-    with (reporter if reporter is not None else tqdm_reporter()) as progress:
-
+    with reporter if reporter is not None else tqdm_reporter() as progress:
         _parser_sentinel_pushed = False
         # Scanner/parser liveness for the watchdog's idle branch below: any
         # movement in these counters proves the pipeline is alive even when
@@ -1066,16 +1142,16 @@ def index_paths(
                     pass  # retry next tick
 
             with lock:
-                parsed      = state["files_parsed"]
-                scanned     = state["files_scanned"]
-                queued      = state["chunks_queued"]
-                embedded    = state["chunks_embedded"]
-                cur_file    = state["current_file"]
-                scan_done   = state["scan_complete"]
-                to_index    = state["to_index"]
+                parsed = state["files_parsed"]
+                scanned = state["files_scanned"]
+                queued = state["chunks_queued"]
+                embedded = state["chunks_embedded"]
+                cur_file = state["current_file"]
+                scan_done = state["scan_complete"]
+                to_index = state["to_index"]
                 last_progress_ts = state["last_progress_ts"]
-                pruned_ct   = state["pruned"]
-                inflight    = sorted(state["inflight_batches"].values())
+                pruned_ct = state["pruned"]
+                inflight = sorted(state["inflight_batches"].values())
 
             # No-progress watchdog (see NoProgressError). Embedder-quiet alone
             # isn't sufficient: a healthy long unchanged-scan tail also shows
@@ -1084,16 +1160,13 @@ def index_paths(
             if counters != _last_counters:
                 _last_counters = counters
                 _last_activity_ts = time.monotonic()
-            stalled_for  = time.monotonic() - last_progress_ts
+            stalled_for = time.monotonic() - last_progress_ts
             activity_for = time.monotonic() - _last_activity_ts
-            if stalled_for > no_progress_timeout and (
-                inflight or activity_for > no_progress_timeout
-            ):
+            if stalled_for > no_progress_timeout and (inflight or activity_for > no_progress_timeout):
                 # Reports inflight_batches, not current_file: the parser runs
                 # far ahead of the embedder, so current_file would misdirect
                 # a wedge diagnosis (except in the idle branch, where it IS the suspect).
-                stuck_on = (", ".join(inflight) if inflight
-                            else "no batch in flight — scanner/parser frozen")
+                stuck_on = ", ".join(inflight) if inflight else "no batch in flight — scanner/parser frozen"
                 raise NoProgressError(
                     f"No embedder response in {stalled_for:.0f}s "
                     f"(timeout {no_progress_timeout:.0f}s). Last progress at "
@@ -1110,8 +1183,8 @@ def index_paths(
 
         # flush final counts
         with lock:
-            parsed   = state["files_parsed"]
-            queued   = state["chunks_queued"]
+            parsed = state["files_parsed"]
+            queued = state["chunks_queued"]
             embedded = state["chunks_embedded"]
         progress.finish(parsed, queued, embedded)
 
@@ -1131,8 +1204,14 @@ def index_paths(
             raise worker_exc[1]
         raise RuntimeError(f"Embedder worker crashed: {worker_exc[1]}") from worker_exc[1]
 
-    persist_macro_memo(store, persisted, macro_file_counts, unhealable_order, rs.new_unhealable,
-                       vocab_changed=bool(vetoed_saved))
+    persist_macro_memo(
+        store,
+        persisted,
+        macro_file_counts,
+        unhealable_order,
+        rs.new_unhealable,
+        vocab_changed=bool(vetoed_saved),
+    )
 
     # Wall-clock scan+parse+embed only, excluding post-processing below. The
     # number to watch when tuning embed_batch/embed_inflight/--parallel.
@@ -1143,20 +1222,26 @@ def index_paths(
         pruned = state["pruned"]
         skipped = state["skipped"]
         indexed = state["indexed"]
-        unsupported_exts = dict(sorted(state["unsupported_exts"].items(),
-                                       key=lambda kv: (-kv[1], kv[0]))[:SKIPPED_EXTS_KEPT])
+        unsupported_exts = dict(
+            sorted(state["unsupported_exts"].items(), key=lambda kv: (-kv[1], kv[0]))[:SKIPPED_EXTS_KEPT]
+        )
         unsupported_files = state["unsupported_ext_skipped"]
     chunks_per_s = chunks_embedded_total / embed_elapsed if embed_elapsed > 0 else 0.0
     logger.info(
         "Embedded %d chunks (%d reused a stored vector) in %.1fs (%.1f chunks/s).",
-        chunks_embedded_total, chunks_reused, embed_elapsed, chunks_per_s,
+        chunks_embedded_total,
+        chunks_reused,
+        embed_elapsed,
+        chunks_per_s,
     )
     with lock:
         retry_chunks, retry_files = state["retry_chunks"], state["retry_files"]
     if retry_chunks:
         logger.warning(
             "%d chunk(s) in %d file(s) were not stored after an embedder server error; "
-            "the next index run indexes those files again.", retry_chunks, retry_files,
+            "the next index run indexes those files again.",
+            retry_chunks,
+            retry_files,
         )
 
     # Only claim a clean chunker-version match when skipped==0 (every tracked
@@ -1188,7 +1273,9 @@ def index_paths(
 
     # Only a run over the whole root counts every skipped file.
     if root is not None and any(Path(p).resolve() == root.resolve() for p in paths):
-        store.set_meta("unsupported_exts", json.dumps({"files": unsupported_files, "by_ext": unsupported_exts}))
+        store.set_meta(
+            "unsupported_exts", json.dumps({"files": unsupported_files, "by_ext": unsupported_exts})
+        )
 
     # skipped==0 alone isn't sufficient here (a --force on a path subset also
     # yields it): also require indexed == tracked_file_count, so this run
@@ -1201,59 +1288,68 @@ def index_paths(
     if covered_all:
         store.set_meta(_EMBED_TEXT_META_KEY, _embed_text_format(embedder))
 
-    fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed = run_post_index_passes(
-        store, embedder,
-        force=force, indexed=indexed, pruned=pruned,
-        changed_chunk_ids=changed_chunk_ids, deleted_chunk_ids=deleted_chunk_ids,
-        deleted_chunk_defs=deleted_chunk_defs, edge_type_weights=edge_type_weights,
-        cap_mentions_fanout=cap_mentions_fanout, associated_top_frac=associated_top_frac,
+    fts_elapsed, refs_elapsed, knn_elapsed, summaries_elapsed, pagerank_elapsed, hierarchy_elapsed = (
+        run_post_index_passes(
+            store,
+            embedder,
+            force=force,
+            indexed=indexed,
+            pruned=pruned,
+            changed_chunk_ids=changed_chunk_ids,
+            deleted_chunk_ids=deleted_chunk_ids,
+            deleted_chunk_defs=deleted_chunk_defs,
+            edge_type_weights=edge_type_weights,
+            cap_mentions_fanout=cap_mentions_fanout,
+            associated_top_frac=associated_top_frac,
+        )
     )
 
     total_elapsed = time.monotonic() - t0
 
     with lock:
         return {
-            "indexed":         indexed,
-            "skipped":         skipped,
-            "errors":          state["errors"],
-            "retry_chunks":    retry_chunks,
-            "retry_files":     retry_files,
-            "pruned":          pruned,
-            "dirs_pruned":     state["dirs_pruned"],
-            "truncated":       state["truncated"],
+            "indexed": indexed,
+            "skipped": skipped,
+            "errors": state["errors"],
+            "retry_chunks": retry_chunks,
+            "retry_files": retry_files,
+            "pruned": pruned,
+            "dirs_pruned": state["dirs_pruned"],
+            "truncated": state["truncated"],
             "chunks_embedded": chunks_embedded_total,
-            "chunks_reused":   chunks_reused,
-            "elapsed_s":       round(embed_elapsed, 1),
-            "chunks_per_s":    round(chunks_per_s, 1),
-            "batch_failures":  state["batch_failures"],
+            "chunks_reused": chunks_reused,
+            "elapsed_s": round(embed_elapsed, 1),
+            "chunks_per_s": round(chunks_per_s, 1),
+            "batch_failures": state["batch_failures"],
             "oversize_chunks": state["oversize_chunks"],
-            "oversize_files":  state["oversize_files"],
-            "parse_error_files":   state["parse_error_files"],
-            "macro_healed_files":  state["macro_healed_files"],
+            "oversize_files": state["oversize_files"],
+            "parse_error_files": state["parse_error_files"],
+            "macro_healed_files": state["macro_healed_files"],
             "error_salvaged_files": state["error_salvaged_files"],
             "error_salvaged_nodes": state["error_salvaged_nodes"],
             "literals_capped_chunks": state["literals_capped_chunks"],
-            "literals_dropped":       state["literals_dropped"],
-            "low_coverage_files":  state["low_coverage_files"],
-            "worst_coverage":      round(state["worst_coverage"], 2),
+            "literals_dropped": state["literals_dropped"],
+            "low_coverage_files": state["low_coverage_files"],
+            "worst_coverage": round(state["worst_coverage"], 2),
             "worst_coverage_file": state["worst_coverage_file"],
             "unsupported_ext_skipped": state["unsupported_ext_skipped"],
             "unsupported_exts": unsupported_exts,
             "data_blob_skipped": state["data_blob_skipped"],
-            "embed_elapsed_s":      round(embed_elapsed, 1),
-            "fts_elapsed_s":        round(fts_elapsed, 1),
-            "refs_elapsed_s":       round(refs_elapsed, 1),
-            "knn_elapsed_s":        round(knn_elapsed, 1),
-            "summaries_elapsed_s":  round(summaries_elapsed, 1),
-            "pagerank_elapsed_s":   round(pagerank_elapsed, 1),
-            "hierarchy_elapsed_s":  round(hierarchy_elapsed, 1),
-            "total_elapsed_s":      round(total_elapsed, 1),
+            "embed_elapsed_s": round(embed_elapsed, 1),
+            "fts_elapsed_s": round(fts_elapsed, 1),
+            "refs_elapsed_s": round(refs_elapsed, 1),
+            "knn_elapsed_s": round(knn_elapsed, 1),
+            "summaries_elapsed_s": round(summaries_elapsed, 1),
+            "pagerank_elapsed_s": round(pagerank_elapsed, 1),
+            "hierarchy_elapsed_s": round(hierarchy_elapsed, 1),
+            "total_elapsed_s": round(total_elapsed, 1),
         }
 
 
 # ---------------------------------------------------------------------------
 # Re-embed
 # ---------------------------------------------------------------------------
+
 
 def reembed_all(
     store: Store,
@@ -1269,7 +1365,7 @@ def reembed_all(
     total = store._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
     logger.info("Re-embedding %d chunks from DB (vectors only)...", total)
 
-    PAGE   = embed_batch
+    PAGE = embed_batch
     offset = 0
 
     with httpx.Client() as client:
@@ -1282,10 +1378,7 @@ def reembed_all(
                 if not rows:
                     break
 
-                texts = [
-                    _compress_for_embed(r["content"], name=r["name"], path=r["path"])
-                    for r in rows
-                ]
+                texts = [_compress_for_embed(r["content"], name=r["name"], path=r["path"]) for r in rows]
                 ids = [r["id"] for r in rows]
 
                 try:
@@ -1296,14 +1389,16 @@ def reembed_all(
                 except Exception as e:  # noqa: BLE001, any batch failure falls back to isolating rows
                     logger.warning("EMBED batch failed at offset %d, isolating: %s", offset, e)
                     ok_rows, ok_embs, _trunc, errs = _embed_isolating(
-                        rows, texts, lambda ts: embedder.embed_documents(ts, client),
+                        rows,
+                        texts,
+                        lambda ts: embedder.embed_documents(ts, client),
                     )
                     if ok_rows:
                         store.update_vectors([r["id"] for r in ok_rows], ok_embs, model=embedder.model)
                         stats["reembedded"] += len(ok_rows)
                     for row, exc in errs:
                         stats["errors"] += 1
-                        logger.error("EMBED ERROR %s:%s: %s", row['path'], row['start_line'], exc)
+                        logger.error("EMBED ERROR %s:%s: %s", row["path"], row["start_line"], exc)
                     bar.update(len(rows))
 
                 offset += PAGE

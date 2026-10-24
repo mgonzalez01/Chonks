@@ -1,4 +1,5 @@
 """Skeleton generation and matching for the literal & message index."""
+
 import re
 import sqlite3
 
@@ -43,19 +44,11 @@ _SKELETON_QUERY_BUDGET = 100_000
 def _compute_skeleton(text: str) -> str | None:
     """Collapse format holes into _HOLE_SENTINEL. Returns None when no
     holes were found, or when there are more than _SKELETON_MAX_HOLES."""
-    protected = (
-        text.replace("%%", "\x02")
-            .replace("{{", "\x03")
-            .replace("}}", "\x04")
-    )
+    protected = text.replace("%%", "\x02").replace("{{", "\x03").replace("}}", "\x04")
     collapsed = _PRINTF_HOLE_RE.sub(_HOLE_SENTINEL, protected)
     collapsed = _DOLLAR_HOLE_RE.sub(_HOLE_SENTINEL, collapsed)
     collapsed = _BRACE_HOLE_RE.sub(_HOLE_SENTINEL, collapsed)
-    collapsed = (
-        collapsed.replace("\x02", "%")
-                 .replace("\x03", "{")
-                 .replace("\x04", "}")
-    )
+    collapsed = collapsed.replace("\x02", "%").replace("\x03", "{").replace("\x04", "}")
     if collapsed == text:
         return None
     if collapsed.count(_HOLE_SENTINEL) > _SKELETON_MAX_HOLES:
@@ -78,7 +71,9 @@ def _longest_skeleton_fragment(skeleton: str) -> str:
 
 
 def _skeleton_match(
-    skeleton: str, message: str, budget: int = _SKELETON_WORK_BUDGET,
+    skeleton: str,
+    message: str,
+    budget: int = _SKELETON_WORK_BUDGET,
 ) -> tuple[bool, bool, int]:
     """Match unanchored, like re.search, so extra context around the
     template still matches. Returns (matched, budget_exhausted, calls_used);
@@ -164,8 +159,12 @@ def _dedupe_literal_rows(rows: list[sqlite3.Row]) -> list[sqlite3.Row]:
     for k in order:
         group = groups[k]
         line = k[1]
-        contained = [r for r in group
-                     if r["c_start_line"] is not None and r["c_end_line"] is not None
-                     and r["c_start_line"] <= line <= r["c_end_line"]]
+        contained = [
+            r
+            for r in group
+            if r["c_start_line"] is not None
+            and r["c_end_line"] is not None
+            and r["c_start_line"] <= line <= r["c_end_line"]
+        ]
         out.append(contained[0] if contained else group[0])
     return out

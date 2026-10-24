@@ -66,12 +66,13 @@ def _segment_markdown(src: bytes, text_src: str) -> list:
     lines = text_src.splitlines(keepends=True)
     segs: list = []
     for start, end, name in _split_markdown_sections(lines):
-        segs.extend(_tile_lines(lines[start - 1:end], start, chunk_type="text", name=name))
+        segs.extend(_tile_lines(lines[start - 1 : end], start, chunk_type="text", name=name))
     return _merge_small(segs, src)
 
 
-def segment_text_file(src: bytes, *, path: str | None = None,
-                      counters: dict | None = None) -> list[dict[str, Any]]:
+def segment_text_file(
+    src: bytes, *, path: str | None = None, counters: dict | None = None
+) -> list[dict[str, Any]]:
     """Non-AST fallback for config-allowlisted extensions with no grammar.
     Markdown is the one exception, split at headings; everything else is
     nameless line-tiling."""

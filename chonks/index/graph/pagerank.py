@@ -27,6 +27,7 @@ _PAGERANK_REFRESH_MIN_FRACTION = 0.20
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def pagerank_scores(
     node_ids: Iterable[str],
     typed_edges: Iterable[tuple[str, str, str]],
@@ -116,15 +117,15 @@ def persist_pagerank(
             if batch <= _PAGERANK_REFRESH_MIN_FRACTION * max(total, 1):
                 store.set_meta(_PAGERANK_STALE_META_KEY, str(batch))
                 logger.info(
-                    "PageRank refresh skipped (cumulative batch=%d, N=%d) — "
-                    "reusing persisted scores.",
-                    batch, total,
+                    "PageRank refresh skipped (cumulative batch=%d, N=%d) — reusing persisted scores.",
+                    batch,
+                    total,
                 )
                 return len(existing)
             logger.info(
-                "PageRank refresh triggered (cumulative batch=%d, N=%d) — "
-                "recomputing live.",
-                batch, total,
+                "PageRank refresh triggered (cumulative batch=%d, N=%d) — recomputing live.",
+                batch,
+                total,
             )
 
     scores = _compute_pagerank_live(store, edge_type_weights=edge_type_weights)
@@ -134,7 +135,8 @@ def persist_pagerank(
 
 
 def compute_pagerank_global(
-    store: "Store", edge_type_weights: dict[str, float] | None = None,
+    store: "Store",
+    edge_type_weights: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """Reads persisted PageRank from chunk_pagerank; never writes the DB, so
     a pre-persistence DB falls back to a live compute instead. Re-index to
