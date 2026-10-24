@@ -36,8 +36,8 @@ def suggest_subsystems(
         return []
 
     # scipy over HDBSCAN: avoids a heavyweight dep for a one-shot CLI command.
-    from scipy.cluster.hierarchy import fcluster, linkage  # noqa: PLC0415
-    from scipy.spatial.distance import pdist  # noqa: PLC0415
+    from scipy.cluster.hierarchy import fcluster, linkage
+    from scipy.spatial.distance import pdist
 
     arr = np.asarray(embeddings, dtype=np.float32)
     norms = np.linalg.norm(arr, axis=1, keepdims=True)

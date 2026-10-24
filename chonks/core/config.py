@@ -40,7 +40,7 @@ def load_config(explicit: str | None) -> ConfigLoad:
         except FileNotFoundError as e:
             problems.append(ConfigProblem(candidate, str(e), True))
             continue
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001, any unreadable file is a problem to report
             problems.append(ConfigProblem(candidate, str(e), False))
             continue
         if not isinstance(data, dict):

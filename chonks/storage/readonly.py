@@ -20,8 +20,8 @@ def _connect_readonly(db_path: str) -> sqlite3.Connection:
         conn.enable_load_extension(True)
         sqlite_vec.load(conn)
         conn.enable_load_extension(False)
-    except Exception:
-        pass  # optional: nothing here strictly requires vec0
+    except Exception:  # noqa: BLE001, nothing here strictly requires vec0
+        pass
     return conn
 
 

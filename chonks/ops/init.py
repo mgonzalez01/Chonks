@@ -186,7 +186,7 @@ def gpu_install_hint(*, which_fn=shutil.which, cupy_importable: bool | None = No
         try:
             import cupy  # noqa: F401
             cupy_importable = True
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001, any failure is the same answer: not usable
             cupy_importable = False
     if cupy_importable:
         return None

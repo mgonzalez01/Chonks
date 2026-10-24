@@ -111,7 +111,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
                 "Folder summaries: refreshed %d, pruned %d.",
                 summary_stats["refreshed"], summary_stats["pruned"],
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001, folder summaries are best-effort
             logger.error("Folder summary generation failed: %s", e)
     else:
         # A DB whose runs are all no-ops still gets its one-time sweep.

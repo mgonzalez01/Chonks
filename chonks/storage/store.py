@@ -922,8 +922,6 @@ class Store:
         """Regex search, streamed cursor-side so memory stays O(top_k).
         No SQL LIMIT pushdown: the regex filter is Python-side, so a SQL
         LIMIT would cap the scan and miss matches past it."""
-        import re
-
         try:
             rx = re.compile(pattern)
         except re.error as e:

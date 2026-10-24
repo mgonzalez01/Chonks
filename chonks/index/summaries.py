@@ -116,7 +116,7 @@ def build_folder_summaries(
             texts = [p[1] for p in batch]
             try:
                 embeddings = embed_fn(texts)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, the rest of the summaries wait for the next run
                 logger.error(
                     "Failed to embed folder-summary batch (%d items): %s — "
                     "remaining %d summaries skipped this run",

@@ -118,7 +118,7 @@ def search(req: SearchRequest) -> JSONResponse:
                 503,
                 f"Embedder unreachable, semantic search unavailable: {e}. "
                 "Retry with mode='fts' (keyword search needs no embedding).",
-            )
+            ) from e
     elif req.mode == "fts":
         chunks, mode_note = searcher.fts_or_any(req.query, req.top_k, scope, chunk_kind=req.chunk_kind)
     elif req.mode == "regex":
@@ -145,7 +145,7 @@ def search(req: SearchRequest) -> JSONResponse:
                 503,
                 f"Embedder unreachable, hybrid search unavailable: {e}. "
                 "Retry with mode='fts' (keyword search needs no embedding).",
-            )
+            ) from e
     else:
         raise HTTPException(400, f"Unknown mode: {req.mode!r}. Use semantic|fts|regex|hybrid")
 
@@ -259,7 +259,7 @@ def impact(req: ImpactRequest) -> JSONResponse:
             rank_by=req.rank_by or "pagerank_sum",
         )
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     result["note"] = _notes(scope_note, result["note"])
     logger.info(
         "impact  project=%r  name=%r  total_references=%d  files=%d  files_total=%d",
@@ -353,7 +353,7 @@ def hubs(req: HubsRequest) -> JSONResponse:
         )
     except ValueError as e:
         # 400 covers both the global-scope guard and an invalid edge_types value.
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     logger.info("hubs  project=%r  path_prefix=%r  hits=%d",
                 req.project or DEFAULT_PROJECT, req.path_prefix, len(result["hubs"]))
     return JSONResponse({**result, "note": scope_note})

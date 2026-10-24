@@ -496,7 +496,7 @@ def deep_research(
     # scoring pass instead of re-embedding each time.
     try:
         query_vec: list[float] | None = searcher.embed_query(query)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001, without the embedder the search degrades to keyword
         logger.warning("query embedding failed; expansion scoring degraded: %s", e)
         query_vec = None
     # query_vec None means embedder is down; mark degraded so callers know.
@@ -526,7 +526,7 @@ def deep_research(
                     h["_origin"]    = "seed"
                     h["_iteration"] = 0
                 all_candidates.extend(hits)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, each search step is best-effort
                 logger.warning("seed search failed: %s", e)
 
         _score_candidates(all_candidates, query_vec, store)
@@ -560,7 +560,7 @@ def deep_research(
                 h.setdefault("_iteration", iteration)
             all_candidates.extend(graph_hits)
             logger.debug("graph expansion added %d candidates", len(graph_hits))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001, each search step is best-effort
             logger.warning("graph expansion failed: %s", e)
 
         symbols = _extract_symbols(all_candidates[:30])
@@ -576,7 +576,7 @@ def deep_research(
                     h.setdefault("_origin",    "regex")
                     h.setdefault("_iteration", iteration)
                 all_candidates.extend(hits)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, each search step is best-effort
                 logger.warning("regex expansion failed for %r: %s", sym, e)
 
         _score_candidates(all_candidates, query_vec, store)

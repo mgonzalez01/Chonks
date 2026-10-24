@@ -84,7 +84,7 @@ def _embed_one_isolating(chunk, text, embed_docs):
                 logger.warning("EMBED oversize chunk %s truncated %d->%d chars",
                                _chunk_path(chunk), full, limit)
             return [chunk], [emb[0]], (1 if limit < full else 0), []
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001, a chunk that fails is returned with its error
             last_exc = exc
             if not _should_truncate_and_retry(exc):
                 break
@@ -126,7 +126,7 @@ def _embed_isolating(chunks, texts, embed_docs):
             embs = embed_docs(ts)            # retry this half at FULL length
             ok_c += list(cs)
             ok_e += embs
-        except Exception:
+        except Exception:  # noqa: BLE001, any failure splits the half again
             c2, e2, t2, er2 = _embed_isolating(cs, ts, embed_docs)
             ok_c += c2
             ok_e += e2

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# The checks a change has to pass (CONTRIBUTING.md): lint, tests, and the MCP server build.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+uv run --locked ruff check
+uv run --locked pytest -q
+(cd mcp-server && npm ci && npm run build)
+echo "All checks passed."
