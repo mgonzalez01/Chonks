@@ -9,17 +9,17 @@ import json
 import os
 import re
 import sqlite3
-import sys
 import time
 from pathlib import Path
 
-from chonks.core.config import load_config
+from chonks.core.config import DEFAULT_DB, resolve_db
 from chonks.core.paths import _dir_should_prune, _normalize_prefixes, _path_allowed, _to_stored_path
 from chonks.embed.reranker import Reranker, probe_reranker
 from chonks.index.plugins import load_plugins
 from chonks.index.segment import CHUNKER_VERSION
 from chonks.languages import describe as _describe_languages
 from chonks.languages import language_set as _language_set
+from chonks.ops.cli_config import load_cli_config
 from chonks.ops.diagnostics import (
     dominance_warning,
     dotdir_breakdown,
@@ -469,7 +469,7 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(prog="chonks doctor", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--db", default=None, help="Path to chunks DB (default: config.json's `db` key)")
+    ap.add_argument("--db", default=None, help=f"Path to chunks DB (default: config.json's `db` key, else {DEFAULT_DB})")
     ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
     ap.add_argument(
         "--set-model", default=None, metavar="NAME",
@@ -478,16 +478,9 @@ def main(argv=None) -> None:
     )
     args = ap.parse_args(argv)
 
-    loaded = load_config(args.config)
-    for problem in loaded.problems:
-        prefix = "Failed to load" if args.config else "Failed to parse"
-        print(f"{prefix} {problem.path}: {problem.reason}", file=sys.stderr)
-    config = loaded.data
+    config = load_cli_config(args.config)
     load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
-    # CLI flag overrides config key, same precedence as chunker/serve.
-    args.db = args.db or config.get("db")
-    if not args.db:
-        ap.error("--db required (or set `db` in config.json)")
+    args.db = resolve_db(args.db, config)
     if args.set_model is not None:
         if not Path(args.db).exists():
             ap.error(f"DB not found: {args.db}")

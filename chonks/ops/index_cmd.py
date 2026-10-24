@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 from tqdm import tqdm
 
-from chonks.core.config import load_config
+from chonks.core.config import DEFAULT_DB, load_config, resolve_db
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.index.embed_retry import EMBED_BATCH, EMBED_INFLIGHT
 from chonks.index.pipeline import index_options, index_paths, reembed_all
@@ -29,6 +29,19 @@ logger = logging.getLogger("chonks.chunker")
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
+def _load_config(explicit: str | None) -> dict:
+    """Load config.json, logging each file that failed and the one that loaded."""
+    loaded = load_config(explicit)
+    for problem in loaded.problems:
+        if explicit:
+            logger.warning("Failed to load %s: %s", problem.path, problem.reason)
+        else:
+            logger.warning("Failed to parse %s: %s", problem.path, problem.reason)
+    if loaded.path is not None:
+        logger.info("Loaded config from %s", loaded.path)
+    return loaded.data
+
 
 def main(argv=None) -> None:
     import argparse
@@ -73,7 +86,7 @@ def main(argv=None) -> None:
     parser.add_argument(
         "--db", default=None, metavar="FILE",
         help="Path to the sqlite DB file (created if absent). "
-             "Default: config.json's `db` key, else .db/chonks.db",
+             f"Default: config.json's `db` key, else {DEFAULT_DB}",
     )
     parser.add_argument(
         "--force", action="store_true",
@@ -154,15 +167,8 @@ def main(argv=None) -> None:
     logging.root.addHandler(handler)
 
     # ------------------------------------------------------------------ config
-    loaded = load_config(args.config)
-    config: dict = loaded.data
-    for problem in loaded.problems:
-        if args.config:
-            logger.warning("Failed to load %s: %s", problem.path, problem.reason)
-        else:
-            logger.warning("Failed to parse %s: %s", problem.path, problem.reason)
-    if loaded.path is not None:
-        logger.info("Loaded config from %s", loaded.path)
+    config = _load_config(args.config)
+    args.db = resolve_db(args.db, config)
 
     load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
 
@@ -206,10 +212,6 @@ def main(argv=None) -> None:
             validate_knn_backend(os.environ.get("CHONKS_KNN_BACKEND") or "auto")
         except RuntimeError as e:
             parser.error(str(e))
-
-    # Same precedence as embedder settings below, and the same key `chonks
-    # serve` honors, so both agree on which db they read/write.
-    args.db = args.db or config.get("db") or ".db/chonks.db"
 
     # Embedder configuration: CLI flag > config key > module default. Resolved
     # once here and threaded down, so there's no module-level mutable state.

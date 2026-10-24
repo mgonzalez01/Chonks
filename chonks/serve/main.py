@@ -11,7 +11,7 @@ from pathlib import Path
 
 import uvicorn
 
-from chonks.core.config import load_config, resolve_codebase
+from chonks.core.config import DEFAULT_DB, load_config, resolve_codebase, resolve_db
 from chonks.embed.client import probe_embedder
 from chonks.embed.client import DEFAULT_EMBED_MODEL, DEFAULT_EMBED_URL, Embedder
 from chonks.embed.reranker import Reranker
@@ -35,7 +35,7 @@ def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Chonks server")
     parser.add_argument("--db",        default=None,
                         help="Path to sqlite DB file for the default project. Default: config.json's "
-                             "`db` key, else .db/chonks.db (ignored if config defines a 'projects' "
+                             f"`db` key, else {DEFAULT_DB} (ignored if config defines a 'projects' "
                              "map without 'default').")
     parser.add_argument("--port",      type=int, default=11438)
     parser.add_argument("--host",      default="127.0.0.1",
@@ -95,7 +95,7 @@ def main(argv=None) -> None:
     default_exclude  = list(full.get("exclude") or [])
     default_include  = list(full.get("include") or [])
     default_root     = resolve_codebase(full.get("codebase"), explicit_config, logger)
-    default_db       = Path(args.db or full.get("db") or ".db/chonks.db")
+    default_db       = Path(resolve_db(args.db, full))
     # Per-project so one deployment can mix a LAN GPU and a localhost embedder.
     default_embed_url   = full.get("embed_url",   DEFAULT_EMBED_URL)
     default_embed_model = full.get("embed_model", DEFAULT_EMBED_MODEL)
