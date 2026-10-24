@@ -1,0 +1,1 @@
+"""Queries, ranking, response shapes."""

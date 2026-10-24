@@ -78,14 +78,14 @@ def _available_ram_bytes() -> int | None:
     try:
         import psutil  # optional; most accurate + cross-platform
         return int(psutil.virtual_memory().available)
-    except Exception:
+    except Exception:  # noqa: BLE001, psutil is optional; any failure tries the next source
         pass
     try:  # Linux
         with open("/proc/meminfo") as f:
             for line in f:
                 if line.startswith("MemAvailable:"):
                     return int(line.split()[1]) * 1024
-    except Exception:
+    except (OSError, ValueError, IndexError):
         pass
     try:  # Windows
         import ctypes
@@ -100,7 +100,7 @@ def _available_ram_bytes() -> int | None:
         st.dwLength = ctypes.sizeof(_MS)
         if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
             return int(st.ullAvailPhys)
-    except Exception:
+    except Exception:  # noqa: BLE001, a Windows-only probe that fails elsewhere
         pass
     return None
 
@@ -163,12 +163,12 @@ def _detect_knn_backend() -> str:
         import cupy as cp
         if cp.cuda.runtime.getDeviceCount() > 0:
             return "cuda"
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, any failure is the same answer: not usable
         pass
     try:
         import mlx.core  # noqa: F401
         return "mlx"
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001, any failure is the same answer: not usable
         pass
     return "numpy"
 

@@ -266,7 +266,7 @@ def main(argv=None) -> None:
                     f"Folder summaries: refreshed {summary_stats['refreshed']}, "
                     f"pruned {summary_stats['pruned']}."
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, folder summaries are best-effort
                 print(f"Folder summary regeneration failed (embedding server reachable?): {e}")
             print(json.dumps(store.stats(), indent=2))
         sys.exit(0)
@@ -314,8 +314,8 @@ def main(argv=None) -> None:
                     else:
                         break
                 root = Path(*common) if common else resolved[0].parent
-            except Exception:
-                root = resolved[0].parent if resolved else Path.cwd()
+            except IndexError:
+                root = Path.cwd()
 
         subsystem_prefixes = [p for ps in (config.get("subsystems") or {}).values() for p in ps]
         for warning in config_warnings(root, exclude_list, include_list, subsystem_prefixes):

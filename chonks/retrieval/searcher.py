@@ -6,7 +6,6 @@ RRF hybrid fusion, and folder-blend re-rank.
 import posixpath
 import re
 import sqlite3
-from pathlib import Path
 from typing import Any
 
 import httpx

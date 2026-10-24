@@ -63,26 +63,18 @@ jobs:
           done
           exit 1
 
-      - name: Run tests
-        run: uv run pytest -q
-
-  mcp-server:
-    name: mcp-server build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Install Node
+        if: runner.os == 'Linux'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: mcp-server/package-lock.json
 
-      - name: Install dependencies
-        working-directory: mcp-server
-        run: npm ci
+      - name: Run checks
+        if: runner.os == 'Linux'
+        run: scripts/check.sh
 
-      - name: Build
-        working-directory: mcp-server
-        run: npm run build
+      - name: Run tests
+        if: runner.os != 'Linux'
+        run: uv run pytest -q

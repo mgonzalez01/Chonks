@@ -128,7 +128,7 @@ class _DaemonPool:
             fut, fn, args = item
             try:
                 fut.set_result(fn(*args))
-            except BaseException as e:
+            except BaseException as e:  # noqa: BLE001, the Future hands every error to its caller
                 fut.set_exception(e)
 
     def submit(self, fn, *args):
@@ -305,7 +305,7 @@ def parser_worker(rs: RunState, vocab: set[str], definitions=None) -> None:
                 for cd in chunk_dicts:
                     embed_q.put(cd)
                 logger.info("Parsed %s (%d chunks)", stored_path, n)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, a file that fails to parse is counted, not fatal
                 with lock:
                     state["files_parsed"] += 1
                     state["errors"]       += 1
@@ -375,7 +375,7 @@ def embedder_worker(rs: RunState, store: Store, embedder: Embedder, embed_batch:
         try:
             embeddings = _embed_live(texts)
             return snapshot, embeddings, 0, [], 0, None
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001, any batch failure falls back to isolating chunks
             logger.warning("EMBED batch failed (%d chunks), isolating: %s", len(snapshot), e)
             ok_chunks, embeddings, truncated, errors = _embed_isolating(
                 snapshot, texts, _embed_live,
@@ -736,7 +736,7 @@ def scan_producer(rs: RunState, paths: list[str | Path], root: Path | None, stor
                 with lock:
                     state["to_index"] += 1
                 parse_q.put((fpath, content_hash, stored_path, old_vecs))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001, a file that fails to scan is counted, not fatal
                 with lock:
                     state["errors"] += 1
                 logger.error("SCAN ERROR %s: %s", fpath, e)
@@ -1293,7 +1293,7 @@ def reembed_all(
                     store.update_vectors(ids, embeddings, model=embedder.model)
                     stats["reembedded"] += len(rows)
                     bar.update(len(rows))
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001, any batch failure falls back to isolating rows
                     logger.warning("EMBED batch failed at offset %d, isolating: %s", offset, e)
                     ok_rows, ok_embs, _trunc, errs = _embed_isolating(
                         rows, texts, lambda ts: embedder.embed_documents(ts, client),

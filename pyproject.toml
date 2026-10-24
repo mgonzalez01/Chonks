@@ -53,7 +53,14 @@ dev = [
     "pytest>=9.1.1",
     # PageRank parity oracle in the tests.
     "networkx==3.6.1",
+    "ruff==0.17.2",
 ]
+
+[tool.ruff]
+include = ["chonks/**/*.py"]
+
+[tool.ruff.lint]
+select = ["F", "B904", "BLE001", "RUF100", "PGH004", "D100", "D104"]
 
 [tool.pytest.ini_options]
 # This section's presence anchors pytest's rootdir/configfile discovery

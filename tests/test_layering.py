@@ -200,7 +200,7 @@ _LANGUAGE_HOMES = ("chonks/languages/",)
 _EDGE_TYPE_HOMES = ("chonks/languages/", "chonks/core/edges.py")
 # Chunk types chonks assigns itself, whatever a grammar calls its nodes.
 _OWN_CHUNK_TYPES = frozenset({"module"})
-# Literals that predate this check. Remove entries; never add them.
+# Literals that predate this check. CONTRIBUTING.md says how this list changes.
 _KNOWN_LITERALS: set[tuple[str, str]] = {
     ("chonks/index/plugins.py", "javascript"),
     ("chonks/index/macro_heal.py", "class_specifier"),
