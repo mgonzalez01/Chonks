@@ -275,6 +275,10 @@ def _split_large_node(node: Node, lang: str, src: bytes,
     begin on its first line (see _claimed_start)."""
     if start is None:
         start = node.start_byte
+
+    def node_refs(first: int, last: int) -> dict[str, list[str]]:
+        return _extract_refs(node, lang, src, (first, last))
+
     # node itself is already a boundary, so collect from its children instead
     # (_collect_boundaries(node) would just return [node]).
     children: list[Node] = []
@@ -295,20 +299,16 @@ def _split_large_node(node: Node, lang: str, src: bytes,
         if header.strip().strip("{}").strip():
             node_seg = _Segment(node, src, lang)
             h_start = node.start_point[0] + 1
-
-            def header_refs(first: int, last: int) -> dict[str, list[str]]:
-                return _extract_refs(node, lang, src, (first, last))
-
             if len(header.encode("utf-8")) > CHUNK_MAX:
                 segs.extend(_line_slice_oversized(
-                    header, h_start, node_seg.name, header_refs,
+                    header, h_start, node_seg.name, node_refs,
                     chunk_type=node_seg.chunk_type))
             else:
                 h_end = h_start + header.count("\n")
                 segs.append(_SyntheticSegment(
                     header, h_start, h_end,
                     chunk_type=node_seg.chunk_type, name=node_seg.name,
-                    refs=header_refs(h_start, h_end)))
+                    refs=node_refs(h_start, h_end)))
         for c, c_start in zip(children, starts):
             child_seg = _Segment(c, src, lang, start=c_start)
             if child_seg.size(src) > CHUNK_MAX:
@@ -331,40 +331,10 @@ def _split_large_node(node: Node, lang: str, src: bytes,
 
     # No sub-boundaries: slice by CHUNK_TARGET chars, but pieces still inherit
     # the boundary's name/type so it stays findable, not an anonymous "block".
-    node_seg  = _Segment(node, src, lang)   # source of the name/type to propagate
-    node_name = node_seg.name
-    node_type = node_seg.chunk_type
-    text = src[start:node.end_byte].decode(errors="replace")
-    lines = text.splitlines(keepends=True)
-    segments: list = []
-    buf: list[str] = []
-    buf_start_line = node.start_point[0] + 1
-    char_count = 0
-    prev_tail: list[str] = []  # overlap prefix for the next segment
-
-    for line in lines:
-        buf.append(line)
-        char_count += len(line)
-        if char_count >= CHUNK_TARGET:
-            content = "".join(prev_tail + buf)
-            end_line = buf_start_line + len(buf) - 1
-            segments.append(_SyntheticSegment(
-                content, buf_start_line, end_line, name=node_name, chunk_type=node_type,
-                refs=_extract_refs(node, lang, src, (buf_start_line, end_line)),
-            ))
-            prev_tail = buf[-FALLBACK_OVERLAP_LINES:] if FALLBACK_OVERLAP_LINES > 0 else []
-            buf_start_line += len(buf)
-            buf = []
-            char_count = 0
-
-    if buf:
-        content = "".join(prev_tail + buf)
-        end_line = buf_start_line + len(buf) - 1
-        segments.append(_SyntheticSegment(
-            content, buf_start_line, end_line, name=node_name, chunk_type=node_type,
-            refs=_extract_refs(node, lang, src, (buf_start_line, end_line)),
-        ))
-
+    node_seg = _Segment(node, src, lang)   # source of the name/type to propagate
+    lines = src[start:node.end_byte].decode(errors="replace").splitlines(keepends=True)
+    segments = _tile_lines(lines, node.start_point[0] + 1, chunk_type=node_seg.chunk_type,
+                           name=node_seg.name, refs_for=node_refs)
     return segments if segments else [_Segment(node, src, lang, start=start)]
 
 
@@ -691,6 +661,25 @@ def _finalize(segs: list, src: bytes, path: str | None = None,
         for seg in _enforce_ceiling(segs, src, path, counters)
         if seg.content(src).strip()
     ]
+
+
+def _tile_lines(lines: list[str], start_line: int, *, chunk_type: str = "block",
+                name: str | None = None,
+                refs_for: Callable[[int, int], dict[str, list[str]]] | None = None) -> list:
+    """Line-slices `lines`, the first on `start_line`, closing a piece at CHUNK_TARGET characters.
+    A piece's text opens with the previous piece's last FALLBACK_OVERLAP_LINES lines, above its start_line."""
+    segs: list = []
+    prev_lo = lo = chars = 0
+    for hi, line in enumerate(lines, start=1):
+        chars += len(line)
+        if chars < CHUNK_TARGET and hi < len(lines):
+            continue
+        first, last = start_line + lo, start_line + hi - 1
+        content = "".join(lines[max(prev_lo, lo - FALLBACK_OVERLAP_LINES):hi])
+        segs.append(_SyntheticSegment(content, first, last, chunk_type=chunk_type, name=name,
+                                      refs=None if refs_for is None else refs_for(first, last)))
+        prev_lo, lo, chars = lo, hi, 0
+    return segs
 
 
 def _line_slice_oversized(content: str, start_line: int, name: str | None,
@@ -1173,30 +1162,10 @@ def segment_file(src: bytes, lang: str, *, path: str | None = None,
 
     boundary_nodes = _collect_boundaries(root, lang, src, counters)
 
-    # No structural nodes at all (e.g. a pure header): line-split by
-    # CHUNK_TARGET with the same fallback overlap as _split_large_node.
+    # No structural nodes at all (e.g. a pure header): line-tile the whole file.
     if not boundary_nodes:
-        text = src.decode(errors="replace")
-        lines = text.splitlines(keepends=True)
-        segs: list = []
-        buf: list[str] = []
-        buf_start = 1
-        char_count = 0
-        prev_tail: list[str] = []
-        for line in lines:
-            buf.append(line)
-            char_count += len(line)
-            if char_count >= CHUNK_TARGET:
-                content = "".join(prev_tail + buf)
-                segs.append(_SyntheticSegment(content, buf_start, buf_start + len(buf) - 1))
-                prev_tail = buf[-FALLBACK_OVERLAP_LINES:] if FALLBACK_OVERLAP_LINES > 0 else []
-                buf_start += len(buf)
-                buf = []
-                char_count = 0
-        if buf:
-            content = "".join(prev_tail + buf)
-            segs.append(_SyntheticSegment(content, buf_start, buf_start + len(buf) - 1))
-        return _finalize(segs, src, path, counters)
+        lines = src.decode(errors="replace").splitlines(keepends=True)
+        return _finalize(_tile_lines(lines, 1), src, path, counters)
 
     # A salvaged container's nested boundaries can be re-derived again by
     # _split_large_node below; precompute their spans and skip the

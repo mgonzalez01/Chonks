@@ -3,7 +3,7 @@
 import re
 from typing import Any
 
-from chonks.index.segment import CHUNK_TARGET, FALLBACK_OVERLAP_LINES, _SyntheticSegment, _finalize, _merge_small
+from chonks.index.segment import _finalize, _merge_small, _tile_lines
 
 _MARKDOWN_EXTS = (".md", ".markdown")
 
@@ -60,50 +60,13 @@ def _split_markdown_sections(lines: list[str]) -> list[tuple[int, int, str | Non
     return sections
 
 
-def _slice_section(lines: list[str], name: str | None) -> list:
-    """Line-slices one section into <= CHUNK_TARGET pieces, all keeping its
-    name. Overlap is section-local: a different section's trailing context
-    isn't useful here."""
-    segs: list = []
-    if not lines:
-        return segs
-    buf: list[str] = []
-    buf_start = 1
-    char_count = 0
-    prev_tail: list[str] = []
-    for line in lines:
-        buf.append(line)
-        char_count += len(line)
-        if char_count >= CHUNK_TARGET:
-            content = "".join(prev_tail + buf)
-            segs.append(_SyntheticSegment(
-                content, buf_start, buf_start + len(buf) - 1,
-                chunk_type="text", name=name))
-            prev_tail = buf[-FALLBACK_OVERLAP_LINES:] if FALLBACK_OVERLAP_LINES > 0 else []
-            buf_start += len(buf)
-            buf = []
-            char_count = 0
-    if buf:
-        content = "".join(prev_tail + buf)
-        segs.append(_SyntheticSegment(
-            content, buf_start, buf_start + len(buf) - 1,
-            chunk_type="text", name=name))
-    return segs
-
-
 def _segment_markdown(src: bytes, text_src: str) -> list:
-    """Heading-aware split for .md/.markdown, named after heading text
-    instead of the generic fallback's nameless line-tiling."""
+    """Heading-aware split for .md/.markdown: each section is line-tiled on its own,
+    so overlap never crosses a heading, and its pieces are named after the heading text."""
     lines = text_src.splitlines(keepends=True)
     segs: list = []
     for start, end, name in _split_markdown_sections(lines):
-        sec_lines = lines[start - 1:end]
-        for seg in _slice_section(sec_lines, name):
-            # _slice_section's line numbers are section-local (start at 1);
-            # rebase them onto the file's absolute line numbers.
-            seg.start_line += start - 1
-            seg.end_line += start - 1
-            segs.append(seg)
+        segs.extend(_tile_lines(lines[start - 1:end], start, chunk_type="text", name=name))
     return _merge_small(segs, src)
 
 
@@ -116,26 +79,4 @@ def segment_text_file(src: bytes, *, path: str | None = None,
     if _is_markdown_path(path):
         return _finalize(_segment_markdown(src, text_src), src, path, counters)
     lines = text_src.splitlines(keepends=True)
-    segs: list = []
-    buf: list[str] = []
-    buf_start = 1
-    char_count = 0
-    prev_tail: list[str] = []
-    for line in lines:
-        buf.append(line)
-        char_count += len(line)
-        if char_count >= CHUNK_TARGET:
-            content = "".join(prev_tail + buf)
-            segs.append(_SyntheticSegment(
-                content, buf_start, buf_start + len(buf) - 1,
-                chunk_type="text", name=None))
-            prev_tail = buf[-FALLBACK_OVERLAP_LINES:] if FALLBACK_OVERLAP_LINES > 0 else []
-            buf_start += len(buf)
-            buf = []
-            char_count = 0
-    if buf:
-        content = "".join(prev_tail + buf)
-        segs.append(_SyntheticSegment(
-            content, buf_start, buf_start + len(buf) - 1,
-            chunk_type="text", name=None))
-    return _finalize(segs, src, path, counters)
+    return _finalize(_tile_lines(lines, 1, chunk_type="text"), src, path, counters)
