@@ -4,7 +4,7 @@ I designed Chonks, initially as an implementation of the cAST paper, then increm
 
 Issues and pull requests are welcome. The project is maintained in spare time and is not for profit, so replies can take a while.
 
-`scripts/check.sh` runs every check a change has to pass, the same ones CI runs: ruff over `chonks/`, the tests, and the MCP server build.
+`scripts/check.sh` runs every check a change has to pass, the same ones CI runs: ruff's formatter and linter over `chonks/`, the tests, and the MCP server build.
 
 Before opening a pull request that changes ranking, chunking, or graph construction, please include the reasoning or measurement behind the change in the PR description. A change to a module under `chonks/languages/` is a chunking change. [eval/FREEZES.md](eval/FREEZES.md) records what's already been measured, worth checking before you start in case there's a relevant number to build on. That's enough.
 
