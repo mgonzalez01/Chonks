@@ -4,6 +4,7 @@ Dispatches `chonks <subcommand> [args...]` to each module's own main(),
 argv unchanged. No flags were renamed, only the invocation
 (e.g. `chonks/ops/index_cmd.py` -> `chonks index`).
 """
+
 from __future__ import annotations
 
 import sys
@@ -50,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(2)
 
     import importlib
+
     module = importlib.import_module(module_name)
     sys.exit(module.main(rest))
 

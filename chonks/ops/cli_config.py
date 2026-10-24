@@ -1,4 +1,5 @@
 """Config loading for the commands that print their warnings instead of logging them."""
+
 import sys
 
 from chonks.core.config import load_config

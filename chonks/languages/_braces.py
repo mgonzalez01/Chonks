@@ -1,4 +1,5 @@
 """Brace-language text scan: where in a chunk a `name(` can be a signature rather than a call."""
+
 from __future__ import annotations
 
 import bisect
@@ -7,7 +8,8 @@ from functools import lru_cache
 from typing import Callable
 
 _TOKENS = re.compile(
-    r"//[^\n]*|/\*.*?(?:\*/|\Z)|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n]){1,8}'|[{}();]", re.S)
+    r"//[^\n]*|/\*.*?(?:\*/|\Z)|\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n]){1,8}'|[{}();]", re.S
+)
 _COMMENTS = re.compile(r"//[^\n]*|/\*.*?(?:\*/|\Z)", re.S)
 _DIRECTIVES = re.compile(r"^[ \t]*#.*$", re.M)
 _STRINGS = re.compile(r"\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n]){1,8}'")
@@ -27,7 +29,7 @@ def _without_template_head(header: str) -> str:
         elif header[i] == ">":
             depth -= 1
             if depth == 0:
-                return header[:m.start()] + header[i + 1:]
+                return header[: m.start()] + header[i + 1 :]
     return header
 
 
@@ -106,8 +108,10 @@ def outside_bodies(keywords: frozenset[str]) -> Callable[[str, int], bool]:
     """A `signature_at` for a brace language whose `keywords` open a body of
     declarations (`class`, `namespace`): the offset is outside comments,
     strings, parentheses and function bodies."""
+
     def signature_at(content: str, pos: int) -> bool:
         starts, ends = _hidden(content, keywords)
         i = bisect.bisect_right(starts, pos) - 1
         return i < 0 or ends[i] <= pos
+
     return signature_at

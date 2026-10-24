@@ -1,4 +1,5 @@
 """Refs-DSL dataclasses describing how to walk each language's tree-sitter grammar."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -57,11 +58,11 @@ NodeRule = "Field | FieldChildren | Children"
 
 @dataclass(frozen=True)
 class LiteralSpec:
-    leaf_types: tuple[str, ...]      # node types that are themselves one string literal
+    leaf_types: tuple[str, ...]  # node types that are themselves one string literal
     concat_types: tuple[str, ...] = ()  # adjacent-juxtaposition container types;
-                                         # grammar guarantees pure leaf children, no purity check
-    plus_type: str | None = None     # binary +/concat node type; only joined if pure literals
-    plus_op: str = "+"               # the concat operator token inside plus_type
+    # grammar guarantees pure leaf children, no purity check
+    plus_type: str | None = None  # binary +/concat node type; only joined if pure literals
+    plus_op: str = "+"  # the concat operator token inside plus_type
     skip_fn: "Callable[[Node], bool] | None" = None  # leaf-level exclusion (e.g. docstrings)
 
 
@@ -69,39 +70,40 @@ class LiteralSpec:
 class CallSiteSpec:
     """Node facts for a call's receiver chain, the declarations that type its
     head, and the class the call sits in."""
+
     # receiver chains: node type -> field names
     member_access: Mapping[str, tuple[str, str, str]]  # (object, operator, member)
-    scope_access: Mapping[str, tuple[str, str]]        # (scope, name)
+    scope_access: Mapping[str, tuple[str, str]]  # (scope, name)
     scope_operator: str
-    calls: Mapping[str, str]                           # callee field
+    calls: Mapping[str, str]  # callee field
     type_argument_wrappers: Mapping[str, tuple[str, str]]  # (bare name, type arguments)
     parenthesized: frozenset[str]
-    subscripts: Mapping[str, str]                      # object field
-    dereferences: Mapping[str, tuple[str, str, str]]   # (operand, operator field, operator)
+    subscripts: Mapping[str, str]  # object field
+    dereferences: Mapping[str, tuple[str, str, str]]  # (operand, operator field, operator)
     this_expressions: frozenset[str]
     names: frozenset[str]
     # expressions that state their own type
-    casts: Mapping[str, str]                           # type field
-    allocations: Mapping[str, str]                     # type field; result is `<type><allocation_suffix>`
+    casts: Mapping[str, str]  # type field
+    allocations: Mapping[str, str]  # type field; result is `<type><allocation_suffix>`
     allocation_suffix: str
-    typed_literals: Mapping[str, str]                  # type field
+    typed_literals: Mapping[str, str]  # type field
     # callee names whose one type argument is the result type
     type_argument_calls: "re.Pattern[str]"
     # declarations
-    functions: frozenset[str]                          # a declaration lookup stops here
-    parameter_owners: Mapping[str, "str | None"]       # field leading to the parameter list; None: on the node
+    functions: frozenset[str]  # a declaration lookup stops here
+    parameter_owners: Mapping[str, "str | None"]  # field leading to the parameter list; None: on the node
     parameters_field: str
     parameters: frozenset[str]
     blocks: frozenset[str]
-    transparent_blocks: frozenset[str]                 # their declarations count in the enclosing block
+    transparent_blocks: frozenset[str]  # their declarations count in the enclosing block
     declarations: frozenset[str]
     declaration_scopes: Mapping[str, tuple[str, ...]]  # statement -> fields whose declarations it scopes
-    range_loops: Mapping[str, str]                     # the field that does not see the loop variable
-    declarators: Mapping[str, str]                     # wrapper -> suffix it adds to the type
+    range_loops: Mapping[str, str]  # the field that does not see the loop variable
+    declarators: Mapping[str, str]  # wrapper -> suffix it adds to the type
     declarator_names: frozenset[str]
-    binding_declarators: frozenset[str]                # declare several untyped names
+    binding_declarators: frozenset[str]  # declare several untyped names
     inferred_types: frozenset[str]
-    type_qualifiers: Mapping[str, frozenset[str]]      # node type -> the words that belong to the type
+    type_qualifiers: Mapping[str, frozenset[str]]  # node type -> the words that belong to the type
     type_field: str
     declarator_field: str
     value_field: str
@@ -120,6 +122,7 @@ NodePred = Callable[["Node", bytes], bool]
 class NameRule:
     """Node types and the function that names them. Rules are tried in
     order; the first non-None result wins."""
+
     types: tuple[str, ...]
     fn: NameFn
 
@@ -128,6 +131,7 @@ class NameRule:
 class Member:
     """One class member a declaration names. `scope` is the class qualifier
     written on an out-of-class definition (`Foo::bar` -> ("Foo",))."""
+
     name: str
     kind: str
     line: int
@@ -144,6 +148,7 @@ MemberFn = Callable[["Node", bytes, str], "list[Member]"]  # (node, src, class n
 class TypeRef:
     """A written type as the class it names: `const ns::Vector<Ref<Foo>> *` ->
     name `ns::Vector`, args ("Ref<Foo>",), pointers 1."""
+
     name: str
     args: tuple[str, ...] = ()
     pointers: int = 0
@@ -152,6 +157,7 @@ class TypeRef:
 @dataclass(frozen=True)
 class ClassModelSpec:
     """Node facts for the class model: the members and bases of each class."""
+
     namespaces: Mapping[str, NameFn]  # nodes that open a named scope
     classes: Mapping[str, NameFn]  # class nodes, named without template arguments
     members: Mapping[str, MemberFn]  # member declarations in a class body

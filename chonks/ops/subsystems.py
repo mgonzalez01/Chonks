@@ -19,8 +19,7 @@ def suggest_subsystems(
     distance_threshold: float = DEFAULT_SUBSYSTEM_DISTANCE_THRESHOLD,
     min_cluster_size: int = 2,
 ) -> list[list[str]]:
-    """Clusters folder summaries by cosine distance into candidate subsystem groupings.
-    """
+    """Clusters folder summaries by cosine distance into candidate subsystem groupings."""
     paths = store.get_all_folder_paths()
     if len(paths) < 2:
         return []

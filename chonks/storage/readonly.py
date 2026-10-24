@@ -17,6 +17,7 @@ def _connect_readonly(db_path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout=5000")
     try:
         import sqlite_vec
+
         conn.enable_load_extension(True)
         sqlite_vec.load(conn)
         conn.enable_load_extension(False)
@@ -33,9 +34,7 @@ def set_embedding_model(db_path: str, model: str) -> str | None:
     try:
         conn.execute("PRAGMA busy_timeout=5000")
         row = conn.execute("SELECT value FROM meta WHERE key='embedding_model'").fetchone()
-        conn.execute(
-            "INSERT OR REPLACE INTO meta(key,value) VALUES('embedding_model',?)", (model,)
-        )
+        conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('embedding_model',?)", (model,))
         conn.commit()
     finally:
         conn.close()

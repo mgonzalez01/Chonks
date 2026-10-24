@@ -1,4 +1,5 @@
 """C language plugin data."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -29,10 +30,15 @@ C = LanguageSpec(
     extensions=frozenset({".c"}),
     # struct/union/enum_specifier also match bare tag refs and forward decls;
     # the boundary_filters entry requires a body to treat one as a real boundary.
-    boundary_nodes=frozenset({
-        "function_definition", "struct_specifier", "union_specifier",
-        "enum_specifier", "type_definition",
-    }),
+    boundary_nodes=frozenset(
+        {
+            "function_definition",
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+            "type_definition",
+        }
+    ),
     salvage_nodes=frozenset({"function_definition"}),
     boundary_filters={
         **{t: is_tag_definition for t in _C_TAG_TYPES},

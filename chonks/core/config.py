@@ -1,4 +1,5 @@
 """The config.json loader. It does not log: a caller owns its logger name and its failure policy."""
+
 from __future__ import annotations
 
 import json

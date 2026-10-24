@@ -26,11 +26,14 @@ def _open_store_if_needed(p: dict) -> None:
         return
     with _open_lock:
         if p.get("store") is None:  # re-check inside the lock
-            p["store"]    = Store(p["db_path"])
+            p["store"] = Store(p["db_path"])
             # Config-only, no per-request override, so the A/B toggles per project not per call.
-            reformulate = bool((p["search_cfg"] or {}).get(
-                "reformulate_query", DEFAULT_REFORMULATE_QUERY,
-            ))
+            reformulate = bool(
+                (p["search_cfg"] or {}).get(
+                    "reformulate_query",
+                    DEFAULT_REFORMULATE_QUERY,
+                )
+            )
             p["searcher"] = Searcher(p["store"], p["embedder"], reformulate_query=reformulate)
 
 

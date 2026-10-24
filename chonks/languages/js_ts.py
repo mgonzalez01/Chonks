@@ -1,4 +1,5 @@
 """JavaScript/TypeScript/TSX language plugin data."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -11,14 +12,22 @@ if TYPE_CHECKING:
 
 # typescript/tsx are supersets of the javascript grammar, so their boundary
 # sets layer on javascript's core plus TS-only declaration types.
-JS_CORE_BOUNDARIES = frozenset({
-    "function_declaration", "generator_function_declaration",
-    "method_definition", "class_declaration",
-})
-TS_EXTRA_BOUNDARIES = frozenset({
-    "interface_declaration", "enum_declaration",
-    "type_alias_declaration", "abstract_class_declaration",
-})
+JS_CORE_BOUNDARIES = frozenset(
+    {
+        "function_declaration",
+        "generator_function_declaration",
+        "method_definition",
+        "class_declaration",
+    }
+)
+TS_EXTRA_BOUNDARIES = frozenset(
+    {
+        "interface_declaration",
+        "enum_declaration",
+        "type_alias_declaration",
+        "abstract_class_declaration",
+    }
+)
 
 
 def is_arrow_var_decl(node: Node, src: bytes) -> bool:
@@ -38,19 +47,25 @@ def is_arrow_var_decl(node: Node, src: bytes) -> bool:
 # their name via the 'name' field.
 JS_NAME_RULES = (
     NameRule(
-        ("function_declaration", "generator_function_declaration",
-         "class_declaration", "method_definition"),
+        ("function_declaration", "generator_function_declaration", "class_declaration", "method_definition"),
         name_field,
     ),
     NameRule(("lexical_declaration", "variable_declaration"), arrow_var_name),
 )
 TS_NAME_RULES = (
     NameRule(
-        ("function_declaration", "generator_function_declaration",
-         "class_declaration", "method_definition",
-         "interface_declaration", "enum_declaration",
-         "type_alias_declaration", "abstract_class_declaration",
-         "internal_module", "module"),
+        (
+            "function_declaration",
+            "generator_function_declaration",
+            "class_declaration",
+            "method_definition",
+            "interface_declaration",
+            "enum_declaration",
+            "type_alias_declaration",
+            "abstract_class_declaration",
+            "internal_module",
+            "module",
+        ),
         name_field,
     ),
     NameRule(("lexical_declaration", "variable_declaration"), arrow_var_name),
@@ -63,9 +78,13 @@ JAVASCRIPT = LanguageSpec(
     version="2",
     extensions=frozenset({".js", ".jsx", ".mjs", ".cjs"}),
     boundary_nodes=JS_CORE_BOUNDARIES,
-    salvage_nodes=frozenset({
-        "function_declaration", "generator_function_declaration", "method_definition",
-    }),
+    salvage_nodes=frozenset(
+        {
+            "function_declaration",
+            "generator_function_declaration",
+            "method_definition",
+        }
+    ),
     extra_boundary=is_arrow_var_decl,
     doc_comment_prefixes=("/**",),
     name_rules=JS_NAME_RULES,
@@ -91,9 +110,13 @@ TYPESCRIPT = LanguageSpec(
     # internal_module/module aren't boundary types; listed here only so an
     # EMPTY TS/TSX namespace still becomes its own chunk instead of vanishing.
     container_nodes=frozenset({"internal_module", "module"}),
-    salvage_nodes=frozenset({
-        "function_declaration", "generator_function_declaration", "method_definition",
-    }),
+    salvage_nodes=frozenset(
+        {
+            "function_declaration",
+            "generator_function_declaration",
+            "method_definition",
+        }
+    ),
     extra_boundary=is_arrow_var_decl,
     doc_comment_prefixes=("/**",),
     name_rules=TS_NAME_RULES,
@@ -121,9 +144,13 @@ TSX = LanguageSpec(
     extensions=frozenset({".tsx"}),
     boundary_nodes=JS_CORE_BOUNDARIES | TS_EXTRA_BOUNDARIES,
     container_nodes=frozenset({"internal_module", "module"}),
-    salvage_nodes=frozenset({
-        "function_declaration", "generator_function_declaration", "method_definition",
-    }),
+    salvage_nodes=frozenset(
+        {
+            "function_declaration",
+            "generator_function_declaration",
+            "method_definition",
+        }
+    ),
     extra_boundary=is_arrow_var_decl,
     doc_comment_prefixes=("/**",),
     name_rules=TS_NAME_RULES,

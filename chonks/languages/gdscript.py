@@ -1,4 +1,5 @@
 """GDScript language plugin data."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -10,9 +11,7 @@ from .spec import ChildSpec, Children, LanguageSpec, LiteralSpec, NameRule
 if TYPE_CHECKING:
     from tree_sitter import Node
 
-CALL = Children((
-    ChildSpec(("identifier",), "calls", break_outer=True),
-))
+CALL = Children((ChildSpec(("identifier",), "calls", break_outer=True),))
 
 
 def call_receiver(call_node: Node, callee: Node, src: bytes) -> str | None:
@@ -40,15 +39,11 @@ GDSCRIPT = LanguageSpec(
     boundary_nodes=frozenset({"function_definition", "class_definition"}),
     salvage_nodes=frozenset({"function_definition"}),
     call_receiver=call_receiver,
-    name_rules=(
-        NameRule(("function_definition", "class_definition"), name_field),
-    ),
+    name_rules=(NameRule(("function_definition", "class_definition"), name_field),),
     refs_spec={
         "call": CALL,
         "attribute_call": CALL,
-        "extends_statement": Children((
-            ChildSpec(("type",), "inherits", name_fn=name_last_or_text),
-        )),
+        "extends_statement": Children((ChildSpec(("type",), "inherits", name_fn=name_last_or_text),)),
     },
     identifier_leaf_types=frozenset({"identifier"}),
     line_comment_prefixes=("#",),

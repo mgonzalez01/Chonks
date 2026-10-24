@@ -21,6 +21,7 @@ _TYPE_LOOKUP_DEPTH = 4
 class CallSites:
     """Caches over one tree, keyed by node id. Holding the root keeps the
     tree alive, so no other tree can reuse its ids while this is cached."""
+
     __slots__ = ("cs", "leaves", "src", "root", "blocks", "scopes", "scope_owner", "classes", "evidence")
 
     def __init__(self, cs: _CallSiteSpec, leaves: frozenset[str], src: bytes, root: Node):
@@ -57,7 +58,7 @@ def sites_for(node: Node, lang: str, src: bytes) -> CallSites | None:
 
 
 def _text(n: Node, src: bytes) -> str:
-    return " ".join(src[n.start_byte:n.end_byte].decode(errors="replace").split())
+    return " ".join(src[n.start_byte : n.end_byte].decode(errors="replace").split())
 
 
 def _bare_name(n: Node, sites: CallSites) -> str:
@@ -109,9 +110,13 @@ def _written_type(owner: Node, suffix: str, sites: CallSites) -> str | None:
         if name is None:
             return None
         tn = name
-    quals = [q for c in owner.children
-             if c.type in cs.type_qualifiers and c.start_byte < tn.start_byte
-             and (q := _text(c, sites.src)) in cs.type_qualifiers[c.type]]
+    quals = [
+        q
+        for c in owner.children
+        if c.type in cs.type_qualifiers
+        and c.start_byte < tn.start_byte
+        and (q := _text(c, sites.src)) in cs.type_qualifiers[c.type]
+    ]
     written = " ".join(quals + [_text(tn, sites.src)])
     if len(written) > _TYPE_TEXT_MAX:
         return None
@@ -121,9 +126,9 @@ def _written_type(owner: Node, suffix: str, sites: CallSites) -> str | None:
 class _Declared(NamedTuple):
     name: str
     via: str
-    owner: Node            # the declaration, parameter or loop holding the type
-    value: "Node | None"   # initializer
-    suffix: str | None     # None: declared without a type
+    owner: Node  # the declaration, parameter or loop holding the type
+    value: "Node | None"  # initializer
+    suffix: str | None  # None: declared without a type
 
 
 def _declared_in(owner: Node, via: str, sites: CallSites) -> list[_Declared]:
@@ -215,13 +220,26 @@ def _lookup(name: str, at: Node, sites: CallSites, depth: int) -> tuple[str, str
             if outside is None or outside.id != prev.id:
                 found = next((d for d in _declared_in(p, "local", sites) if d.name == name), None)
         elif p.type in cs.declaration_scopes:
-            found = next((d for d in _scoped_declarations(p, cs.declaration_scopes[p.type], sites)
-                          if d.name == name and d.owner.end_byte <= at.start_byte), None)
+            found = next(
+                (
+                    d
+                    for d in _scoped_declarations(p, cs.declaration_scopes[p.type], sites)
+                    if d.name == name and d.owner.end_byte <= at.start_byte
+                ),
+                None,
+            )
         if found is None and p.type in cs.parameter_owners:
             params = _parameter_list(p, sites)
-            found = next((d for param in (params.children if params is not None else ())
-                          if param.type in cs.parameters
-                          for d in _declared_in(param, "param", sites) if d.name == name), None)
+            found = next(
+                (
+                    d
+                    for param in (params.children if params is not None else ())
+                    if param.type in cs.parameters
+                    for d in _declared_in(param, "param", sites)
+                    if d.name == name
+                ),
+                None,
+            )
         if found is not None:
             return found.via, _declared_type(found, sites, depth)
         if p.type in cs.functions:
@@ -265,7 +283,11 @@ def _value_type(v: "Node | None", sites: CallSites, depth: int, inferred: bool) 
         typed = _type_argument_result(callee, sites)
         if typed is not None or not inferred or callee is None:
             return typed
-        if callee.type in cs.names or callee.type in cs.scope_access or callee.type in cs.type_argument_wrappers:
+        if (
+            callee.type in cs.names
+            or callee.type in cs.scope_access
+            or callee.type in cs.type_argument_wrappers
+        ):
             return _text(callee, sites.src)
         return None
     if inferred and t in cs.names:
@@ -287,7 +309,7 @@ def _scope_text(n: Node, sites: CallSites) -> str | None:
         cur = name
     if name is None:
         return None
-    scope = " ".join(sites.src[n.start_byte:name.start_byte].decode(errors="replace").split())
+    scope = " ".join(sites.src[n.start_byte : name.start_byte].decode(errors="replace").split())
     return scope.removesuffix(cs.scope_operator).strip().removeprefix(cs.scope_operator).strip()
 
 

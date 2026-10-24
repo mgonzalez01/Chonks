@@ -57,14 +57,8 @@ def rebuild_hierarchy(store) -> dict[str, int]:
             parent = posixpath.dirname(d) or "."
             return None if parent == d else "dir:" + parent
 
-        dir_rows = [
-            ("dir:" + d, "dir", d, _dir_parent_id(d))
-            for d in dir_paths
-        ]
-        file_rows = [
-            ("file:" + fp, "file", fp, "dir:" + (posixpath.dirname(fp) or "."))
-            for fp in file_paths
-        ]
+        dir_rows = [("dir:" + d, "dir", d, _dir_parent_id(d)) for d in dir_paths]
+        file_rows = [("file:" + fp, "file", fp, "dir:" + (posixpath.dirname(fp) or ".")) for fp in file_paths]
 
         if dir_rows or file_rows:
             store.insert_graph_nodes(dir_rows + file_rows)
@@ -86,9 +80,7 @@ def rebuild_hierarchy(store) -> dict[str, int]:
         # Group files by (dir, stem), pair every header against every
         # impl in that group. Both directions are emitted so a lookup
         # needs only one query direction (get_paired_files).
-        by_dir_stem: dict[tuple[str, str], dict[str, list[str]]] = defaultdict(
-            lambda: defaultdict(list)
-        )
+        by_dir_stem: dict[tuple[str, str], dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
         for fp in file_paths:
             d = posixpath.dirname(fp) or "."
             base = posixpath.basename(fp)

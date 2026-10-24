@@ -7,4 +7,4 @@ from collections.abc import Iterator, Sequence
 
 def batched(items: Sequence, n: int) -> Iterator[Sequence]:
     for i in range(0, len(items), n):
-        yield items[i:i + n]
+        yield items[i : i + n]

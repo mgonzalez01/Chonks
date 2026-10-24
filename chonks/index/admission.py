@@ -13,8 +13,15 @@ def _file_hash(path: Path) -> str:
 
 
 DEFAULT_FALLBACK_EXTENSIONS = [
-    ".html", ".vue", ".svelte", ".md", ".markdown",
-    ".yaml", ".yml", ".toml", ".json",
+    ".html",
+    ".vue",
+    ".svelte",
+    ".md",
+    ".markdown",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
 ]
 
 # .md is excluded from the size guard (often the best doc, never gated);

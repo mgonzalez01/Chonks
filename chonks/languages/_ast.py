@@ -1,4 +1,5 @@
 """Node-text and identifier helpers shared by the refs DSL and language specs."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Collection
@@ -13,8 +14,12 @@ _TYPE_ARGUMENT_LISTS = frozenset({"template_argument_list", "type_argument_list"
 DEFAULT_IDENTIFIER_LEAVES = frozenset({"identifier", "field_identifier", "type_identifier"})
 
 
-def last_identifier(node: Node, src: bytes, skip: Collection[str] = (),
-                    leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES) -> str | None:
+def last_identifier(
+    node: Node,
+    src: bytes,
+    skip: Collection[str] = (),
+    leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES,
+) -> str | None:
     """Rightmost `leaf_types` leaf of a dotted/member chain (a.b.c):
     the referenced name, not the receiver it's called through. Children
     whose type is in `skip` are not searched."""
@@ -22,7 +27,7 @@ def last_identifier(node: Node, src: bytes, skip: Collection[str] = (),
         if child.type in skip:
             continue
         if child.type in leaf_types:
-            return src[child.start_byte:child.end_byte].decode(errors="replace")
+            return src[child.start_byte : child.end_byte].decode(errors="replace")
         # recurse into nested chains (field_expression/member_access_expression/attribute)
         if child.is_named:
             found = last_identifier(child, src, skip, leaf_types)
@@ -31,8 +36,9 @@ def last_identifier(node: Node, src: bytes, skip: Collection[str] = (),
     return None
 
 
-def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Collection[str],
-                        skip: Collection[str] = ()) -> str | None:
+def terminal_identifier(
+    n: "Node | None", src: bytes, identifier_leaf_types: Collection[str], skip: Collection[str] = ()
+) -> str | None:
     """`n`'s own text if it's one of the caller's language's identifier-leaf
     types, else the rightmost such leaf in its subtree outside `skip` nodes."""
     if n is None:
@@ -43,15 +49,16 @@ def terminal_identifier(n: "Node | None", src: bytes, identifier_leaf_types: Col
 
 
 def name_text(n: Node, src: bytes) -> str:
-    return src[n.start_byte:n.end_byte].decode(errors="replace")
+    return src[n.start_byte : n.end_byte].decode(errors="replace")
 
 
 def name_last_or_text(n: Node, src: bytes) -> str | None:
     return last_identifier(n, src) or name_text(n, src)
 
 
-def name_call_target(n: Node, src: bytes,
-                     leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES) -> str | None:
+def name_call_target(
+    n: Node, src: bytes, leaf_types: Collection[str] = DEFAULT_IDENTIFIER_LEAVES
+) -> str | None:
     # The called *name* is always the rightmost identifier-like leaf of
     # whatever expression is being invoked (bare name, member access,
     # qualified/namespaced name, ...).
@@ -78,6 +85,8 @@ def is_forward_declaration(node: Node, src: bytes) -> bool:
 def is_opaque_typedef(node: Node, src: bytes) -> bool:
     """`typedef struct X X;`: names a type whose layout is defined elsewhere."""
     target = node.child_by_field_name("type")
-    return (target is not None and target.type in ("struct_specifier", "class_specifier",
-                                                   "union_specifier")
-            and not has_body(target, src))
+    return (
+        target is not None
+        and target.type in ("struct_specifier", "class_specifier", "union_specifier")
+        and not has_body(target, src)
+    )

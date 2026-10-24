@@ -1,5 +1,6 @@
 """How a request's path_prefix reaches the index, and notes that say when a
 scope, or a config entry, can't match anything."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,8 +21,9 @@ if TYPE_CHECKING:
 _SUGGESTIONS = 3
 
 
-def resolve_scope(store: Store, path_prefix: str | None, root: Path | None,
-                  exclude: list[str], include: list[str]) -> tuple[str | None, str | None]:
+def resolve_scope(
+    store: Store, path_prefix: str | None, root: Path | None, exclude: list[str], include: list[str]
+) -> tuple[str | None, str | None]:
     """The scope `path_prefix` names in the index, and a note when nothing
     indexed lies under it; (None, None) for the whole index."""
     scope = _path_scope(path_prefix)
@@ -61,7 +63,9 @@ def _respelled(scope: str, typed: str, paths: list[str]) -> tuple[str, str | Non
     return scope, note
 
 
-def _excluded_note(typed: str | None, scope: str | None, exclude: list[str], include: list[str]) -> str | None:
+def _excluded_note(
+    typed: str | None, scope: str | None, exclude: list[str], include: list[str]
+) -> str | None:
     if scope is None:
         return None
     rule = _scope_exclusion(scope, _normalize_prefixes(exclude), _normalize_prefixes(include))
@@ -74,8 +78,9 @@ def excluded_scope_note(path_prefix: str | None, exclude: list[str], include: li
     return _excluded_note(path_prefix, _path_scope(path_prefix), exclude, include)
 
 
-def config_warnings(root: str | Path | None, exclude: list[str], include: list[str],
-                    scopes: list[str] | tuple[str, ...] = ()) -> list[str]:
+def config_warnings(
+    root: str | Path | None, exclude: list[str], include: list[str], scopes: list[str] | tuple[str, ...] = ()
+) -> list[str]:
     """Exclude and include entries that match nothing on disk, and the scopes
     in `scopes` that the excludes keep out of the index."""
     warnings: list[str] = []

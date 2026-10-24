@@ -1,4 +1,5 @@
 """C++ class-model readers: the members a declaration names, with type, arity and flags."""
+
 from __future__ import annotations
 
 import re
@@ -102,17 +103,28 @@ def using_namespace_name(node: Node, src: bytes) -> str | None:
     """`using namespace llvm::sys;` -> `llvm::sys`; None for `using Base::f;`."""
     if not any(c.type == "namespace" for c in node.children):
         return None
-    target = next((c for c in node.named_children
-                   if c.type in ("identifier", "namespace_identifier", "qualified_identifier")), None)
+    target = next(
+        (
+            c
+            for c in node.named_children
+            if c.type in ("identifier", "namespace_identifier", "qualified_identifier")
+        ),
+        None,
+    )
     return "".join(name_text(target, src).split()) if target is not None else None
 
 
 _FUNCTION = "function_declarator"
 _POINTERS = frozenset({"pointer_declarator", "reference_declarator"})
 _MARKS = frozenset({"*", "&", "&&"})
-_PASS_THROUGH = frozenset({
-    "parenthesized_declarator", "attributed_declarator", "array_declarator", "init_declarator",
-})
+_PASS_THROUGH = frozenset(
+    {
+        "parenthesized_declarator",
+        "attributed_declarator",
+        "array_declarator",
+        "init_declarator",
+    }
+)
 _CAST = "operator_cast"
 _QUALIFIED = "qualified_identifier"
 _NAMES = frozenset({"field_identifier", "identifier", "destructor_name", "operator_name"})
@@ -192,8 +204,11 @@ def _base_type(node: Node, src: bytes) -> str | None:
     if t.child_by_field_name("body") is not None:
         n = t.child_by_field_name("name")
         return name_text(n, src) if n is not None else None
-    parts = [name_text(c, src) for c in node.children
-             if c == t or (c.type == "type_qualifier" and name_text(c, src) in _CV)]
+    parts = [
+        name_text(c, src)
+        for c in node.children
+        if c == t or (c.type == "type_qualifier" and name_text(c, src) in _CV)
+    ]
     return " ".join(" ".join(parts).split())
 
 
@@ -220,8 +235,7 @@ def _arity(sig: Node | None, src: bytes) -> tuple[int, int, bool] | None:
     return required, required + defaulted, variadic
 
 
-def _return_type(node: Node, name_node: Node, marks: str, sig: Node | None,
-                 src: bytes) -> str | None:
+def _return_type(node: Node, name_node: Node, marks: str, sig: Node | None, src: bytes) -> str | None:
     if name_node.type == _CAST:
         target = name_node.child_by_field_name("type")
         return name_text(target, src) if target is not None else None
@@ -233,39 +247,69 @@ def _return_type(node: Node, name_node: Node, marks: str, sig: Node | None,
 
 
 def _flags(node: Node, sig: Node | None, pure: bool, src: bytes) -> tuple[str, ...]:
-    own = {c.type if c.type == "virtual" else name_text(c, src)
-           for c in node.children if c.type in ("virtual", "storage_class_specifier")}
-    trailing = {name_text(c, src) for c in (sig.children if sig is not None else ())
-                if c.type in ("type_qualifier", "virtual_specifier")}
-    return tuple(f for f, on in (("virtual", "virtual" in own), ("pure", pure),
-                                 ("static", "static" in own), ("const", "const" in trailing),
-                                 ("override", "override" in trailing)) if on)
+    own = {
+        c.type if c.type == "virtual" else name_text(c, src)
+        for c in node.children
+        if c.type in ("virtual", "storage_class_specifier")
+    }
+    trailing = {
+        name_text(c, src)
+        for c in (sig.children if sig is not None else ())
+        if c.type in ("type_qualifier", "virtual_specifier")
+    }
+    return tuple(
+        f
+        for f, on in (
+            ("virtual", "virtual" in own),
+            ("pure", pure),
+            ("static", "static" in own),
+            ("const", "const" in trailing),
+            ("override", "override" in trailing),
+        )
+        if on
+    )
 
 
-def _method(node: Node, name: str, name_node: Node, marks: str, func: Node | None,
-            src: bytes, scope: tuple[str, ...] = ()) -> Member:
+def _method(
+    node: Node,
+    name: str,
+    name_node: Node,
+    marks: str,
+    func: Node | None,
+    src: bytes,
+    scope: tuple[str, ...] = (),
+) -> Member:
     sig = _signature(name_node, func)
     value = node.child_by_field_name("default_value")
     pure = value is not None and name_text(value, src) == "0"
     kind = METHOD_DEFINITION if node.child_by_field_name("body") is not None else METHOD_DECLARATION
-    return Member(name, kind, name_node.start_point[0] + 1,
-                  type_text=_return_type(node, name_node, marks, sig, src),
-                  arity=_arity(sig, src), flags=_flags(node, sig, pure, src), scope=scope)
+    return Member(
+        name,
+        kind,
+        name_node.start_point[0] + 1,
+        type_text=_return_type(node, name_node, marks, sig, src),
+        arity=_arity(sig, src),
+        flags=_flags(node, sig, pure, src),
+        scope=scope,
+    )
 
 
-def _field(node: Node, name: str, name_node: Node, marks: str, func: Node | None,
-           decl: Node, src: bytes) -> Member:
+def _field(
+    node: Node, name: str, name_node: Node, marks: str, func: Node | None, decl: Node, src: bytes
+) -> Member:
     if func is not None:
         t = node.child_by_field_name("type")
         start = t.start_byte if t is not None else decl.start_byte
-        text = (src[start:name_node.start_byte] + src[name_node.end_byte:decl.end_byte]).decode(
-            errors="replace")
+        text = (src[start : name_node.start_byte] + src[name_node.end_byte : decl.end_byte]).decode(
+            errors="replace"
+        )
         type_text = " ".join(text.split())
     else:
         base = _base_type(node, src)
         type_text = f"{base} {marks}" if base and marks else base
-    return Member(name, FIELD, name_node.start_point[0] + 1, type_text=type_text,
-                  flags=_flags(node, None, False, src))
+    return Member(
+        name, FIELD, name_node.start_point[0] + 1, type_text=type_text, flags=_flags(node, None, False, src)
+    )
 
 
 def read_member(node: Node, src: bytes, owner_name: str) -> list[Member]:

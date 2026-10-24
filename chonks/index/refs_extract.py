@@ -162,15 +162,22 @@ def _add_call_entry(lst: list, entry: "str | dict") -> None:
     lst.append(entry)
 
 
-def _apply_rule(n: Node, rule: "_NodeRule", refs: dict[str, list[str]], src: bytes, lang: str,
-                sites: "_CallSites | None" = None) -> None:
+def _apply_rule(
+    n: Node,
+    rule: "_NodeRule",
+    refs: dict[str, list[str]],
+    src: bytes,
+    lang: str,
+    sites: "_CallSites | None" = None,
+) -> None:
     def add(bucket: str, name: str | None) -> None:
         lst = refs[bucket]
         if name and name not in lst and len(lst) < _REFS_MAX_NAMES:
             lst.append(name)
 
-    def add_call(name: str | None, receiver: str | None, arity: int | None, callee: Node,
-                 construct: bool = False) -> None:
+    def add_call(
+        name: str | None, receiver: str | None, arity: int | None, callee: Node, construct: bool = False
+    ) -> None:
         # New entries are fingerprint dicts, not bare strings (legacy shape).
         if not name:
             return
@@ -248,11 +255,13 @@ _ESCAPE_RE = re.compile(r"\\(?:x[0-9A-Fa-f]{2}|.)", re.DOTALL)
 def _decode_escapes(text: str) -> str:
     """Decodes known escapes only; best-effort text-matching aid, not a
     real string-literal parser, so an unrecognized escape is left as-is."""
+
     def repl(m: re.Match) -> str:
         s = m.group(0)
         if s[1] in "xX" and len(s) == 4:
             return chr(int(s[2:], 16))
         return _ESCAPE_MAP.get(s[1], s)
+
     return _ESCAPE_RE.sub(repl, text)
 
 
@@ -276,7 +285,7 @@ def _strip_literal_wrapper(raw: str, lang: str) -> tuple[str, str]:
     rest = raw[idx:]
     for q in _LITERAL_QUOTES:
         if rest.startswith(q) and rest.endswith(q) and len(rest) >= 2 * len(q):
-            text = rest[len(q):-len(q)]
+            text = rest[len(q) : -len(q)]
             if spec is not None and spec.raw_string_prefix is not None and spec.raw_string_prefix(prefix):
                 return text, "raw"
             return text, ("verbatim" if verbatim else "normal")
@@ -289,8 +298,8 @@ def _leaf_literal_text(n: Node, src: bytes, lang: str) -> str:
     _collect_literals, on the fully assembled literal instead."""
     if n.type == "raw_string_literal":
         content = next((c for c in n.children if c.type == "raw_string_content"), None)
-        return src[content.start_byte:content.end_byte].decode(errors="replace") if content else ""
-    raw = src[n.start_byte:n.end_byte].decode(errors="replace")
+        return src[content.start_byte : content.end_byte].decode(errors="replace") if content else ""
+    raw = src[n.start_byte : n.end_byte].decode(errors="replace")
     text, mode = _strip_literal_wrapper(raw, lang)
     if mode == "normal":
         text = _decode_escapes(text)
@@ -363,8 +372,11 @@ def _collect_literals(node: Node, lang: str, src: bytes) -> list[tuple[str, int]
         # is_named guard needed: TS's `predefined_type` reuses "string" as
         # an unnamed type-keyword token, not a string value.
         if spec.concat_types and n.type in spec.concat_types:
-            pieces = [_leaf_literal_text(c, src, lang) for c in n.children
-                      if c.is_named and c.type in spec.leaf_types]
+            pieces = [
+                _leaf_literal_text(c, src, lang)
+                for c in n.children
+                if c.is_named and c.type in spec.leaf_types
+            ]
             if pieces:
                 emit("".join(pieces), n.start_point[0] + 1)
                 return  # consumed, don't re-walk the joined pieces individually
@@ -397,8 +409,9 @@ def _collect_literals(node: Node, lang: str, src: bytes) -> list[tuple[str, int]
 _literal_cap_state = {"capped_chunks": 0, "dropped": 0}
 
 
-def _extract_refs(node: Node, lang: str, src: bytes,
-                  lines: tuple[int, int] | None = None) -> dict[str, list[str]]:
+def _extract_refs(
+    node: Node, lang: str, src: bytes, lines: tuple[int, int] | None = None
+) -> dict[str, list[str]]:
     """{"calls", "imports", "inherits", "literals"} lists. "calls" entries
     are fingerprint dicts; a legacy bare string is treated as receiver=None,
     arity=None so old stored data still resolves. `lines` (first, last, 1-based)

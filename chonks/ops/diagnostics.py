@@ -11,20 +11,22 @@ from chonks.languages import CODE_LANGUAGES
 def _refresh_from_registry() -> None:
     global CODE_LANGUAGES
     import chonks.languages as _languages
+
     CODE_LANGUAGES = _languages.CODE_LANGUAGES
 
 
 register_refresh(_refresh_from_registry)
 
 # A healthy repo can be 90%+ one family; only warn when ALSO docs-kind.
-FAMILY_DOCS_SHARE_WARN = 0.80    # (a) docs-share *within* the dominant family
-FAMILY_TOTAL_SHARE_WARN = 0.40   # (a) that family's share of the whole corpus
-CORPUS_DOCS_SHARE_WARN = 0.50    # (b) corpus-wide docs share
+FAMILY_DOCS_SHARE_WARN = 0.80  # (a) docs-share *within* the dominant family
+FAMILY_TOTAL_SHARE_WARN = 0.40  # (a) that family's share of the whole corpus
+CORPUS_DOCS_SHARE_WARN = 0.50  # (b) corpus-wide docs share
 
 
 @dataclass
 class FamilyStats:
     """One row of the path-family chunk-share breakdown."""
+
     family: str
     chunks: int
     files: int
@@ -54,9 +56,7 @@ def family_breakdown(rows: Iterable[tuple[str, str | None]]) -> list[FamilyStats
     by_family: dict[str, dict[str, Any]] = {}
     for path, language in rows:
         fam = path_family(path)
-        entry = by_family.setdefault(
-            fam, {"chunks": 0, "files": set(), "docs_chunks": 0, "file_counts": {}}
-        )
+        entry = by_family.setdefault(fam, {"chunks": 0, "files": set(), "docs_chunks": 0, "file_counts": {}})
         entry["chunks"] += 1
         entry["files"].add(path)
         if language not in CODE_LANGUAGES:
@@ -69,14 +69,16 @@ def family_breakdown(rows: Iterable[tuple[str, str | None]]) -> list[FamilyStats
         for p, n in entry["file_counts"].items():
             if n > top_file_chunks:
                 top_file, top_file_chunks = p, n
-        stats.append(FamilyStats(
-            family=fam,
-            chunks=entry["chunks"],
-            files=len(entry["files"]),
-            docs_chunks=entry["docs_chunks"],
-            top_file=top_file,
-            top_file_chunks=top_file_chunks,
-        ))
+        stats.append(
+            FamilyStats(
+                family=fam,
+                chunks=entry["chunks"],
+                files=len(entry["files"]),
+                docs_chunks=entry["docs_chunks"],
+                top_file=top_file,
+                top_file_chunks=top_file_chunks,
+            )
+        )
     stats.sort(key=lambda s: (-s.chunks, s.family))
     return stats
 
@@ -112,6 +114,7 @@ def dominance_warning(stats: list[FamilyStats], total_chunks: int) -> str | None
 @dataclass
 class DotDirStats:
     """One row of the dot-directory chunk-share breakdown."""
+
     prefix: str
     chunks: int
     files: int
@@ -129,10 +132,7 @@ def dotdir_breakdown(rows: Iterable[tuple[str, str | None]]) -> list[DotDirStats
         entry["chunks"] += 1
         entry["files"].add(path)
 
-    stats = [
-        DotDirStats(prefix=p, chunks=e["chunks"], files=len(e["files"]))
-        for p, e in by_prefix.items()
-    ]
+    stats = [DotDirStats(prefix=p, chunks=e["chunks"], files=len(e["files"])) for p, e in by_prefix.items()]
     stats.sort(key=lambda s: (-s.chunks, s.prefix))
     return stats
 
@@ -149,7 +149,7 @@ SKIPPED_EXTS_SHOWN = 5
 
 
 def skipped_exts_line(counts: dict[str, int], total: int, shown: int = SKIPPED_EXTS_SHOWN) -> str:
-    """".glsl 144, .inc 91, (no extension) 12, 40 in other extensions" for
+    """ ".glsl 144, .inc 91, (no extension) 12, 40 in other extensions" for
     `total` skipped files, `counts` holding some of them by extension."""
     named = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:shown]
     parts = [f"{ext or '(no extension)'} {n}" for ext, n in named]

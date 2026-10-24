@@ -1,4 +1,5 @@
 """Language plugin registry: discovers chonks/languages/*.py modules and validates their specs into shared views."""
+
 from __future__ import annotations
 
 import importlib
@@ -28,17 +29,14 @@ class Registry:
             self.by_name[spec.name] = spec
             for ext in spec.extensions:
                 if not ext.startswith(".") or ext != ext.lower():
-                    raise ValueError(
-                        f"{spec.name}: extension {ext!r} must be lower-case with a leading dot")
+                    raise ValueError(f"{spec.name}: extension {ext!r} must be lower-case with a leading dot")
                 if ext in ext_to_lang:
-                    raise ValueError(
-                        f"{spec.name}: extension {ext!r} already owned by {ext_to_lang[ext]!r}")
+                    raise ValueError(f"{spec.name}: extension {ext!r} already owned by {ext_to_lang[ext]!r}")
                 ext_to_lang[ext] = spec.name
             for attr in ("header_exts", "impl_exts"):
                 for entry in getattr(spec, attr):
                     if entry.startswith(".") or entry != entry.lower():
-                        raise ValueError(
-                            f"{spec.name}: {attr} entry {entry!r} must be dotless lower-case")
+                        raise ValueError(f"{spec.name}: {attr} entry {entry!r} must be dotless lower-case")
             if spec.refs_spec is not None:
                 buckets: set[str] = set()
                 constructs = False
@@ -49,18 +47,18 @@ class Registry:
                 bad = buckets - _REFS_BUCKETS
                 if bad:
                     raise ValueError(
-                        f"{spec.name}: refs_spec bucket {sorted(bad)!r} "
-                        f"not in {sorted(_REFS_BUCKETS)!r}")
+                        f"{spec.name}: refs_spec bucket {sorted(bad)!r} not in {sorted(_REFS_BUCKETS)!r}"
+                    )
                 # inherits edges and constructions reach only chunks holding a symbol of these kinds.
                 if ("inherits" in buckets or constructs) and not spec.class_like_chunk_types:
                     raise ValueError(
-                        f"{spec.name}: refs_spec has inherits or a construction but no class_like_chunk_types")
+                        f"{spec.name}: refs_spec has inherits or a construction but no class_like_chunk_types"
+                    )
             for attr in ("class_like_chunk_types", "constructor_chunk_types"):
                 if not getattr(spec, attr) <= spec.boundary_nodes:
                     raise ValueError(f"{spec.name}: {attr} must be a subset of boundary_nodes")
             if not spec.scope_chunk_types <= spec.container_nodes:
-                raise ValueError(
-                    f"{spec.name}: scope_chunk_types must be a subset of container_nodes")
+                raise ValueError(f"{spec.name}: scope_chunk_types must be a subset of container_nodes")
 
         self.ext_to_lang = MappingProxyType(ext_to_lang)
         self.code_languages = frozenset(ext_to_lang.values())
@@ -72,7 +70,8 @@ class Registry:
             missing = spec.boundary_nodes - set(labels)
             if missing:
                 raise ValueError(
-                    f"{spec.name}: boundary_nodes {sorted(missing)!r} missing a kind_labels entry")
+                    f"{spec.name}: boundary_nodes {sorted(missing)!r} missing a kind_labels entry"
+                )
 
     def get(self, name: str) -> LanguageSpec:
         return self.by_name[name]
@@ -81,10 +80,9 @@ class Registry:
         return self.by_name.get(name)
 
     def table(self, attr: str) -> Mapping[str, object]:
-        return MappingProxyType({
-            spec.name: value for spec in self.specs
-            if (value := getattr(spec, attr)) is not None
-        })
+        return MappingProxyType(
+            {spec.name: value for spec in self.specs if (value := getattr(spec, attr)) is not None}
+        )
 
     def union(self, attr: str) -> frozenset[str]:
         result: frozenset[str] = frozenset()
@@ -98,8 +96,8 @@ class Registry:
             for key, value in getattr(spec, attr).items():
                 if key in result and result[key] != value:
                     raise ValueError(
-                        f"{spec.name}: {attr} key {key!r} conflicts "
-                        f"({value!r} != {result[key]!r})")
+                        f"{spec.name}: {attr} key {key!r} conflicts ({value!r} != {result[key]!r})"
+                    )
                 result[key] = value
         return MappingProxyType(result)
 
@@ -126,8 +124,7 @@ class Registry:
 
 def _discover() -> tuple[LanguageSpec, ...]:
     names = sorted(
-        name for _, name, _ in pkgutil.iter_modules(__path__)
-        if not name.startswith("_") and name != "spec"
+        name for _, name, _ in pkgutil.iter_modules(__path__) if not name.startswith("_") and name != "spec"
     )
     specs: list[LanguageSpec] = []
     for name in names:

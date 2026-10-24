@@ -4,6 +4,7 @@ Deliberately doesn't open the DB through `store.Store`: Store's __init__
 raises on a schema-version mismatch, which is exactly the condition doctor
 exists to report. Talks to the DB directly over a read-only connection.
 """
+
 import argparse
 import json
 import os
@@ -56,6 +57,7 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
 # Sections
 # ---------------------------------------------------------------------------
 
+
 def _schema_section(conn: sqlite3.Connection) -> str:
     stored = _get_meta(conn, "schema_version")
     lines = ["== Schema =="]
@@ -66,8 +68,7 @@ def _schema_section(conn: sqlite3.Connection) -> str:
             stored_int = int(stored)
         except ValueError:
             lines.append(
-                f"!! schema_version is corrupted (non-numeric value {stored!r}) — "
-                f"drop the DB and re-index."
+                f"!! schema_version is corrupted (non-numeric value {stored!r}) — drop the DB and re-index."
             )
             return "\n".join(lines)
         if stored_int != SCHEMA_VERSION:
@@ -85,8 +86,7 @@ def _chunker_version_section(conn: sqlite3.Connection) -> str:
     lines = ["== Chunker version =="]
     if stored is None:
         lines.append(
-            "chunker_version: not recorded in this DB "
-            "(indexed before chunker_version provenance was added)"
+            "chunker_version: not recorded in this DB (indexed before chunker_version provenance was added)"
         )
     elif stored.startswith("mixed:"):
         lines.append(
@@ -104,8 +104,7 @@ def _chunker_version_section(conn: sqlite3.Connection) -> str:
     stored_language_set = _get_meta(conn, "language_set")
     if stored_language_set is None:
         lines.append(
-            "language_set: not recorded in this DB "
-            "(indexed before language_set provenance was added)"
+            "language_set: not recorded in this DB (indexed before language_set provenance was added)"
         )
     elif stored_language_set.startswith("mixed: "):
         lines.append(
@@ -126,26 +125,26 @@ def _chunker_version_section(conn: sqlite3.Connection) -> str:
 
 
 def _vitals_section(conn: sqlite3.Connection, db_path: str) -> str:
-    files  = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+    files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
     chunks = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
     size_bytes = Path(db_path).stat().st_size if Path(db_path).exists() else 0
     newest = conn.execute("SELECT MAX(indexed_at) AS t FROM files").fetchone()["t"]
-    dim    = _get_meta(conn, "embedding_dim")
-    model  = _get_meta(conn, "embedding_model")
-    root   = _get_meta(conn, "indexed_root")
-    newest_str = (
-        time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(newest)) if newest else "never"
+    dim = _get_meta(conn, "embedding_dim")
+    model = _get_meta(conn, "embedding_model")
+    root = _get_meta(conn, "indexed_root")
+    newest_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(newest)) if newest else "never"
+    return "\n".join(
+        [
+            "== Vitals ==",
+            f"files:            {files}",
+            f"chunks:           {chunks}",
+            f"db size:          {size_bytes / 1024 / 1024:.2f} MB",
+            f"embedding dim:    {dim or 'unset'}",
+            f"embedding model:  {model or 'unset'}",
+            f"indexed root:     {root or 'unset'}",
+            f"newest indexed:   {newest_str}",
+        ]
     )
-    return "\n".join([
-        "== Vitals ==",
-        f"files:            {files}",
-        f"chunks:           {chunks}",
-        f"db size:          {size_bytes / 1024 / 1024:.2f} MB",
-        f"embedding dim:    {dim or 'unset'}",
-        f"embedding model:  {model or 'unset'}",
-        f"indexed root:     {root or 'unset'}",
-        f"newest indexed:   {newest_str}",
-    ])
 
 
 def _staleness_section(conn: sqlite3.Connection, config: dict) -> str:
@@ -181,7 +180,8 @@ def _staleness_section(conn: sqlite3.Connection, config: dict) -> str:
         if excludes:
             dir_path = Path(dirpath)
             dirnames[:] = [
-                d for d in dirnames
+                d
+                for d in dirnames
                 if not _dir_should_prune(_to_stored_path(dir_path / d, root_path), excludes, includes)
             ]
         for fname in filenames:
@@ -200,11 +200,11 @@ def _staleness_section(conn: sqlite3.Connection, config: dict) -> str:
     if newest_mtime == 0.0:
         lines.append("no files found under indexed_root on disk.")
     else:
-        lines.append(f"newest on-disk mtime: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(newest_mtime))} ({newest_mtime_path})")
+        lines.append(
+            f"newest on-disk mtime: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(newest_mtime))} ({newest_mtime_path})"
+        )
         if newest_mtime > newest_indexed:
-            lines.append(
-                "!! STALE: files on disk are newer than the index — re-index to pick up changes."
-            )
+            lines.append("!! STALE: files on disk are newer than the index — re-index to pick up changes.")
         else:
             lines.append("OK: index is at least as new as everything on disk.")
     return "\n".join(lines)
@@ -335,7 +335,7 @@ def _parse_health_section(conn: sqlite3.Connection) -> str:
     """Parse-health diagnostics are computed per-run in chonks/index/pipeline.py, and
     only the skipped-extension histogram is persisted (in meta), so this reports
     what actually exists rather than inventing columns."""
-    files_cols  = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}
+    files_cols = {r["name"] for r in conn.execute("PRAGMA table_info(files)").fetchall()}
     chunks_cols = {r["name"] for r in conn.execute("PRAGMA table_info(chunks)").fetchall()}
     diag_cols = {"parse_error", "coverage", "low_coverage", "oversize", "unsupported_ext"}
     found = sorted((files_cols | chunks_cols) & diag_cols)
@@ -355,19 +355,15 @@ def _parse_health_section(conn: sqlite3.Connection) -> str:
         )
     skipped_exts = _get_meta(conn, "unsupported_exts")
     if skipped_exts is None:
-        lines.append(
-            "unsupported-extension histogram: not recorded in this DB (run-summary only)"
-        )
+        lines.append("unsupported-extension histogram: not recorded in this DB (run-summary only)")
     else:
         recorded = json.loads(skipped_exts)
-        lines.append("unsupported extensions (last run over the whole root): "
-                     + (skipped_exts_line(recorded["by_ext"], recorded["files"]) or "none"))
-    lines.append(
-        "oversize chunk count: not recorded in this DB (run-summary only)"
-    )
-    lines.append(
-        "data-blob-skipped count: not recorded in this DB (run-summary only)"
-    )
+        lines.append(
+            "unsupported extensions (last run over the whole root): "
+            + (skipped_exts_line(recorded["by_ext"], recorded["files"]) or "none")
+        )
+    lines.append("oversize chunk count: not recorded in this DB (run-summary only)")
+    lines.append("data-blob-skipped count: not recorded in this DB (run-summary only)")
     return "\n".join(lines)
 
 
@@ -446,6 +442,7 @@ def _reranker_section(config: dict) -> str | None:
 # Assembly
 # ---------------------------------------------------------------------------
 
+
 def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
     sections = [
         _schema_section(conn),
@@ -467,14 +464,23 @@ def build_report(conn: sqlite3.Connection, config: dict, db_path: str) -> str:
 
 
 def main(argv=None) -> None:
-    ap = argparse.ArgumentParser(prog="chonks doctor", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--db", default=None, help=f"Path to chunks DB (default: config.json's `db` key, else {DEFAULT_DB})")
-    ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
+    ap = argparse.ArgumentParser(
+        prog="chonks doctor", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument(
-        "--set-model", default=None, metavar="NAME",
+        "--db", default=None, help=f"Path to chunks DB (default: config.json's `db` key, else {DEFAULT_DB})"
+    )
+    ap.add_argument(
+        "--config",
+        default=None,
+        help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)",
+    )
+    ap.add_argument(
+        "--set-model",
+        default=None,
+        metavar="NAME",
         help="Rewrite the recorded embedding_model label to NAME and exit (no report). "
-             "Only for a renamed-but-identical model; vectors are not touched.",
+        "Only for a renamed-but-identical model; vectors are not touched.",
     )
     args = ap.parse_args(argv)
 

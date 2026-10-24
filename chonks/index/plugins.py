@@ -69,15 +69,15 @@ def load_plugins(names, fallback_extensions=None) -> None:
     for module_name in names:
         module = importlib.import_module(module_name)
         if not hasattr(module, "LANGUAGES"):
-            raise ValueError(
-                f"{module_name}: plugin module has no LANGUAGES attribute")
+            raise ValueError(f"{module_name}: plugin module has no LANGUAGES attribute")
         for spec in module.LANGUAGES:
             for ext in spec.extensions:
                 if ext in reserved and (ext, spec.name) not in _ALLOWED_OVERLAP_PAIRS:
                     raise ValueError(
                         f"{spec.name}: extension {ext!r} is reserved by the "
                         f"indexer's admission rules and cannot be claimed by "
-                        f"a plugin (from {module_name!r})")
+                        f"a plugin (from {module_name!r})"
+                    )
             plugin_specs.append(spec)
 
     new_registry = languages.Registry(tuple(languages.REGISTRY.specs) + tuple(plugin_specs))

@@ -14,9 +14,20 @@ from chonks.index.summaries import build_folder_summaries
 logger = logging.getLogger("chonks.chunker")
 
 
-def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_chunk_ids,
-                          deleted_chunk_ids, deleted_chunk_defs, edge_type_weights,
-                          cap_mentions_fanout, associated_top_frac):
+def run_post_index_passes(
+    store,
+    embedder,
+    *,
+    force,
+    indexed,
+    pruned,
+    changed_chunk_ids,
+    deleted_chunk_ids,
+    deleted_chunk_defs,
+    edge_type_weights,
+    cap_mentions_fanout,
+    associated_top_frac,
+):
     """Returns the elapsed seconds of each pass: (fts, refs, knn, summaries, pagerank, hierarchy)."""
     # After a full force re-index, rebuild FTS statistics from scratch.
     # Repeated partial updates cause term-frequency drift; a rebuild corrects it.
@@ -38,12 +49,7 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
 
     # build_refs takes the incremental path unless --force (None/None/None
     # forces the bulk path; mirrors build_neighbors below).
-    if (
-        indexed > 0
-        or pruned > 0
-        or deleted_chunk_ids
-        or changed_chunk_ids
-    ):
+    if indexed > 0 or pruned > 0 or deleted_chunk_ids or changed_chunk_ids:
         _phase_t0 = time.monotonic()
         ref_count = build_refs(
             store,
@@ -78,11 +84,10 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
         _phase_t0 = time.monotonic()
         hierarchy = rebuild_hierarchy(store)
         hierarchy_elapsed = time.monotonic() - _phase_t0
-        logger.info("Built hierarchy: %d nodes, %d contains edges.",
-                    hierarchy["nodes"], hierarchy["edges"])
+        logger.info("Built hierarchy: %d nodes, %d contains edges.", hierarchy["nodes"], hierarchy["edges"])
 
         # Computed here, not at query time. None ids force a full
-        # recompute (same convention as build_refs/build_neighbors); 
+        # recompute (same convention as build_refs/build_neighbors);
         # with no true incremental algorithm, None here skips it, not just cheapens it.
         logger.info("Computing PageRank.")
         _phase_t0 = time.monotonic()
@@ -109,7 +114,8 @@ def run_post_index_passes(store, embedder, *, force, indexed, pruned, changed_ch
             summaries_elapsed = time.monotonic() - _phase_t0
             logger.info(
                 "Folder summaries: refreshed %d, pruned %d.",
-                summary_stats["refreshed"], summary_stats["pruned"],
+                summary_stats["refreshed"],
+                summary_stats["pruned"],
             )
         except Exception as e:  # noqa: BLE001, folder summaries are best-effort
             logger.error("Folder summary generation failed: %s", e)

@@ -14,9 +14,9 @@ logger = logging.getLogger("chonks.chunker")
 # Defaults for indexing concurrency. Both are overridable via config keys
 # (embed_batch / embed_inflight) or chonks/ops/index_cmd.py flags (--embed-batch / --embed-inflight),
 # threaded into index_paths, so there's no module-level mutable state.
-EMBED_BATCH    = 128       # chunks per embedding API call (request size)
-EMBED_INFLIGHT = 2         # concurrent in-flight batches; too low starves a fast
-                           # embedder's GPU, see DEPLOY.md "Throughput tuning".
+EMBED_BATCH = 128  # chunks per embedding API call (request size)
+EMBED_INFLIGHT = 2  # concurrent in-flight batches; too low starves a fast
+# embedder's GPU, see DEPLOY.md "Throughput tuning".
 
 # Truncation floor (compressed chars) for the per-chunk retry; below this a
 # rejected chunk is dropped as an error instead of embedded from a fragment
@@ -31,17 +31,18 @@ EMBED_WATCHDOG_SECS = 300
 # Per-request timeout covers the chunks the server processes before this request
 # completes: llama-server serves concurrent requests' inputs in arrival order, so a
 # batch waits behind the other in-flight batches. See compute_embed_timeout.
-EMBED_TIMEOUT_PER_ITEM_S = 1.0     # seconds budgeted per chunk
-EMBED_TIMEOUT_FLOOR_S    = 120.0
-EMBED_TIMEOUT_CEILING_S  = 900.0   # cap so a huge batch can't hang one request indefinitely
+EMBED_TIMEOUT_PER_ITEM_S = 1.0  # seconds budgeted per chunk
+EMBED_TIMEOUT_FLOOR_S = 120.0
+EMBED_TIMEOUT_CEILING_S = 900.0  # cap so a huge batch can't hang one request indefinitely
 
 
 def compute_embed_timeout(batch_size: int, queued: int = 0) -> float:
     """Per-request timeout for a batch with `queued` chunks from other in-flight
     batches ahead of it: linear in both, floored and capped. Only the indexer's
     embed call site uses this; other callers keep the 120s default."""
-    return min(EMBED_TIMEOUT_CEILING_S,
-               max(EMBED_TIMEOUT_FLOOR_S, (batch_size + queued) * EMBED_TIMEOUT_PER_ITEM_S))
+    return min(
+        EMBED_TIMEOUT_CEILING_S, max(EMBED_TIMEOUT_FLOOR_S, (batch_size + queued) * EMBED_TIMEOUT_PER_ITEM_S)
+    )
 
 
 def _should_truncate_and_retry(exc: BaseException) -> bool:
@@ -81,15 +82,16 @@ def _embed_one_isolating(chunk, text, embed_docs):
         try:
             emb = embed_docs([text[:limit]])
             if limit < full:
-                logger.warning("EMBED oversize chunk %s truncated %d->%d chars",
-                               _chunk_path(chunk), full, limit)
+                logger.warning(
+                    "EMBED oversize chunk %s truncated %d->%d chars", _chunk_path(chunk), full, limit
+                )
             return [chunk], [emb[0]], (1 if limit < full else 0), []
         except Exception as exc:  # noqa: BLE001, a chunk that fails is returned with its error
             last_exc = exc
             if not _should_truncate_and_retry(exc):
                 break
             nxt = limit // 2
-            if nxt < EMBED_MIN_CHARS:   # don't embed from a meaningless fragment
+            if nxt < EMBED_MIN_CHARS:  # don't embed from a meaningless fragment
                 break
             limit = nxt
     return [], [], 0, [(chunk, last_exc)]
@@ -123,7 +125,7 @@ def _embed_isolating(chunks, texts, embed_docs):
         if not cs:
             continue
         try:
-            embs = embed_docs(ts)            # retry this half at FULL length
+            embs = embed_docs(ts)  # retry this half at FULL length
             ok_c += list(cs)
             ok_e += embs
         except Exception:  # noqa: BLE001, any failure splits the half again

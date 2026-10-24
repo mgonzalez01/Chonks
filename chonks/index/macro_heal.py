@@ -38,8 +38,7 @@ _QT_ACCESS_SPECIFIERS = {"signals", "slots", "Q_SIGNALS", "Q_SLOTS"}
 def _qt_specifier_res(specifiers) -> tuple[re.Pattern, re.Pattern]:
     """Qualified/bare Qt specifier regexes scoped to the given names only."""
     alt = "|".join(re.escape(n) for n in specifiers)
-    qualified = re.compile(
-        r"\b(?:public|private|protected)\b[ \t]*\b(?:" + alt + r")\b")
+    qualified = re.compile(r"\b(?:public|private|protected)\b[ \t]*\b(?:" + alt + r")\b")
     bare = re.compile(r"\b(?:" + alt + r")\b[ \t]*:")
     return qualified, bare
 
@@ -57,14 +56,15 @@ def _is_macro_name(t: str) -> bool:
 def _defined_type_names(text: str) -> set[str]:
     """Names this file defines as types. An ALL_CAPS type (AABB, RID) looks
     like a macro and can pass the error-count check by coincidence."""
-    names = set(re.findall(
-        r"\b(?:class|struct|union|enum(?:\s+class)?)\s+(?:\[\[[^\]]*\]\]\s*)?(\w+)\s*(?:final\s*)?[:{]",
-        text))
+    names = set(
+        re.findall(
+            r"\b(?:class|struct|union|enum(?:\s+class)?)\s+(?:\[\[[^\]]*\]\]\s*)?(\w+)\s*(?:final\s*)?[:{]",
+            text,
+        )
+    )
     names |= set(re.findall(r"\btypedef\b[^;{}]*?\b(\w+)\s*;", text))
     names |= set(re.findall(r"\busing\s+(\w+)\s*=", text))
     return names
-
-
 
 
 def _function_def(name: str) -> re.Pattern:
@@ -75,7 +75,9 @@ def _function_def(name: str) -> re.Pattern:
     (`GEN(a)\nGEN(b)`) have no type word and do not match."""
     return re.compile(
         r"^[ \t]*(?!(?:else|return|do|case|goto)\b)(?:[A-Za-z_]\w*[ \t*&]+){0,7}[A-Za-z_]\w*[ \t*&]*(?:\r?\n[ \t]*)?[*&]*"
-        r"\b(" + name + r")\b[ \t]*\((?:[^;{}()]|\([^()]*\))*\)[ \t\r\n]*(?::[ \t]*\w+[ \t\r\n]*)?\{", re.M)
+        r"\b(" + name + r")\b[ \t]*\((?:[^;{}()]|\([^()]*\))*\)[ \t\r\n]*(?::[ \t]*\w+[ \t\r\n]*)?\{",
+        re.M,
+    )
 
 
 _FUNCTION_DEF = _function_def(_MACRO_NAME)
@@ -86,6 +88,7 @@ def _defined_function_names(text: str) -> set[str]:
     statement (`DC4(dst, top);`) looks like a macro, and blanking it deletes
     the function."""
     return {m.group(1) for m in _FUNCTION_DEF.finditer(text)}
+
 
 def _blank_macros(src: bytes, names, subs: dict[str, str] | None = None) -> bytes:
     """Replaces each macro NAME(...) with spaces, preserving byte length
@@ -131,7 +134,7 @@ def _blank_macros(src: bytes, names, subs: dict[str, str] | None = None) -> byte
                 continue
             sub = subs.get(m.group(1)) if subs else None
             if sub is not None:
-                out[m.start(1):m.end(1)] = sub.ljust(m.end(1) - m.start(1)).encode("latin-1")
+                out[m.start(1) : m.end(1)] = sub.ljust(m.end(1) - m.start(1)).encode("latin-1")
             else:
                 blank(m.start(), _args_end(text, m.end()))
     return bytes(out)
@@ -178,8 +181,9 @@ def _blank_directive_comments(src: bytes) -> bytes:
         for m in _DIRECTIVE_COMMENT.finditer(text, d.start(), d.end()):
             if m.group().startswith("/*") and _CONTINUATION.match(text, m.end()):
                 out = out or bytearray(src)
-                out[m.start():m.end()] = b" " * (m.end() - m.start())
+                out[m.start() : m.end()] = b" " * (m.end() - m.start())
     return bytes(out) if out is not None else src
+
 
 _MACRO_TOKEN = re.compile(r"\b" + _MACRO_NAME + r"\b")
 _MACRO_CALL = re.compile(r"\b(" + _MACRO_NAME + r")\b[ \t]*\(")
@@ -219,7 +223,7 @@ def _blank_attributes(src: bytes, names, function_like=frozenset()) -> bytes:
     directives, macro_args = _directive_spans(text), _macro_arg_spans(text, function_like)
     for m in hits:
         if not _in_spans(directives, m.start()) and not _in_spans(macro_args, m.start()):
-            out[m.start():m.end()] = b" " * (m.end() - m.start())
+            out[m.start() : m.end()] = b" " * (m.end() - m.start())
     return bytes(out)
 
 
@@ -327,9 +331,9 @@ def _count_errors_upto(root: Node, threshold: int) -> int:
 _ERROR_PROXIMITY_MARGIN = 200  # bytes; see _near_error_ranges
 
 
-def _near_error_ranges(cands: set, parse_src: bytes,
-                       error_ranges: list[tuple[int, int]],
-                       margin: int = _ERROR_PROXIMITY_MARGIN) -> set:
+def _near_error_ranges(
+    cands: set, parse_src: bytes, error_ranges: list[tuple[int, int]], margin: int = _ERROR_PROXIMITY_MARGIN
+) -> set:
     """Drops candidates with no occurrence within `margin` bytes of an
     error, since those can't reduce the error count and aren't worth a
     trial reparse. Most _discover_macros tells have no proximity scoping."""
@@ -361,9 +365,16 @@ def _near_error_ranges(cands: set, parse_src: bytes,
 def _class_head_macros(text: str) -> set[str]:
     """A macro in a class definition head, `class _WARN_UNUSED_ HashSet {` or
     `class API_AVAILABLE(...) X :`. `struct TYPE var;` (a use) does not match."""
-    return {m.group(1) for m in re.finditer(
-        r"\b(?:class|struct)\s+(" + _MACRO_NAME + r")\s*(?:\([^;{}]*?\)\s*)?\s[A-Za-z_]\w*\s*(?:final\s*)?[:{]",
-        text) if _is_macro_name(m.group(1))} - _defined_type_names(text)
+    return {
+        m.group(1)
+        for m in re.finditer(
+            r"\b(?:class|struct)\s+("
+            + _MACRO_NAME
+            + r")\s*(?:\([^;{}]*?\)\s*)?\s[A-Za-z_]\w*\s*(?:final\s*)?[:{]",
+            text,
+        )
+        if _is_macro_name(m.group(1))
+    } - _defined_type_names(text)
 
 
 def _clean_type_uses(root: Node, src: bytes) -> dict[str, int]:
@@ -376,16 +387,20 @@ def _clean_type_uses(root: Node, src: bytes) -> dict[str, int]:
         if node.has_error:
             stack.extend(node.children)
             continue
-        if node.type == "type_identifier" and node.parent is not None \
-                and node.parent.child_by_field_name("type") == node:
-            name = src[node.start_byte:node.end_byte].decode("latin-1")
+        if (
+            node.type == "type_identifier"
+            and node.parent is not None
+            and node.parent.child_by_field_name("type") == node
+        ):
+            name = src[node.start_byte : node.end_byte].decode("latin-1")
             uses[name] = uses.get(name, 0) + 1
         stack.extend(node.children)
     return uses
 
 
-def _drop_redundant(parser, parse_src: bytes, root: Node, admitted: set, counts: dict,
-                    subs: dict[str, str] | None = None) -> set:
+def _drop_redundant(
+    parser, parse_src: bytes, root: Node, admitted: set, counts: dict, subs: dict[str, str] | None = None
+) -> set:
     """In `_FORCE_INLINE_ RID get()` blanking either name fixes the line, so
     both pass the error-count test on their own. Keep only the names the
     set needs: weakest first, and on a tie the one that already parses as
@@ -429,8 +444,9 @@ def _count_class_bodies(root: Node) -> int:
     return n
 
 
-def _heal_class_heads(parser, root: Node, parse_src: bytes, healed: set,
-                      vetoed=frozenset()) -> tuple[Node, bytes]:
+def _heal_class_heads(
+    parser, root: Node, parse_src: bytes, healed: set, vetoed=frozenset()
+) -> tuple[Node, bytes]:
     """`class _WARN_UNUSED_ HashSet {...}` often parses with no error at all,
     as a function named HashSet, so the error-count test never sees it.
     Admits a class-head macro when blanking it adds a class body and no
@@ -459,15 +475,19 @@ def _discover_macros(root: Node, src: bytes) -> set[str]:
     stack = [root]
     while stack:
         node = stack.pop()
-        if (node.type == "call_expression" and node.parent is not None
-                and node.parent.type == "expression_statement" and node.children):
+        if (
+            node.type == "call_expression"
+            and node.parent is not None
+            and node.parent.type == "expression_statement"
+            and node.children
+        ):
             callee = node.children[0]
             if callee.type == "identifier":
-                t = src[callee.start_byte:callee.end_byte].decode("latin-1")
+                t = src[callee.start_byte : callee.end_byte].decode("latin-1")
                 if _is_macro_name(t):
                     found.add(t)
         if node.is_error or node.is_missing:
-            span = src[node.start_byte:node.end_byte].decode("latin-1")
+            span = src[node.start_byte : node.end_byte].decode("latin-1")
             # Require a following '(': a bare ALL_CAPS type (RID) blanked here
             # could coincidentally drop the error count and erase a real name.
             for tok in re.findall(_MACRO_NAME + r"(?=\s*\()", span):
@@ -481,7 +501,12 @@ def _discover_macros(root: Node, src: bytes) -> set[str]:
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
     # Suffix macro after a signature (`f() const _LIFETIME_BOUND_ {`).
-    for m in re.finditer(r"\)[ \t]*(?:(?:const|noexcept|override|final)[ \t]*)*(" + _MACRO_NAME + r")[ \t]*(?:\([^()]*\))?[ \t]*(?=[{;])", text):
+    for m in re.finditer(
+        r"\)[ \t]*(?:(?:const|noexcept|override|final)[ \t]*)*("
+        + _MACRO_NAME
+        + r")[ \t]*(?:\([^()]*\))?[ \t]*(?=[{;])",
+        text,
+    ):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
     # Calling-convention macro between the return type and the name
@@ -496,7 +521,12 @@ def _discover_macros(root: Node, src: bytes) -> set[str]:
         found.add(m.group(1))
     # Prefix macro with no arguments at the start of a declaration
     # (`_FORCE_INLINE_ void f()`), which none of the tells above see.
-    for m in re.finditer(r"(?m)^[ \t]*(?:(?:static|inline|virtual|constexpr)[ \t]+)*(" + _MACRO_NAME + r")[ \t]+(?=[A-Za-z_~])", text):
+    for m in re.finditer(
+        r"(?m)^[ \t]*(?:(?:static|inline|virtual|constexpr)[ \t]+)*("
+        + _MACRO_NAME
+        + r")[ \t]+(?=[A-Za-z_~])",
+        text,
+    ):
         if _is_macro_name(m.group(1)):
             found.add(m.group(1))
     # Standalone macro line (GENERATED_BODY(); Q_OBJECT) parses as a bogus

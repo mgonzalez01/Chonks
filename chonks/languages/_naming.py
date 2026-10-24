@@ -1,4 +1,5 @@
 """Per-node-type name-extraction hooks, shared or language-owned, and the engine that walks them."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -19,10 +20,15 @@ def name_field(node: Node, src: bytes) -> str | None:
 
 
 # Declarator layers that wrap the name: `int* f()`, `V& f()`, `int (*f())(int)`.
-_WRAPPER_DECLARATORS = frozenset({
-    "function_declarator", "pointer_declarator", "reference_declarator",
-    "parenthesized_declarator", "attributed_declarator",
-})
+_WRAPPER_DECLARATORS = frozenset(
+    {
+        "function_declarator",
+        "pointer_declarator",
+        "reference_declarator",
+        "parenthesized_declarator",
+        "attributed_declarator",
+    }
+)
 
 
 def _operator_cast_name(node: Node, src: bytes) -> str:
@@ -35,7 +41,7 @@ def _operator_cast_name(node: Node, src: bytes) -> str:
         if n.type == "parameter_list":
             end = min(end, n.start_byte)
         stack.extend(n.children)
-    return " ".join(src[node.start_byte:end].decode(errors="replace").split())
+    return " ".join(src[node.start_byte : end].decode(errors="replace").split())
 
 
 # C / C++ / HLSL function_definition: type declarator body. The declarator
@@ -69,7 +75,9 @@ def cpp_function_declarator_name(node: Node, src: bytes) -> str | None:
         while name is not None and name.type == "qualified_identifier":
             name = name.child_by_field_name("name")
         if name is not None and name.type == "operator_cast":
-            return src[decl.start_byte:name.start_byte].decode(errors="replace") + _operator_cast_name(name, src)
+            return src[decl.start_byte : name.start_byte].decode(errors="replace") + _operator_cast_name(
+                name, src
+            )
     if not is_function:
         return None
     # For qualified names like ShadowMap::Render, return the full qualified text

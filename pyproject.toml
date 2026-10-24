@@ -58,6 +58,7 @@ dev = [
 
 [tool.ruff]
 include = ["chonks/**/*.py"]
+line-length = 110
 
 [tool.ruff.lint]
 select = ["F", "B904", "BLE001", "RUF100", "PGH004", "D100", "D104"]

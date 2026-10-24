@@ -1,24 +1,47 @@
 """C++ language plugin data."""
+
 from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING
 
 from ._ast import (
-    has_body, is_forward_declaration, is_opaque_typedef, name_call_target, name_strip_angle_brackets,
-    name_text, terminal_identifier,
+    has_body,
+    is_forward_declaration,
+    is_opaque_typedef,
+    name_call_target,
+    name_strip_angle_brackets,
+    name_text,
+    terminal_identifier,
 )
 from ._braces import outside_bodies
 from ._naming import (
-    cpp_function_declarator_name, namespace_body_name, namespace_name, tag_specifier_name,
-    template_inner_name, typedef_name,
+    cpp_function_declarator_name,
+    namespace_body_name,
+    namespace_name,
+    tag_specifier_name,
+    template_inner_name,
+    typedef_name,
 )
 from ._members import (
-    class_name, member_name, name_without_template_args, operator_spelling, read_definition, read_member,
-    type_ref, using_namespace_name,
+    class_name,
+    member_name,
+    name_without_template_args,
+    operator_spelling,
+    read_definition,
+    read_member,
+    type_ref,
+    using_namespace_name,
 )
 from .spec import (
-    CallSiteSpec, ChildSpec, Children, ClassModelSpec, Field, LanguageSpec, LiteralSpec, NameRule,
+    CallSiteSpec,
+    ChildSpec,
+    Children,
+    ClassModelSpec,
+    Field,
+    LanguageSpec,
+    LiteralSpec,
+    NameRule,
     NestedSpec,
     NOT_HANDLED,
 )
@@ -50,13 +73,19 @@ def qualified_receiver(call_node: Node, callee: Node, src: bytes) -> "str | None
 
 
 def _conversion_name(start: Node, end: Node, src: bytes) -> str:
-    return operator_spelling(src[start.start_byte:end.end_byte].decode(errors="replace"))
+    return operator_spelling(src[start.start_byte : end.end_byte].decode(errors="replace"))
 
 
 # Callees that can be the type of a conversion `operator T()`; a call chained off one is not.
-_TYPE_NAMES = frozenset({
-    "identifier", "type_identifier", "primitive_type", "qualified_identifier", "template_function",
-})
+_TYPE_NAMES = frozenset(
+    {
+        "identifier",
+        "type_identifier",
+        "primitive_type",
+        "qualified_identifier",
+        "template_function",
+    }
+)
 
 
 def _is_keyword(n: Node | None, src: bytes) -> bool:
@@ -164,7 +193,7 @@ def is_function_definition(node: Node, src: bytes) -> bool:
         return True
     if node.child_by_field_name("type") is None:
         return False
-    return src[name.start_byte:name.end_byte].decode(errors="replace") not in _STATEMENT_KEYWORDS
+    return src[name.start_byte : name.end_byte].decode(errors="replace") not in _STATEMENT_KEYWORDS
 
 
 _VARIADIC_PARAM = re.compile(r"\.\.\.\s*(?:[A-Za-z_]\w*)?$")
@@ -178,10 +207,26 @@ def classify_param(part: str) -> "str | object":
 
 
 # Words that make the `name(` after them a call, not a declaration.
-_CALL_CONTEXT_WORDS = frozenset({
-    "return", "else", "case", "new", "delete", "throw", "co_return", "co_yield",
-    "sizeof", "alignof", "decltype", "typeid", "noexcept", "and", "or", "not",
-})
+_CALL_CONTEXT_WORDS = frozenset(
+    {
+        "return",
+        "else",
+        "case",
+        "new",
+        "delete",
+        "throw",
+        "co_return",
+        "co_yield",
+        "sizeof",
+        "alignof",
+        "decltype",
+        "typeid",
+        "noexcept",
+        "and",
+        "or",
+        "not",
+    }
+)
 
 
 def member_declaration_at(content: str, pos: int) -> bool:
@@ -196,18 +241,20 @@ def member_declaration_at(content: str, pos: int) -> bool:
     if ch == "*":
         return True
     if ch == "&":
-        return content[j - 1:j] != "&"
+        return content[j - 1 : j] != "&"
     if ch == ">":
-        return content[j - 1:j] != "-"
+        return content[j - 1 : j] != "-"
     if not (ch.isalnum() or ch == "_"):
         return False
     k = j
     while k >= 0 and (content[k].isalnum() or content[k] == "_"):
         k -= 1
-    return content[k + 1:j + 1] not in _CALL_CONTEXT_WORDS
+    return content[k + 1 : j + 1] not in _CALL_CONTEXT_WORDS
 
 
-_PREPROC_BLOCKS = frozenset({"preproc_if", "preproc_ifdef", "preproc_else", "preproc_elif", "preproc_elifdef"})
+_PREPROC_BLOCKS = frozenset(
+    {"preproc_if", "preproc_ifdef", "preproc_else", "preproc_elif", "preproc_elifdef"}
+)
 
 CALL_SITES = CallSiteSpec(
     member_access={"field_expression": ("argument", "operator", "field")},
@@ -228,8 +275,11 @@ CALL_SITES = CallSiteSpec(
     typed_literals={"compound_literal_expression": "type"},
     type_argument_calls=re.compile(r"(?i)\w*cast\w*|make_\w+"),
     functions=frozenset({"function_definition"}),
-    parameter_owners={"function_definition": "declarator", "lambda_expression": "declarator",
-                      "catch_clause": None},
+    parameter_owners={
+        "function_definition": "declarator",
+        "lambda_expression": "declarator",
+        "catch_clause": None,
+    },
     parameters_field="parameters",
     parameters=frozenset({"parameter_declaration", "optional_parameter_declaration"}),
     blocks=frozenset({"compound_statement", "case_statement"}) | _PREPROC_BLOCKS,
@@ -243,8 +293,12 @@ CALL_SITES = CallSiteSpec(
     },
     range_loops={"for_range_loop": "right"},
     declarators={
-        "init_declarator": "", "pointer_declarator": "*", "reference_declarator": "&",
-        "array_declarator": "[]", "parenthesized_declarator": "", "attributed_declarator": "",
+        "init_declarator": "",
+        "pointer_declarator": "*",
+        "reference_declarator": "&",
+        "array_declarator": "[]",
+        "parenthesized_declarator": "",
+        "attributed_declarator": "",
         # `Foo f(Bar());` in a body parses as a function declaration.
         "function_declarator": "",
     },
@@ -260,31 +314,49 @@ CALL_SITES = CallSiteSpec(
     name_field="name",
 )
 
-INCLUDE = Children((
-    ChildSpec(("string_literal",), "imports",
-              nested=NestedSpec(("string_content",), name_text)),
-    ChildSpec(("system_lib_string",), "imports", name_fn=name_strip_angle_brackets),
-))
-BASES = Children((
-    ChildSpec(("base_class_clause",), "inherits",
-              nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"), base_name)),
-))
+INCLUDE = Children(
+    (
+        ChildSpec(("string_literal",), "imports", nested=NestedSpec(("string_content",), name_text)),
+        ChildSpec(("system_lib_string",), "imports", name_fn=name_strip_angle_brackets),
+    )
+)
+BASES = Children(
+    (
+        ChildSpec(
+            ("base_class_clause",),
+            "inherits",
+            nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"), base_name),
+        ),
+    )
+)
 
 CLASS_MODEL = ClassModelSpec(
     namespaces={"namespace_definition": namespace_name},
     classes={t: class_name for t in (*_CLASS_TYPES, "union_specifier")},
     members={t: read_member for t in ("field_declaration", "declaration", "function_definition")},
     functions={"function_definition": read_definition},
-    bases=Children((
-        ChildSpec(("base_class_clause",), "bases",
-                  nested=NestedSpec(("type_identifier", "qualified_identifier", "template_type"),
-                                    name_without_template_args)),
-    )),
+    bases=Children(
+        (
+            ChildSpec(
+                ("base_class_clause",),
+                "bases",
+                nested=NestedSpec(
+                    ("type_identifier", "qualified_identifier", "template_type"), name_without_template_args
+                ),
+            ),
+        )
+    ),
     using_namespaces={"using_declaration": using_namespace_name},
-    transparent=frozenset({
-        "template_declaration", "preproc_if", "preproc_ifdef", "preproc_elif", "preproc_elifdef",
-        "preproc_else",
-    }),
+    transparent=frozenset(
+        {
+            "template_declaration",
+            "preproc_if",
+            "preproc_ifdef",
+            "preproc_elif",
+            "preproc_elifdef",
+            "preproc_else",
+        }
+    ),
     type_ref=type_ref,
     pointer_access="->",
     operator_members={"->": "operator->", "[]": "operator[]", "*": "operator*"},
@@ -302,12 +374,29 @@ CPP = LanguageSpec(
     # every existing C++ corpus (see chonks/index/pipeline.py's content-hash skip).
     # CUDA/Obj-C++/Metal ride the cpp grammar best-effort; unmapped, whole
     # GPU/macOS backends silently land in unsupported_ext_skipped.
-    extensions=frozenset({
-        ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".inl", ".cu", ".cuh", ".mm", ".metal",
-    }),
-    boundary_nodes=frozenset({
-        "function_definition", "class_specifier", "struct_specifier", "template_declaration",
-    }),
+    extensions=frozenset(
+        {
+            ".cpp",
+            ".cc",
+            ".cxx",
+            ".h",
+            ".hpp",
+            ".hxx",
+            ".inl",
+            ".cu",
+            ".cuh",
+            ".mm",
+            ".metal",
+        }
+    ),
+    boundary_nodes=frozenset(
+        {
+            "function_definition",
+            "class_specifier",
+            "struct_specifier",
+            "template_declaration",
+        }
+    ),
     container_nodes=frozenset({"namespace_definition", "declaration_list"}),
     salvage_nodes=frozenset({"function_definition"}),
     # `class X;`, `struct Foo *f();` and `struct stat st;` name a class
@@ -323,8 +412,9 @@ CPP = LanguageSpec(
     },
     name_rules=(
         NameRule(("function_definition",), cpp_function_declarator_name),
-        NameRule(("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"),
-                 tag_specifier_name),
+        NameRule(
+            ("class_specifier", "struct_specifier", "union_specifier", "enum_specifier"), tag_specifier_name
+        ),
         NameRule(("namespace_definition",), namespace_name),
         NameRule(("declaration_list",), namespace_body_name),
         NameRule(("template_declaration",), template_inner_name),
@@ -358,8 +448,9 @@ CPP = LanguageSpec(
     empty_param_spellings=frozenset({"void"}),
     member_declaration_at=member_declaration_at,
     class_model=CLASS_MODEL,
-    literals=LiteralSpec(leaf_types=("string_literal", "raw_string_literal"),
-                         concat_types=("concatenated_string",)),
+    literals=LiteralSpec(
+        leaf_types=("string_literal", "raw_string_literal"), concat_types=("concatenated_string",)
+    ),
     header_exts=frozenset({"h", "hh", "hpp", "hxx"}),
     impl_exts=frozenset({"c", "cc", "cpp", "cxx", "m", "mm"}),
 )

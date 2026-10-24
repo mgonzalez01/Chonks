@@ -43,6 +43,7 @@ def _partial_index_note(conn: sqlite3.Connection) -> str:
         "populate literals) to enable find_by_message"
     )
 
+
 # FTS candidate-pool cap for the token/skeleton tier, relevance-ordered
 # (bm25) so a hit cap only ever drops the least-relevant candidates.
 _LITERAL_CANDIDATE_CAP = 20000
@@ -64,9 +65,10 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
     try:
         with store._lock:
             has_chunks = store._conn.execute("SELECT 1 FROM chunks LIMIT 1").fetchone() is not None
-            literal_index_live = store._conn.execute(
-                "SELECT 1 FROM meta WHERE key=?", (_LITERAL_INDEX_META_KEY,)
-            ).fetchone() is not None
+            literal_index_live = (
+                store._conn.execute("SELECT 1 FROM meta WHERE key=?", (_LITERAL_INDEX_META_KEY,)).fetchone()
+                is not None
+            )
             if has_chunks and not literal_index_live:
                 return {
                     "results": [],
@@ -104,8 +106,7 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
             # FTS candidate pool keyed off the message's rarest tokens,
             # quoted so words like AND/OR/NOT match literally instead of
             # parsing as FTS operators. Capped at _TOKEN_POOL_CAP, announced.
-            all_tokens = sorted(set(re.findall(r"[A-Za-z_][A-Za-z0-9_]{2,}", message)),
-                                 key=len, reverse=True)
+            all_tokens = sorted(set(re.findall(r"[A-Za-z_][A-Za-z0-9_]{2,}", message)), key=len, reverse=True)
             token_cap_applied = len(all_tokens) > _TOKEN_POOL_CAP
             tokens = all_tokens[:_TOKEN_POOL_CAP]
             candidate_rows: list[sqlite3.Row] = []
@@ -207,7 +208,9 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
                     exhausted = True
                     continue
                 is_match, variant_exhausted, calls_used = _skeleton_match(
-                    variant, message, remaining_budget,
+                    variant,
+                    message,
+                    remaining_budget,
                 )
                 remaining_budget -= calls_used
                 query_budget -= calls_used
@@ -231,9 +234,9 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
         skeleton_rows = _dedupe_literal_rows(skeleton_rows)
 
         exact_rows.sort(key=lambda r: (r["path"], r["line"] or 0))
-        skeleton_rows.sort(key=lambda r: (
-            -len(_longest_skeleton_fragment(r["skeleton"])), r["path"], r["line"] or 0
-        ))
+        skeleton_rows.sort(
+            key=lambda r: (-len(_longest_skeleton_fragment(r["skeleton"])), r["path"], r["line"] or 0)
+        )
 
         def _hit(row: sqlite3.Row, kind: str) -> dict[str, Any]:
             out = {
@@ -314,11 +317,16 @@ def find_by_message(store, message: str, limit: int = 20) -> dict[str, Any]:
                     f"no match in the top {_LITERAL_CANDIDATE_CAP} most relevant "
                     "literals for these tokens — try a more specific fragment"
                 )
-        elif (not results and not fts_degraded and not skeleton_excluded_length
-              and not skeleton_excluded_holes and not skeleton_budget_exhausted
-              and not low_confidence_filtered
-              and not (substring_tier_skipped and total < 3)
-              and not (token_cap_applied and total < 3)):
+        elif (
+            not results
+            and not fts_degraded
+            and not skeleton_excluded_length
+            and not skeleton_excluded_holes
+            and not skeleton_budget_exhausted
+            and not low_confidence_filtered
+            and not (substring_tier_skipped and total < 3)
+            and not (token_cap_applied and total < 3)
+        ):
             notes.append("no literal matches for this message")
 
         out: dict[str, Any] = {"results": results, "truncated": truncated}
