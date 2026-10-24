@@ -6,16 +6,16 @@ unlocks named groups; without it, grouping falls back to top-level path.
 """
 import argparse
 import heapq
-import sys
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-from chonks.core.config import load_config
+from chonks.core.config import DEFAULT_DB, resolve_db
 from chonks.core.edges import ASSOCIATED, MENTIONS, XLANG
 from chonks.core.paths import _in_scope, _path_scope
 from chonks.index.graph.pagerank import compute_pagerank_global
 from chonks.index.plugins import load_plugins
+from chonks.ops.cli_config import load_cli_config
 from chonks.storage.store import Store
 
 TOP_GOD_NODES_OVERALL   = 15
@@ -258,21 +258,14 @@ def build_report(store: Store, config: dict, db_path: str) -> str:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--db", default=None, help="Path to chunks DB (default: config.json's `db` key)")
+    ap.add_argument("--db", default=None, help=f"Path to chunks DB (default: config.json's `db` key, else {DEFAULT_DB})")
     ap.add_argument("--config", default=None, help="Path to config.json (default: the first of ./config.json, ./chonks/config.json, ./.chonks.json that is present)")
     ap.add_argument("-o", "--out", default="INDEX_REPORT.md", help="Output Markdown path")
     args = ap.parse_args(argv)
 
-    loaded = load_config(args.config)
-    for problem in loaded.problems:
-        prefix = "Failed to load" if args.config else "Failed to parse"
-        print(f"{prefix} {problem.path}: {problem.reason}", file=sys.stderr)
-    config = loaded.data
+    config = load_cli_config(args.config)
     load_plugins(config.get("language_plugins") or [], config.get("fallback_extensions"))
-    # CLI flag overrides config key, same precedence as chunker/serve.
-    args.db = args.db or config.get("db")
-    if not args.db:
-        ap.error("--db required (or set `db` in config.json)")
+    args.db = resolve_db(args.db, config)
     if not Path(args.db).exists():
         ap.error(f"DB not found: {args.db} (run chonks index first)")
     store = Store(Path(args.db))

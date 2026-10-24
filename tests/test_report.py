@@ -207,7 +207,7 @@ def test_main_discovers_dot_chonks_json(tmp_path, monkeypatch):
     assert "## Index vitals" in text
 
 
-def test_main_unreadable_config_warns_and_continues(tmp_path, monkeypatch, capsys):
+def test_main_unreadable_config_warns_and_uses_the_default_db(tmp_path, monkeypatch, capsys):
     import pytest
     from chonks.ops.report import main
 
@@ -218,9 +218,6 @@ def test_main_unreadable_config_warns_and_continues(tmp_path, monkeypatch, capsy
         main([])
     assert exc_info.value.code == 2
     err = capsys.readouterr().err
-    # the unreadable config candidate is now a warning, not a hard stop:
-    # the run continues to the next requirement (a missing --db), so the
-    # config gate no longer aborts a run that doesn't need that file.
     assert "Failed to parse config.json" in err
     assert "config not readable" not in err
-    assert "--db required" in err
+    assert "DB not found: .db/chonks.db" in err

@@ -11,6 +11,7 @@ CONFIG_SEARCH_PATHS = (
     Path("chonks/config.json"),
     Path(".chonks.json"),
 )
+DEFAULT_DB = ".db/chonks.db"
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,11 @@ def load_config(explicit: str | None) -> ConfigLoad:
             continue
         return ConfigLoad(data, Path(candidate), tuple(problems))
     return ConfigLoad({}, None, tuple(problems))
+
+
+def resolve_db(flag: str | None, config: dict) -> str:
+    """The DB path: the --db flag, else the config's `db` key, else DEFAULT_DB."""
+    return flag or config.get("db") or DEFAULT_DB
 
 
 def resolve_codebase(codebase: str | None, explicit_config: bool, logger: logging.Logger) -> Path | None:

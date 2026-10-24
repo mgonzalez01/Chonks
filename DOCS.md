@@ -491,9 +491,9 @@ It loads `exclude`, `include`, `subsystems`, `codebase`, `search`, `repomap`, an
 
 Per-project entries inherit `research`, `repomap`, `search`, `exclude`, and `include` unless they override them. The keys that shape an index (`macros`, `fallback_extensions`, `data_blob_size_limit`, `cap_mentions_fanout`, `associated_top_frac`) are top-level only, for `POST /index` as for `chonks index`. `db` and `codebase` are not inherited, and a project-supplied `codebase` bypasses the auto-discovery absolute-path guard. `language_plugins` is not a per-project key at all: the language registry is one process-global object for the whole server, so a `projects[name].language_plugins` entry is refused and logged rather than applied to just that project.
 
-**`--db` resolution order.** `chonks serve --db PATH` takes the config's `db` key when set, and the `--db` flag otherwise, which itself defaults to `.db/chonks.db`. `chonks index`, `chonks doctor`, and `chonks report` go the other way, taking an explicitly passed CLI flag first, then the config key, then the built-in default, since their own `--db` default is `None`. So `--db` is authoritative for `serve` only when the config has no `db` key, or no `--config` is passed.
+**`--db` resolution order.** `chonks serve`, `chonks index`, `chonks doctor`, and `chonks report` take the DB path from `--db`, then from the config's `db` key, then default to `.db/chonks.db`.
 
-**Config discovery.** `chonks serve`, `chonks index`, `chonks doctor`, and `chonks report` share one search order when `--config` is absent: `config.json`, then `chonks/config.json`, then `.chonks.json`, all resolved against the working directory. Passing `--config` names one file and turns the search off. Among the search candidates, the first one that parses wins. `chonks doctor` and `chonks report` stop with an error when a config file cannot be read or parsed, while `chonks serve` and `chonks index` log a warning and go on to the next candidate, or to an empty config when there is none. The absolute-`codebase` guard described above applies to `chonks serve` only.
+**Config discovery.** `chonks serve`, `chonks index`, `chonks doctor`, and `chonks report` share one search order when `--config` is absent: `config.json`, then `chonks/config.json`, then `.chonks.json`, all resolved against the working directory. Passing `--config` names one file and turns the search off. Among the search candidates, the first one that parses wins. A config file that cannot be read or parsed gets a warning, printed by `chonks doctor` and `chonks report` and logged by `chonks serve` and `chonks index`, and the search goes on to the next candidate, or to an empty config when there is none. The absolute-`codebase` guard described above applies to `chonks serve` only.
 
 **Team deployment.** `mcp.team.example.json`, a committed `.mcp.json` template using `${VAR}` placeholders, and `chonks-subsystems.example.json`, a shareable `subsystems` map, are the reference pattern for pointing several machines at one shared backend. See [DEPLOY.md](DEPLOY.md).
 
@@ -1101,7 +1101,7 @@ Subsystem paths must be arrays, even for a single path. There are no hardcoded d
 
 | Key | Default | Description |
 |---|---|---|
-| `db` | — | Path to the sqlite-vec DB file |
+| `db` | `.db/chonks.db` | Path to the sqlite-vec DB file |
 | `codebase` | — | Codebase root (used as `--root` for indexing) |
 | `exclude` | `[]` | List of path prefixes (relative to codebase root) to skip during indexing; `*` matches within one segment |
 | `include` | `[]` | List of path prefixes that override matching excludes when strictly more specific; `*` matches within one segment. A pure exception mechanism, not an allowlist; see [Include / exclude paths](#include--exclude-paths). |
